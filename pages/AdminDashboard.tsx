@@ -11,11 +11,13 @@ import {
     DollarSign,
     Calendar,
     Lock,
-    ShieldAlert
+    ShieldAlert,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, sendPasswordResetEmail } from 'firebase/auth';
 import { loginWithEmail, registerWithEmail, logoutUser, handleAuthError } from '../services/authService';
 
 interface AdminDashboardProps {
@@ -35,6 +37,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // ADMIN CREDENTIALS
   const ADMIN_EMAIL = "admin@k-experience.com";
@@ -93,6 +96,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
       } finally {
           setAuthLoading(false);
       }
+  };
+
+  const handleResetPassword = async () => {
+    if(!email) {
+        alert(isEn ? "Please enter email first." : "이메일을 먼저 입력해주세요.");
+        return;
+    }
+    if (!window.confirm(isEn ? `Send password reset email to ${email}?` : `${email}로 비밀번호 재설정 메일을 발송하시겠습니까?`)) return;
+    
+    setAuthLoading(true);
+    try {
+        await sendPasswordResetEmail(auth, email);
+        alert(isEn ? "Email sent! Check your inbox." : "이메일이 발송되었습니다! 메일함을 확인해주세요.");
+    } catch (e: any) {
+        console.error(e);
+        alert(isEn ? "Error: " + e.message : "발송 실패: " + e.message);
+    } finally {
+        setAuthLoading(false);
+    }
   };
 
   const createDefaultAdmin = async () => {
@@ -167,15 +189,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                             placeholder="admin@k-experience.com"
                           />
                       </div>
-                      <div>
+                      <div className="relative">
                           <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Password</label>
                           <input 
-                            type="password" 
+                            type={showPassword ? "text" : "password"}
                             value={password} 
                             onChange={e => setPassword(e.target.value)} 
                             className="w-full h-12 border rounded-lg px-4 bg-gray-50 focus:bg-white transition-colors outline-none focus:border-blue-500"
                             placeholder="••••••••"
                           />
+                          <button 
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600"
+                          >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
                       </div>
                       <button 
                         type="submit" 
@@ -186,7 +215,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                       </button>
                   </form>
 
-                  <div className="mt-8 pt-6 border-t border-gray-100">
+                  <div className="flex justify-center mt-4">
+                      <button 
+                        type="button" 
+                        onClick={handleResetPassword} 
+                        className="text-xs text-gray-500 hover:text-[#0070F0] hover:underline"
+                      >
+                          {isEn ? "Forgot Password?" : "비밀번호를 잊으셨나요?"}
+                      </button>
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t border-gray-100">
                       <button 
                         onClick={createDefaultAdmin}
                         className="w-full py-3 rounded-lg border-2 border-dashed border-[#0070F0] text-[#0070F0] font-bold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
