@@ -21,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
   const isEn = language === 'en';
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const ADMIN_EMAIL = "admin@k-experience.com";
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges((currentUser) => {
@@ -79,12 +80,16 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
                <>
                  <span className="text-blue-600 font-bold">{user.displayName || user.email?.split('@')[0]}님</span>
                  
-                 {/* Admin Button */}
-                 <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
-                 <button onClick={onAdminClick} className="flex items-center gap-1 text-[#333] font-bold hover:text-blue-600 transition-colors tracking-tight">
-                    <Settings size={12} />
-                    {isEn ? 'Admin' : '관리자'}
-                 </button>
+                 {/* Admin Button - Only for admin */}
+                 {user.email === ADMIN_EMAIL && (
+                   <>
+                     <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
+                     <button onClick={onAdminClick} className="flex items-center gap-1 text-[#333] font-bold hover:text-blue-600 transition-colors tracking-tight">
+                        <Settings size={12} />
+                        {isEn ? 'Admin' : '관리자'}
+                     </button>
+                   </>
+                 )}
 
                  <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
                  <button onClick={onMyPageClick} className="hover:text-blue-600 transition-colors tracking-tight">{isEn ? 'My Page' : '마이페이지'}</button>
@@ -184,7 +189,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
                        </>
                      ) : (
                        <>
-                        <button onClick={() => { toggleMenu(); onAdminClick?.(); }} className="text-blue-600 font-bold">{isEn ? 'Admin' : '관리자'}</button>
+                        {user.email === ADMIN_EMAIL && (
+                            <button onClick={() => { toggleMenu(); onAdminClick?.(); }} className="text-blue-600 font-bold">{isEn ? 'Admin' : '관리자'}</button>
+                        )}
                         <button onClick={() => { toggleMenu(); onMyPageClick?.(); }}>{isEn ? 'My Page' : '마이페이지'}</button>
                         <button onClick={() => { toggleMenu(); handleLogout(); }}>{isEn ? 'Logout' : '로그아웃'}</button>
                        </>
