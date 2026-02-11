@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { 
     LayoutDashboard, 
@@ -9,16 +8,18 @@ import {
     Bell, 
     TrendingUp,
     DollarSign,
-    Calendar,
     Lock,
     ShieldAlert,
     Eye,
-    EyeOff
+    EyeOff,
+    AlertCircle,
+    Mail,
+    Calendar
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
 import { onAuthStateChanged, User, sendPasswordResetEmail } from 'firebase/auth';
-import { loginWithEmail, registerWithEmail, logoutUser, handleAuthError } from '../services/authService';
+import { loginWithEmail, registerWithEmail, logoutUser } from '../services/authService';
 
 interface AdminDashboardProps {
   language: 'ko' | 'en';
@@ -38,6 +39,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Detailed Error State
+  const [loginError, setLoginError] = useState<{ type: 'error' | 'success' | 'info', message: string } | null>(null);
 
   // ADMIN CREDENTIALS
   const ADMIN_EMAIL = "admin@k-experience.com";
@@ -88,11 +92,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
   const handleAdminLogin = async (e: React.FormEvent) => {
       e.preventDefault();
       setAuthLoading(true);
+      setLoginError(null);
+      
       try {
           await loginWithEmail(email, password);
-          // onAuthStateChanged will trigger data fetch
+          // onAuthStateChanged will handle the rest
       } catch (error: any) {
-          handleAuthError(error, isEn);
+          console.error("Login Error Object:", error);
+          
+          let msg = error.message;
+          if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+              msg = isEn 
+                ? "Incorrect password. If you forgot it, please use 'Forgot Password'." 
+                : "비밀번호가 올바르지 않습니다. (혹은 계정이 없을 수 있습니다)";
+          } else if (error.code === 'auth/user-not-found') {
+              msg = isEn 
+                ? "Account not found. Please create the admin account below." 
+                : "계정을 찾을 수 없습니다. 아래 [기본 관리자 계정 생성] 버튼을 눌러주세요.";
+          } else if (error.code === 'auth/too-many-requests') {
+              msg = isEn
+                ? "Too many failed attempts. Please try again later."
+                : "로그인 시도가 너무 많아 잠시 차단되었습니다. 잠시 후 다시 시도해주세요.";
+          }
+
+          setLoginError({ type: 'error', message: msg });
       } finally {
           setAuthLoading(false);
       }
@@ -100,18 +123,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
 
   const handleResetPassword = async () => {
     if(!email) {
-        alert(isEn ? "Please enter email first." : "이메일을 먼저 입력해주세요.");
+        setLoginError({ type: 'error', message: isEn ? "Please enter email first." : "이메일을 먼저 입력해주세요." });
         return;
     }
+    
     if (!window.confirm(isEn ? `Send password reset email to ${email}?` : `${email}로 비밀번호 재설정 메일을 발송하시겠습니까?`)) return;
     
     setAuthLoading(true);
     try {
         await sendPasswordResetEmail(auth, email);
-        alert(isEn ? "Email sent! Check your inbox." : "이메일이 발송되었습니다! 메일함을 확인해주세요.");
+        setLoginError({ 
+            type: 'success', 
+            message: isEn ? "Reset email sent! Check your inbox." : "비밀번호 재설정 메일이 발송되었습니다! 메일함을 확인해주세요." 
+        });
     } catch (e: any) {
         console.error(e);
-        alert(isEn ? "Error: " + e.message : "발송 실패: " + e.message);
+        setLoginError({ type: 'error', message: "발송 실패: " + e.message });
     } finally {
         setAuthLoading(false);
     }
@@ -121,6 +148,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
       if (!window.confirm(isEn ? "Create default admin account (admin@k-experience.com)?" : "기본 관리자 계정(admin@k-experience.com)을 생성하시겠습니까?")) return;
       
       setAuthLoading(true);
+      setLoginError(null);
+
       try {
           // Check if already logged in, logout first
           if (auth.currentUser) await logoutUser();
@@ -132,11 +161,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
               phone: "010-0000-0000",
               nationality: "Korea"
           });
-          alert(isEn ? "Admin account created! Please login." : "관리자 계정이 생성되었습니다! 비밀번호 'admin1234'로 로그인해주세요.");
+          
+          setLoginError({ 
+              type: 'success', 
+              message: isEn ? "Account created! Password is 'admin1234'." : "계정이 생성되었습니다! 비밀번호 'admin1234'로 로그인하세요." 
+          });
+          
           setEmail(ADMIN_EMAIL);
           setPassword("admin1234");
+          
       } catch (error: any) {
-          handleAuthError(error, isEn);
+          let msg = error.message;
+          if (error.code === 'auth/email-already-in-use') {
+              msg = isEn 
+                ? "Account already exists! Please login with your existing password." 
+                : "이미 존재하는 계정입니다! 기존 비밀번호로 로그인해주세요. (비밀번호를 모른다면 재설정)";
+          }
+          setLoginError({ type: 'error', message: msg });
       } finally {
           setAuthLoading(false);
       }
@@ -161,7 +202,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F6F8] px-4">
               <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
-                  <div className="text-center mb-8">
+                  <div className="text-center mb-6">
                       <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-[#0070F0]">
                           <Lock size={32} />
                       </div>
@@ -175,6 +216,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                           <span>
                               {isEn ? `Logged in as ${currentUser.email}, but not authorized.` : `현재 ${currentUser.email} 계정은 관리자 권한이 없습니다.`}
                           </span>
+                      </div>
+                  )}
+
+                  {/* Dynamic Error Message Box */}
+                  {loginError && (
+                      <div className={`mb-6 p-4 rounded-lg text-sm flex items-start gap-2 ${
+                          loginError.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+                      }`}>
+                          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                          <span className="font-medium break-words leading-tight">{loginError.message}</span>
                       </div>
                   )}
 
@@ -196,7 +247,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                             value={password} 
                             onChange={e => setPassword(e.target.value)} 
                             className="w-full h-12 border rounded-lg px-4 bg-gray-50 focus:bg-white transition-colors outline-none focus:border-blue-500"
-                            placeholder="••••••••"
+                            placeholder="admin1234"
                           />
                           <button 
                             type="button"
@@ -215,13 +266,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                       </button>
                   </form>
 
-                  <div className="flex justify-center mt-4">
+                  {/* Help Links */}
+                  <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
+                      <span>{isEn ? "Trouble logging in?" : "로그인에 문제가 있나요?"}</span>
                       <button 
                         type="button" 
                         onClick={handleResetPassword} 
-                        className="text-xs text-gray-500 hover:text-[#0070F0] hover:underline"
+                        className="text-[#0070F0] font-bold hover:underline flex items-center gap-1"
                       >
-                          {isEn ? "Forgot Password?" : "비밀번호를 잊으셨나요?"}
+                          <Mail size={12} />
+                          {isEn ? "Reset Password" : "비밀번호 재설정 메일 발송"}
                       </button>
                   </div>
 
@@ -230,12 +284,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                         onClick={createDefaultAdmin}
                         className="w-full py-3 rounded-lg border-2 border-dashed border-[#0070F0] text-[#0070F0] font-bold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
                       >
-                          <span>+</span> {isEn ? 'Create Default Admin Account (First Time)' : '기본 관리자 계정 생성하기 (최초 1회)'}
+                          <span>+</span> {isEn ? 'Create Default Admin (First Time)' : '기본 관리자 계정 생성하기 (최초 1회)'}
                       </button>
-                      <p className="text-center text-[11px] text-gray-400 mt-2">
+                      <p className="text-center text-[11px] text-gray-400 mt-2 leading-snug">
                           {isEn 
-                            ? "* Click this button to register the admin account in Firebase." 
-                            : "* Firebase에 관리자 계정이 없다면 이 버튼을 눌러 등록해주세요."}
+                            ? "* Only use this if the account does not exist." 
+                            : "* Firebase에 계정이 없는 경우에만 사용하세요.\n이미 존재한다면 위 '비밀번호 재설정'을 이용하세요."}
                       </p>
                   </div>
               </div>
