@@ -546,7 +546,7 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = ({ language }) 
                             <div className="flex justify-end mt-2">
                                 <div className="flex items-center border border-[#ddd] rounded-sm">
                                     <button className="w-6 h-6 flex items-center justify-center bg-[#f9f9f9] text-[#999]">-</button>
-                                    <input type="text" value="1" readOnly className="w-8 h-6 text-center text-[12px] border-x border-[#ddd]" />
+                                    <input type="text" value="1" readOnly className="w-8 h-6 text-center text-[12px] border-x border-[#ddd] bg-white" />
                                     <button className="w-6 h-6 flex items-center justify-center bg-[#f9f9f9] text-[#999]">+</button>
                                 </div>
                             </div>

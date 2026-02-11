@@ -4,16 +4,83 @@ import {
   GoogleAuthProvider, 
   signOut, 
   onAuthStateChanged, 
-  User 
+  User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
 } from "firebase/auth";
-import { auth } from "./firebaseConfig";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db } from "./firebaseConfig";
 
 // Google Login Provider
 const googleProvider = new GoogleAuthProvider();
 
+// --- Google Login ---
 export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    // Check if user profile exists in Firestore, if not create one
+    const userRef = doc(db, "users", result.user.uid);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+      await setDoc(userRef, {
+        uid: result.user.uid,
+        name: result.user.displayName,
+        email: result.user.email,
+        createdAt: new Date(),
+        nationality: 'Unknown', // Default
+        phone: ''
+      });
+    }
+    return result.user;
+  } catch (error) {
+    console.error("Login failed", error);
+    throw error;
+  }
+};
+
+// --- Email/Password Sign Up ---
+interface SignUpData {
+  email: string;
+  password: string;
+  name: string;
+  phone: string;
+  nationality: string;
+}
+
+export const registerWithEmail = async (data: SignUpData) => {
+  try {
+    // 1. Create Auth User
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    const user = userCredential.user;
+
+    // 2. Update Display Name
+    await updateProfile(user, {
+      displayName: data.name
+    });
+
+    // 3. Create User Document in Firestore (Store extra fields)
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      nationality: data.nationality,
+      createdAt: new Date()
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Registration failed", error);
+    throw error;
+  }
+};
+
+// --- Email/Password Login ---
+export const loginWithEmail = async (email: string, pass: string) => {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, pass);
     return result.user;
   } catch (error) {
     console.error("Login failed", error);
@@ -40,20 +107,17 @@ export const subscribeToAuthChanges = (callback: (user: User | null) => void) =>
 export const handleAuthError = (error: any, isEn: boolean = false) => {
   console.error("Auth Error:", error);
   
-  if (error.code === 'auth/unauthorized-domain') {
-    const currentDomain = window.location.hostname;
-    const messageKo = `⚠️ 도메인 승인 필요\n\n현재 웹사이트 도메인(${currentDomain})이 Firebase에 등록되지 않았습니다.\n\n[해결 방법]\n1. Firebase 콘솔(console.firebase.google.com) 접속\n2. Authentication > Settings(설정) > Authorized Domains(승인된 도메인)\n3. '도메인 추가' 버튼 클릭\n4. '${currentDomain}' 입력 후 추가`;
-    const messageEn = `⚠️ Domain Authorization Needed\n\nThe current domain (${currentDomain}) is not authorized in Firebase.\n\n[How to Fix]\n1. Go to Firebase Console\n2. Authentication > Settings > Authorized Domains\n3. Click 'Add domain'\n4. Enter '${currentDomain}'`;
-    alert(isEn ? messageEn : messageKo);
-  } else if (error.code === 'auth/operation-not-allowed') {
-    const messageKo = `⚠️ 로그인 설정 오류\n\nFirebase 콘솔에서 'Google 로그인' 공급업체가 활성화되지 않았습니다.\nAuthentication > Sign-in method 탭에서 Google을 사용 설정해주세요.`;
-    const messageEn = `⚠️ Login Config Error\n\nGoogle Sign-in is not enabled in Firebase Console.\nPlease enable Google in Authentication > Sign-in method tab.`;
-    alert(isEn ? messageEn : messageKo);
-  } else if (error.code === 'auth/popup-closed-by-user') {
-    // User closed the popup, usually no action needed or just a small toast
-    console.log("Login popup closed by user");
-  } else {
-    // Generic error
-    alert(isEn ? `Login failed: ${error.message}` : `로그인 실패: ${error.message}`);
+  let msg = error.message;
+
+  if (error.code === 'auth/email-already-in-use') {
+    msg = isEn ? 'Email already in use.' : '이미 사용 중인 이메일입니다.';
+  } else if (error.code === 'auth/invalid-email') {
+    msg = isEn ? 'Invalid email address.' : '유효하지 않은 이메일 주소입니다.';
+  } else if (error.code === 'auth/weak-password') {
+    msg = isEn ? 'Password should be at least 6 characters.' : '비밀번호는 6자리 이상이어야 합니다.';
+  } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+    msg = isEn ? 'Invalid email or password.' : '이메일 또는 비밀번호가 잘못되었습니다.';
   }
+
+  alert(msg);
 };

@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { Menu, X, Search, ShoppingCart, User as UserIcon, ChevronDown, LogOut } from 'lucide-react';
 import { NAV_LINKS, NAV_LINKS_EN } from '../constants';
-import { loginWithGoogle, logoutUser, subscribeToAuthChanges, handleAuthError } from '../services/authService';
+import { logoutUser, subscribeToAuthChanges } from '../services/authService';
 import { User } from 'firebase/auth';
+import { AuthModal } from './AuthModal';
 
 interface NavbarProps {
   isMenuOpen: boolean;
@@ -18,6 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
   const links = language === 'ko' ? NAV_LINKS : NAV_LINKS_EN;
   const isEn = language === 'en';
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges((currentUser) => {
@@ -26,21 +28,18 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = async () => {
-    try {
-      await loginWithGoogle();
-    } catch (error: any) {
-      handleAuthError(error, isEn);
-    }
+  const handleLoginClick = () => {
+    setIsAuthModalOpen(true);
   };
 
   const handleLogout = async () => {
     await logoutUser();
-    alert(isEn ? "Logged out." : "로그아웃 되었습니다.");
+    // alert(isEn ? "Logged out." : "로그아웃 되었습니다."); // Optional toast
     if (onLogoClick) onLogoClick(); // Go home
   };
 
   return (
+    <>
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 font-sans tracking-tight">
       <div className="max-w-[1320px] mx-auto px-4 md:px-6">
         
@@ -71,13 +70,13 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
           <div className="flex items-center gap-3">
              {!user ? (
                <>
-                 <button onClick={handleLogin} className="hover:text-blue-600 transition-colors tracking-tight">{isEn ? 'Sign Up' : '회원가입'}</button>
+                 <button onClick={handleLoginClick} className="hover:text-blue-600 transition-colors tracking-tight">{isEn ? 'Sign Up' : '회원가입'}</button>
                  <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
-                 <button onClick={handleLogin} className="hover:text-blue-600 transition-colors tracking-tight">{isEn ? 'Login' : '로그인'}</button>
+                 <button onClick={handleLoginClick} className="hover:text-blue-600 transition-colors tracking-tight">{isEn ? 'Login' : '로그인'}</button>
                </>
              ) : (
                <>
-                 <span className="text-blue-600 font-bold">{user.displayName}님</span>
+                 <span className="text-blue-600 font-bold">{user.displayName || user.email?.split('@')[0]}님</span>
                  <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
                  <button onClick={onMyPageClick} className="hover:text-blue-600 transition-colors tracking-tight">{isEn ? 'My Page' : '마이페이지'}</button>
                  <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
@@ -131,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
           {/* Icons */}
           <div className="hidden md:flex items-center justify-end gap-6">
              <button className="text-[#111] hover:text-[#0070F0] transition-colors"><Search size={24} strokeWidth={1.5} /></button>
-             <button onClick={user ? onMyPageClick : handleLogin} className="text-[#111] hover:text-[#0070F0] transition-colors"><UserIcon size={24} strokeWidth={1.5} /></button>
+             <button onClick={user ? onMyPageClick : handleLoginClick} className="text-[#111] hover:text-[#0070F0] transition-colors"><UserIcon size={24} strokeWidth={1.5} /></button>
              <button className="text-[#111] hover:text-[#0070F0] transition-colors relative">
                 <ShoppingCart size={24} strokeWidth={1.5} />
                 <span className="absolute -top-1 -right-1.5 bg-[#111] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
@@ -171,13 +170,13 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
                  <div className="flex justify-between text-sm text-gray-600 tracking-tight">
                      {!user ? (
                        <>
-                        <button onClick={handleLogin}>{isEn ? 'Login' : '로그인'}</button>
-                        <button onClick={handleLogin}>{isEn ? 'Sign Up' : '회원가입'}</button>
+                        <button onClick={() => { toggleMenu(); handleLoginClick(); }}>{isEn ? 'Login' : '로그인'}</button>
+                        <button onClick={() => { toggleMenu(); handleLoginClick(); }}>{isEn ? 'Sign Up' : '회원가입'}</button>
                        </>
                      ) : (
                        <>
-                        <button onClick={onMyPageClick}>{isEn ? 'My Page' : '마이페이지'}</button>
-                        <button onClick={handleLogout}>{isEn ? 'Logout' : '로그아웃'}</button>
+                        <button onClick={() => { toggleMenu(); onMyPageClick?.(); }}>{isEn ? 'My Page' : '마이페이지'}</button>
+                        <button onClick={() => { toggleMenu(); handleLogout(); }}>{isEn ? 'Logout' : '로그아웃'}</button>
                        </>
                      )}
                  </div>
@@ -191,5 +190,11 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
         </div>
       )}
     </nav>
+    <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        language={language} 
+    />
+    </>
   );
 };
