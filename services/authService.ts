@@ -117,6 +117,11 @@ export const handleAuthError = (error: any, isEn: boolean = false) => {
     msg = isEn ? 'Password should be at least 6 characters.' : '비밀번호는 6자리 이상이어야 합니다.';
   } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
     msg = isEn ? 'Invalid email or password.' : '이메일 또는 비밀번호가 잘못되었습니다.';
+  } else if (error.code === 'auth/operation-not-allowed') {
+    // Helpful message for the admin
+    msg = isEn 
+      ? 'Login Failed: Email/Password sign-in is disabled in Firebase Console. Go to Authentication > Sign-in method and enable it.' 
+      : '로그인 실패: Firebase 콘솔에서 "이메일/비밀번호" 로그인이 비활성화되어 있습니다. Authentication > Sign-in method 탭에서 사용 설정해주세요.';
   }
 
   alert(msg);

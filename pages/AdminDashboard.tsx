@@ -16,7 +16,7 @@ import {
 import { collection, getDocs, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { loginWithEmail, registerWithEmail, logoutUser } from '../services/authService';
+import { loginWithEmail, registerWithEmail, logoutUser, handleAuthError } from '../services/authService';
 
 interface AdminDashboardProps {
   language: 'ko' | 'en';
@@ -89,7 +89,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
           await loginWithEmail(email, password);
           // onAuthStateChanged will trigger data fetch
       } catch (error: any) {
-          alert(isEn ? "Login failed: " + error.message : "로그인 실패: 이메일과 비밀번호를 확인해주세요.");
+          handleAuthError(error, isEn);
       } finally {
           setAuthLoading(false);
       }
@@ -114,8 +114,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
           setEmail(ADMIN_EMAIL);
           setPassword("admin1234");
       } catch (error: any) {
-          console.error(error);
-          alert(isEn ? "Error creating admin: " + error.message : "계정 생성 오류: 이미 존재하는 계정이거나 오류가 발생했습니다.");
+          handleAuthError(error, isEn);
       } finally {
           setAuthLoading(false);
       }
