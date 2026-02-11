@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Menu, X, Search, ShoppingCart, User as UserIcon, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, X, Search, ShoppingCart, User as UserIcon, ChevronDown, LogOut, Settings } from 'lucide-react';
 import { NAV_LINKS, NAV_LINKS_EN } from '../constants';
 import { logoutUser, subscribeToAuthChanges } from '../services/authService';
 import { User } from 'firebase/auth';
@@ -13,9 +13,10 @@ interface NavbarProps {
   setLanguage: (lang: 'ko' | 'en') => void;
   onLogoClick?: () => void;
   onMyPageClick?: () => void;
+  onAdminClick?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language, setLanguage, onLogoClick, onMyPageClick }) => {
+export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language, setLanguage, onLogoClick, onMyPageClick, onAdminClick }) => {
   const links = language === 'ko' ? NAV_LINKS : NAV_LINKS_EN;
   const isEn = language === 'en';
   const [user, setUser] = useState<User | null>(null);
@@ -77,6 +78,14 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
              ) : (
                <>
                  <span className="text-blue-600 font-bold">{user.displayName || user.email?.split('@')[0]}님</span>
+                 
+                 {/* Admin Button */}
+                 <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
+                 <button onClick={onAdminClick} className="flex items-center gap-1 text-[#333] font-bold hover:text-blue-600 transition-colors tracking-tight">
+                    <Settings size={12} />
+                    {isEn ? 'Admin' : '관리자'}
+                 </button>
+
                  <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
                  <button onClick={onMyPageClick} className="hover:text-blue-600 transition-colors tracking-tight">{isEn ? 'My Page' : '마이페이지'}</button>
                  <span className="w-px h-2.5 bg-[#DDD] mx-0.5"></span>
@@ -175,6 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, language
                        </>
                      ) : (
                        <>
+                        <button onClick={() => { toggleMenu(); onAdminClick?.(); }} className="text-blue-600 font-bold">{isEn ? 'Admin' : '관리자'}</button>
                         <button onClick={() => { toggleMenu(); onMyPageClick?.(); }}>{isEn ? 'My Page' : '마이페이지'}</button>
                         <button onClick={() => { toggleMenu(); handleLogout(); }}>{isEn ? 'Logout' : '로그아웃'}</button>
                        </>

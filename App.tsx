@@ -13,8 +13,9 @@ import { ReservationBasic } from './pages/ReservationBasic';
 import { ReservationPremium } from './pages/ReservationPremium';
 import { GroupBuyingPage } from './pages/GroupBuyingPage';
 import { MyPage } from './pages/MyPage';
+import { AdminDashboard } from './pages/AdminDashboard';
 
-export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying';
+export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin';
 
 const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -30,6 +31,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight">
+      {/* Hide Navbar only on Admin Dashboard if preferred, but keeping it for navigation is fine. */}
       <Navbar 
         isMenuOpen={isMenuOpen} 
         toggleMenu={toggleMenu} 
@@ -37,6 +39,7 @@ const App: React.FC = () => {
         setLanguage={setLanguage}
         onLogoClick={() => navigateTo('home')}
         onMyPageClick={() => navigateTo('mypage')}
+        onAdminClick={() => navigateTo('admin')}
       />
       
       <main className="flex-grow">
@@ -69,9 +72,13 @@ const App: React.FC = () => {
         {currentView === 'mypage' && (
           <MyPage language={language} />
         )}
+
+        {currentView === 'admin' && (
+          <AdminDashboard language={language} />
+        )}
       </main>
 
-      <Footer language={language} />
+      {currentView !== 'admin' && <Footer language={language} />}
       
       {language === 'ko' ? <AIAssistant /> : <FloatingButtons />}
     </div>
