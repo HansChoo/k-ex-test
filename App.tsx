@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { PromoSection } from './components/PromoSection';
@@ -14,13 +14,21 @@ import { ReservationPremium } from './pages/ReservationPremium';
 import { GroupBuyingPage } from './pages/GroupBuyingPage';
 import { MyPage } from './pages/MyPage';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { ProductDetail } from './pages/ProductDetail';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './services/firebaseConfig';
 
-export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin';
+export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail';
 
 const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [language, setLanguage] = useState<'ko' | 'en'>('ko');
   const [currentView, setCurrentView] = useState<PageView>('home');
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  
+  // State for Dynamic Main Packages
+  const [basicPkgData, setBasicPkgData] = useState<any>(null);
+  const [premiumPkgData, setPremiumPkgData] = useState<any>(null);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -29,9 +37,32 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
+  // Fetch Main Package Settings on Load
+  useEffect(() => {
+    const fetchPackages = async () => {
+        try {
+            const basicSnap = await getDoc(doc(db, "cms_packages", "package_basic"));
+            if (basicSnap.exists()) setBasicPkgData(basicSnap.data());
+            
+            const premiumSnap = await getDoc(doc(db, "cms_packages", "package_premium"));
+            if (premiumSnap.exists()) setPremiumPkgData(premiumSnap.data());
+        } catch(e) { console.error("Pkg fetch error", e); }
+    };
+    fetchPackages();
+  }, []);
+
+  // Listen for Product Clicks from ProductList
+  useEffect(() => {
+      const handleProductNav = (e: any) => {
+          setSelectedProduct(e.detail);
+          navigateTo('product_detail');
+      };
+      window.addEventListener('navigate-product-detail', handleProductNav);
+      return () => window.removeEventListener('navigate-product-detail', handleProductNav);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight">
-      {/* Hide Navbar only on Admin Dashboard if preferred, but keeping it for navigation is fine. */}
       <Navbar 
         isMenuOpen={isMenuOpen} 
         toggleMenu={toggleMenu} 
@@ -47,8 +78,11 @@ const App: React.FC = () => {
           <>
             <HeroSection language={language} />
             <PromoSection language={language} onGroupBuyClick={() => navigateTo('group_buying')} />
+            {/* Pass Dynamic Package Data */}
             <PackageSection 
                 language={language} 
+                basicData={basicPkgData}
+                premiumData={premiumPkgData}
                 onBookClick={() => navigateTo('reservation_basic')}
                 onPremiumBookClick={() => navigateTo('reservation_premium')}
             />
@@ -58,11 +92,15 @@ const App: React.FC = () => {
         )}
         
         {currentView === 'reservation_basic' && (
-          <ReservationBasic language={language} />
+          <ReservationBasic language={language} pkgData={basicPkgData} />
         )}
 
         {currentView === 'reservation_premium' && (
-          <ReservationPremium language={language} />
+          <ReservationPremium language={language} pkgData={premiumPkgData} />
+        )}
+        
+        {currentView === 'product_detail' && selectedProduct && (
+            <ProductDetail language={language} product={selectedProduct} />
         )}
 
         {currentView === 'group_buying' && (

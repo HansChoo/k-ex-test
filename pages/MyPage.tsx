@@ -8,6 +8,20 @@ interface MyPageProps {
   language: 'ko' | 'en';
 }
 
+const STATUS_MAP_KO: {[key: string]: string} = {
+  'pending': '입금대기',
+  'confirmed': '예약확정',
+  'cancelled': '취소됨',
+  'completed': '이용완료'
+};
+
+const STATUS_MAP_EN: {[key: string]: string} = {
+  'pending': 'Pending',
+  'confirmed': 'Confirmed',
+  'cancelled': 'Cancelled',
+  'completed': 'Completed'
+};
+
 export const MyPage: React.FC<MyPageProps> = ({ language }) => {
   const isEn = language === 'en';
   const [reservations, setReservations] = useState<any[]>([]);
@@ -18,20 +32,12 @@ export const MyPage: React.FC<MyPageProps> = ({ language }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Fetch reservations
-        const q = query(
-          collection(db, "reservations"),
-          where("userId", "==", currentUser.uid),
-          orderBy("createdAt", "desc")
-        );
-        
+        const q = query(collection(db, "reservations"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
         try {
           const querySnapshot = await getDocs(q);
           const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setReservations(data);
-        } catch (e) {
-          console.error("Error fetching reservations:", e);
-        }
+        } catch (e) { console.error("Error fetching reservations:", e); }
       }
       setLoading(false);
     });
@@ -61,32 +67,31 @@ export const MyPage: React.FC<MyPageProps> = ({ language }) => {
         </div>
       ) : (
         <div className="space-y-6">
-            {reservations.map((res) => (
-                <div key={res.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                             <span className={`text-xs font-bold px-2 py-1 rounded ${res.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                 {res.status === 'confirmed' ? (isEn ? 'Confirmed' : '예약확정') : res.status}
-                             </span>
-                             <span className="text-sm text-gray-500">{new Date(res.createdAt?.seconds * 1000).toLocaleDateString()}</span>
+            {reservations.map((res) => {
+                const statusLabel = isEn ? (STATUS_MAP_EN[res.status] || res.status) : (STATUS_MAP_KO[res.status] || res.status);
+                return (
+                    <div key={res.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className={`text-xs font-bold px-2 py-1 rounded ${res.status === 'confirmed' ? 'bg-green-100 text-green-700' : res.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    {statusLabel}
+                                </span>
+                                <span className="text-sm text-gray-500">{new Date(res.createdAt?.seconds * 1000).toLocaleDateString()}</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-[#111] mb-1">{res.productName}</h3>
+                            <p className="text-gray-600 text-sm">
+                                {isEn ? 'Date' : '이용일'}: <strong>{res.date}</strong> | 
+                                {isEn ? ' People' : ' 인원'}: <strong>{res.peopleCount}</strong>
+                            </p>
                         </div>
-                        <h3 className="text-lg font-bold text-[#111] mb-1">{res.productName}</h3>
-                        <p className="text-gray-600 text-sm">
-                            {isEn ? 'Date' : '이용일'}: <strong>{res.date}</strong> | 
-                            {isEn ? ' People' : ' 인원'}: <strong>{res.peopleCount}</strong>
-                        </p>
-                        <p className="text-sm text-gray-500 mt-1">
-                            {res.options?.gender === 'Male' ? (isEn ? 'Male' : '남성') : (isEn ? 'Female' : '여성')} / 
-                            {res.options?.payment === 'deposit' ? (isEn ? 'Deposit' : '예약금') : (isEn ? 'Full Payment' : '전액결제')}
-                        </p>
+                        <div className="text-right flex flex-col justify-center">
+                            <span className="text-xl font-bold text-[#0070F0]">
+                                {isEn ? '$' : '₩'} {Number(res.totalPrice).toLocaleString()}
+                            </span>
+                        </div>
                     </div>
-                    <div className="text-right flex flex-col justify-center">
-                         <span className="text-xl font-bold text-[#0070F0]">
-                             {isEn ? '$' : '₩'} {res.totalPrice.toLocaleString()}
-                         </span>
-                    </div>
-                </div>
-            ))}
+                )
+            })}
         </div>
       )}
     </div>
