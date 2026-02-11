@@ -115,8 +115,10 @@ export const handleAuthError = (error: any, isEn: boolean = false) => {
     msg = isEn ? 'Invalid email address.' : '유효하지 않은 이메일 주소입니다.';
   } else if (error.code === 'auth/weak-password') {
     msg = isEn ? 'Password should be at least 6 characters.' : '비밀번호는 6자리 이상이어야 합니다.';
-  } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-    msg = isEn ? 'Invalid email or password.' : '이메일 또는 비밀번호가 잘못되었습니다.';
+  } else if (error.code === 'auth/user-not-found') {
+    msg = isEn ? 'Account not found. Please create an account first.' : '계정이 존재하지 않습니다. 하단의 [계정 생성] 버튼을 먼저 눌러주세요.';
+  } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+    msg = isEn ? 'Invalid password.' : '비밀번호가 잘못되었습니다.';
   } else if (error.code === 'auth/operation-not-allowed') {
     // Helpful message for the admin
     msg = isEn 

@@ -186,14 +186,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                       </button>
                   </form>
 
-                  <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                      <p className="text-xs text-gray-400 mb-3">{isEn ? 'First time setting up?' : '초기 설정이 필요하신가요?'}</p>
+                  <div className="mt-8 pt-6 border-t border-gray-100">
                       <button 
                         onClick={createDefaultAdmin}
-                        className="text-sm font-bold text-[#0070F0] hover:underline"
+                        className="w-full py-3 rounded-lg border-2 border-dashed border-[#0070F0] text-[#0070F0] font-bold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
                       >
-                          {isEn ? 'Create Default Admin Account' : '기본 관리자 계정 생성하기'}
+                          <span>+</span> {isEn ? 'Create Default Admin Account (First Time)' : '기본 관리자 계정 생성하기 (최초 1회)'}
                       </button>
+                      <p className="text-center text-[11px] text-gray-400 mt-2">
+                          {isEn 
+                            ? "* Click this button to register the admin account in Firebase." 
+                            : "* Firebase에 관리자 계정이 없다면 이 버튼을 눌러 등록해주세요."}
+                      </p>
                   </div>
               </div>
           </div>
