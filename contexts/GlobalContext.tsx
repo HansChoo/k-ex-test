@@ -24,7 +24,7 @@ const SYMBOLS = { KRW: '₩', USD: '$', JPY: '¥', CNY: '¥' };
 const TRANSLATIONS: any = {
   ko: {
     login: '로그인', signup: '회원가입', mypage: '마이페이지', logout: '로그아웃',
-    admin: '관리자', share: '공유하기', map: '지도 보기', wishlist: '위시리스트',
+    admin: '관리자', share: '공유하기', map: '지도 보기', wishlist: '위시리스트', view_wishlist: '나의 위시리스트',
     book_now: '예약하기', total: '총 합계', select_date: '날짜 선택',
     hero_badge: '2,847명이 이미 체험 중!',
     hero_title: 'K-체험의 모든 것!',
@@ -67,11 +67,19 @@ const TRANSLATIONS: any = {
     gb_desc: '친구들과 함께하면 더 저렴하게! 인원별 최대 50% 할인 혜택을 누리세요',
     // Social Proof
     just_purchased: '방금 구매했습니다!',
-    bought: '님이 구매함'
+    bought: '님이 구매함',
+    // Admin
+    admin_dash: '대시보드', admin_cal: '예약 캘린더', admin_res: '주문/예약 관리',
+    admin_prod: '일반 상품 관리', admin_pkg: '메인 패키지 관리', admin_gb: '공동구매 관리', admin_users: '회원 관리',
+    revenue: '총 매출', orders: '총 예약', users: '회원수', products: '상품수',
+    monthly_rev: '월별 매출 추이', order_date: '주문일시', status: '상태', manage: '관리',
+    status_pending: '입금대기', status_confirmed: '예약확정', status_completed: '이용완료', status_cancelled: '취소됨',
+    save: '저장', cancel: '취소', delete: '삭제', edit: '수정', memo: '메모',
+    no_products: '등록된 상품이 없습니다!', import_db: '기본 상품 DB로 가져오기'
   },
   en: {
     login: 'Login', signup: 'Sign Up', mypage: 'My Page', logout: 'Logout',
-    admin: 'Admin', share: 'Share', map: 'Map', wishlist: 'Wishlist',
+    admin: 'Admin', share: 'Share', map: 'Map', wishlist: 'Wishlist', view_wishlist: 'My Wishlist',
     book_now: 'Book Now', total: 'Total', select_date: 'Select Date',
     hero_badge: '2,847 people already experiencing!',
     hero_title: 'Your BEST K-Experience!',
@@ -114,11 +122,19 @@ const TRANSLATIONS: any = {
     gb_desc: 'Cheaper together! Up to 50% discount per person',
     // Social Proof
     just_purchased: 'Just Purchased!',
-    bought: 'bought'
+    bought: 'bought',
+    // Admin
+    admin_dash: 'Dashboard', admin_cal: 'Calendar', admin_res: 'Reservations',
+    admin_prod: 'Products', admin_pkg: 'Packages', admin_gb: 'Group Buys', admin_users: 'Users',
+    revenue: 'Revenue', orders: 'Orders', users: 'Users', products: 'Products',
+    monthly_rev: 'Monthly Revenue', order_date: 'Date', status: 'Status', manage: 'Manage',
+    status_pending: 'Pending', status_confirmed: 'Confirmed', status_completed: 'Completed', status_cancelled: 'Cancelled',
+    save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', memo: 'Note',
+    no_products: 'No products found!', import_db: 'Import Defaults'
   },
   ja: {
     login: 'ログイン', signup: '会員登録', mypage: 'マイページ', logout: 'ログアウト',
-    admin: '管理者', share: '共有', map: '地図', wishlist: 'ウィッシュリスト',
+    admin: '管理者', share: '共有', map: '地図', wishlist: 'ウィッシュリスト', view_wishlist: '私のウィッシュリスト',
     book_now: '予約する', total: '合計', select_date: '日付選択',
     hero_badge: 'すでに2,847人が体験中！',
     hero_title: 'K-体験のすべて！',
@@ -161,11 +177,19 @@ const TRANSLATIONS: any = {
     gb_desc: '友達と一緒ならもっとお得に！人数に応じて最大50%割引',
     // Social Proof
     just_purchased: 'たった今購入しました！',
-    bought: 'さんが購入'
+    bought: 'さんが購入',
+    // Admin
+    admin_dash: 'ダッシュボード', admin_cal: '予約カレンダー', admin_res: '注文/予約管理',
+    admin_prod: '一般商品管理', admin_pkg: 'メインパッケージ管理', admin_gb: '共同購入管理', admin_users: '会員管理',
+    revenue: '総売上', orders: '総予約', users: '会員数', products: '商品数',
+    monthly_rev: '月別売上推移', order_date: '注文日時', status: '状態', manage: '管理',
+    status_pending: '入金待ち', status_confirmed: '予約確定', status_completed: '利用完了', status_cancelled: 'キャンセル',
+    save: '保存', cancel: 'キャンセル', delete: '削除', edit: '修正', memo: 'メモ',
+    no_products: '登録された商品がありません！', import_db: '基本商品DBをインポート'
   },
   zh: {
     login: '登录', signup: '注册', mypage: '我的页面', logout: '退出',
-    admin: '管理员', share: '分享', map: '地图', wishlist: '愿望清单',
+    admin: '管理员', share: '分享', map: '地图', wishlist: '愿望清单', view_wishlist: '我的愿望清单',
     book_now: '立即预订', total: '总计', select_date: '选择日期',
     hero_badge: '已有2,847人体验中！',
     hero_title: 'K-体验的一切！',
@@ -208,7 +232,15 @@ const TRANSLATIONS: any = {
     gb_desc: '和朋友一起更便宜！人越多折扣越大 (最高50%)',
     // Social Proof
     just_purchased: '刚刚购买！',
-    bought: '购买了'
+    bought: '购买了',
+    // Admin
+    admin_dash: '仪表板', admin_cal: '预订日历', admin_res: '订单/预订管理',
+    admin_prod: '一般产品管理', admin_pkg: '主套餐管理', admin_gb: '团购管理', admin_users: '会员管理',
+    revenue: '总收入', orders: '总预订', users: '会员数', products: '产品数',
+    monthly_rev: '月收入趋势', order_date: '订单日期', status: '状态', manage: '管理',
+    status_pending: '待付款', status_confirmed: '已确认', status_completed: '已完成', status_cancelled: '已取消',
+    save: '保存', cancel: '取消', delete: '删除', edit: '编辑', memo: '备注',
+    no_products: '未找到产品！', import_db: '导入默认值'
   }
 };
 

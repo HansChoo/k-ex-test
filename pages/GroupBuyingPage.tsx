@@ -35,6 +35,15 @@ const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
     return <span className="font-mono tabular-nums tracking-tight">{timeLeft}</span>;
 };
 
+// Helper to get YYYY-MM-DD in local time reliably
+const getLocalTodayString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const { t, convertPrice, language } = useGlobal();
   const isEn = language !== 'ko';
@@ -53,14 +62,20 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', date: '', request: '' });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalTodayString();
   const maxDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0];
 
   useEffect(() => {
-    const q = query(collection(db, "group_buys"), orderBy("visitDate", "asc"));
+    const q = query(collection(db, "group_buys"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const activeGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GroupBuyItem))
-            .filter(g => new Date(g.visitDate).getTime() > new Date().getTime());
+        const nowStr = getLocalTodayString();
+        
+        const activeGroups = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as GroupBuyItem))
+            // Robust Filter: Must have a date AND date must be >= today
+            .filter(g => g.visitDate && g.visitDate >= nowStr) 
+            .sort((a, b) => a.visitDate.localeCompare(b.visitDate));
+            
         setPublicGroups(activeGroups);
         setLoading(false);
     });
@@ -86,7 +101,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const finalPrice = (maleCount * baseMalePrice * (1 - discountRate/100)) + (femaleCount * baseFemalePrice * (1 - discountRate/100));
 
   const handlePaymentClick = () => {
-      if (totalCount === 0 || !auth.currentUser || formData.date < today) { alert("Error"); return; }
+      if (totalCount === 0 || !auth.currentUser || formData.date < today) { alert("Error: Please select a valid date and participants."); return; }
       setIsPaymentModalOpen(true);
   };
 
