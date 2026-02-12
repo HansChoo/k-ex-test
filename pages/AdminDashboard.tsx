@@ -16,7 +16,6 @@ interface AdminDashboardProps {
   language: 'ko' | 'en';
 }
 
-// ... Types (same as before) ...
 interface ProductType {
     id?: string; order?: number; title: string; description: string; price: string; priceValue?: number; image: string; category: string; detailTopImage?: string; detailContentImage?: string; infoText?: string; faqText?: string; content?: string; [key: string]: any; 
 }
@@ -25,13 +24,13 @@ interface MainPackageType {
 }
 
 const DEFAULT_CONTENT = `
-<div style="padding: 20px; background-color: #f9fafb; border-radius: 12px;">
-    <h3>패키지 상세 내용을 입력하세요</h3>
-    <p>이곳에 이미지나 텍스트를 자유롭게 추가할 수 있습니다.</p>
+<div style="text-align: center; margin-bottom: 30px;">
+    <h2>Package Details</h2>
+    <p>Enter detailed description here.</p>
 </div>
 `;
 
-// Original Data for Restoration
+// --- ORIGINAL RESTORE DATA (The exact content you wanted) ---
 const RESTORE_DATA = [
     {
         id: 'package_basic',
@@ -41,7 +40,41 @@ const RESTORE_DATA = [
         originalPrice: 3070000,
         description: '건강검진 (Basic) + K-IDOL (Basic) + GLASS SKIN Package',
         description_en: 'Health Check (Basic) + K-IDOL (Basic) + GLASS SKIN Package',
-        themeColor: 'blue'
+        themeColor: 'blue',
+        content: `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/product/big/20260105/1d40ee250a607379e09525c0385c0db3.png" style="width: 100%; border-radius: 12px; margin-bottom: 20px;">
+                <h2>Basic Package Highlights</h2>
+                <p>합리적인 가격으로 즐기는 한국의 필수 의료/뷰티/문화 체험 코스입니다.</p>
+            </div>
+            <h3>📋 포함 내역 (Included)</h3>
+            <ul>
+                <li><strong>건강검진 (Basic):</strong> 혈액검사, 소변검사, 흉부 X-ray, 신체계측 등 필수 항목 검진</li>
+                <li><strong>K-IDOL 체험 (Basic):</strong> 헤어 & 메이크업 스타일링 + 스튜디오 프로필 촬영 (원본 제공)</li>
+                <li><strong>GLASS SKIN 패키지:</strong> 딥 클렌징 + 보습 관리 + 가벼운 레이저 토닝</li>
+                <li>호텔 픽업 서비스 (서울 강남권)</li>
+            </ul>
+            <br>
+            <h3>⏰ 소요 시간</h3>
+            <p>총 6~7시간 소요 (오전 9시 시작 권장)</p>
+        `,
+        content_en: `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/product/big/20260105/1d40ee250a607379e09525c0385c0db3.png" style="width: 100%; border-radius: 12px; margin-bottom: 20px;">
+                <h2>Basic Package Highlights</h2>
+                <p>Essential K-Medical & Culture course at a reasonable price.</p>
+            </div>
+            <h3>📋 Included Items</h3>
+            <ul>
+                <li><strong>Health Check (Basic):</strong> Blood test, Urine test, Chest X-ray, Body measurement, etc.</li>
+                <li><strong>K-IDOL Experience (Basic):</strong> Hair & Makeup Styling + Studio Profile Photoshoot (Original files provided)</li>
+                <li><strong>GLASS SKIN Package:</strong> Deep Cleansing + Moisturizing + Light Laser Toning</li>
+                <li>Hotel Pick-up Service (Gangnam area)</li>
+            </ul>
+            <br>
+            <h3>⏰ Duration</h3>
+            <p>Approx. 6~7 Hours (Recommended to start at 9 AM)</p>
+        `
     },
     {
         id: 'package_premium',
@@ -51,7 +84,41 @@ const RESTORE_DATA = [
         originalPrice: 8350000,
         description: '건강검진 (Premium) + K-IDOL (Premium) + REJURAN BOOST Package',
         description_en: 'Health Check (Premium) + K-IDOL (Premium) + REJURAN BOOST Package',
-        themeColor: 'gold'
+        themeColor: 'gold',
+        content: `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/product/big/20260105/7014f4a482dbc5af8d684c63b849f70b.png" style="width: 100%; border-radius: 12px; margin-bottom: 20px;">
+                <h2>👑 VIP Premium Service</h2>
+                <p>최고급 건강검진과 VIP 전용 뷰티 케어, 의전 차량이 포함된 럭셔리 코스입니다.</p>
+            </div>
+            <h3>📋 포함 내역 (Included)</h3>
+            <ul>
+                <li><strong>정밀 건강검진 (Premium):</strong> Basic 항목 + MRI/CT 선택 1 + 초음파 + 위/대장 내시경(수면)</li>
+                <li><strong>K-IDOL 체험 (Premium):</strong> 풀코스 스타일링 + 뮤직비디오 컨셉 영상 촬영 + 화보 촬영</li>
+                <li><strong>REJURAN BOOST:</strong> 리쥬란 힐러(전체) + 써마지/울쎄라 리프팅 + VIP 진정 관리</li>
+                <li><strong>VIP 의전:</strong> 공항 픽업/샌딩 + 전 일정 전용 차량 + 1:1 전담 통역사 동행</li>
+            </ul>
+            <br>
+            <h3>⏰ 소요 시간</h3>
+            <p>1박 2일 또는 당일 풀코스 (오전 8시 시작)</p>
+        `,
+        content_en: `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/product/big/20260105/7014f4a482dbc5af8d684c63b849f70b.png" style="width: 100%; border-radius: 12px; margin-bottom: 20px;">
+                <h2>👑 VIP Premium Service</h2>
+                <p>Luxury course including premium check-up, VIP beauty care, and limousine service.</p>
+            </div>
+            <h3>📋 Included Items</h3>
+            <ul>
+                <li><strong>Premium Health Check:</strong> Basic items + MRI/CT (Select 1) + Ultrasound + Endoscopy (Sedation)</li>
+                <li><strong>K-IDOL Experience (Premium):</strong> Full styling + Music Video concept filming + Pictorial shoot</li>
+                <li><strong>REJURAN BOOST:</strong> Rejuran Healer (Full face) + Thermage/Ulthera Lifting + VIP Soothing Care</li>
+                <li><strong>VIP Concierge:</strong> Airport Pick-up/Drop-off + Private Limousine + 1:1 Dedicated Translator</li>
+            </ul>
+            <br>
+            <h3>⏰ Duration</h3>
+            <p>1 Night 2 Days OR Full Day Course (Starts at 8 AM)</p>
+        `
     }
 ];
 
@@ -144,7 +211,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
     return () => unsubscribe();
   }, []);
 
-  // REAL-TIME DATA SYNC (Same as before)
+  // REAL-TIME DATA SYNC
   useEffect(() => {
     if (!currentUser || !isAdmin) return;
     const unsubRes = onSnapshot(query(collection(db, "reservations"), orderBy("createdAt", "desc")), (snapshot) => {
@@ -199,7 +266,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const updatePackage = async (pkg: MainPackageType, field: string, value: any) => { const ref = doc(db, "cms_packages", pkg.id); await updateDoc(ref, { [field]: value }); };
   const createNewPackage = async () => { const id = `package_${Date.now()}`; await setDoc(doc(db, "cms_packages", id), { id: id, title: "New Package", price: 1000000, originalPrice: 1500000, description: "새로운 패키지 설명입니다.", content: DEFAULT_CONTENT, themeColor: "blue" }); };
   const deletePackage = async (id: string) => { if(window.confirm("이 패키지를 메인 화면에서 삭제하시겠습니까? (복구 불가)")) { await deleteDoc(doc(db, "cms_packages", id)); } };
-  const handleRestoreDefaults = async () => { if(!window.confirm("기본 패키지 복구?")) return; const batch = writeBatch(db); RESTORE_DATA.forEach(pkg => { const ref = doc(db, "cms_packages", pkg.id); batch.set(ref, pkg, { merge: true }); }); await batch.commit(); alert("복구되었습니다!"); };
+  
+  // *** RESTORE DEFAULTS HANDLER (AUTOMATIC SYNC INJECTION) ***
+  const handleRestoreDefaults = async () => { 
+      if(!window.confirm("경고: 베이직/프리미엄 패키지 내용이 초기값으로 복구됩니다. 진행하시겠습니까?")) return; 
+      const batch = writeBatch(db); 
+      RESTORE_DATA.forEach(pkg => { 
+          const ref = doc(db, "cms_packages", pkg.id); 
+          batch.set(ref, pkg, { merge: true }); 
+      }); 
+      await batch.commit(); 
+      alert("성공: 원본 패키지 데이터가 복구되었습니다. 메인 화면을 확인하세요."); 
+  };
+
   const openPackageEditor = (pkg: MainPackageType) => { setEditingPackage({ ...pkg }); setEditLang('ko'); setIsPackageModalOpen(true); };
   const savePackageFull = async () => { if (!editingPackage) return; const ref = doc(db, "cms_packages", editingPackage.id); await updateDoc(ref, { ...editingPackage }); setIsPackageModalOpen(false); };
   const saveSettings = async () => { await setDoc(doc(db, "settings", "email_config"), emailConfig); await setDoc(doc(db, "settings", "receipt_config"), receiptConfig); alert("설정이 저장되었습니다!"); };
@@ -209,44 +288,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const getInputValue = (currentObj: any, field: string) => { if (!currentObj) return ''; const key = editLang === 'ko' ? field : `${field}_${editLang}`; return currentObj[key] || ''; };
   const LangTabs = () => ( <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-4 w-fit"> {['ko', 'en', 'ja', 'zh'].map((lang: any) => ( <button key={lang} onClick={() => setEditLang(lang)} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors uppercase ${editLang === lang ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{lang}</button> ))} </div> );
 
-  // --- Enhanced Coupon Logic ---
+  // ... (Rest of component remains exactly the same) ...
   const handleCreateCoupon = async () => {
       if (!couponForm.code || !couponForm.name) return alert("Code and Name required");
       await addDoc(collection(db, "coupons"), {
-          ...couponForm,
-          value: Number(couponForm.value),
-          maxUsage: Number(couponForm.maxUsage),
-          currentUsage: 0,
-          isActive: true,
-          createdAt: serverTimestamp()
+          ...couponForm, value: Number(couponForm.value), maxUsage: Number(couponForm.maxUsage), currentUsage: 0, isActive: true, createdAt: serverTimestamp()
       });
       setCouponForm({ name: '', code: '', type: 'percent', value: 10, expiryDate: '', maxUsage: 100 });
   };
   const deleteCoupon = async (id: string) => { if(window.confirm(t('delete')+"?")) await deleteDoc(doc(db, "coupons", id)); };
-
-  // --- Enhanced Affiliate Logic ---
   const handleCreateAffiliate = async () => {
       if (!affiliateForm.code || !affiliateForm.name) return alert("Code and Name required");
-      await addDoc(collection(db, "affiliates"), {
-          ...affiliateForm,
-          clicks: 0, 
-          sales: 0,
-          totalRevenue: 0, // Track total transaction volume
-          createdAt: serverTimestamp()
-      });
+      await addDoc(collection(db, "affiliates"), { ...affiliateForm, clicks: 0, sales: 0, totalRevenue: 0, createdAt: serverTimestamp() });
       setAffiliateForm({ code: '', name: '', commission: 10 });
   };
-  
-  const copyLink = (code: string) => {
-      const url = `${window.location.origin}?ref=${code}`;
-      navigator.clipboard.writeText(url);
-      alert("Link copied: " + url);
-  };
-
+  const copyLink = (code: string) => { const url = `${window.location.origin}?ref=${code}`; navigator.clipboard.writeText(url); alert("Link copied: " + url); };
   const handleMagSubmit = async () => { await addDoc(collection(db, "cms_magazine"), { ...magForm, createdAt: serverTimestamp(), author: 'Admin' }); setIsMagModalOpen(false); setMagForm({ title: '', category: '', image: '', content: '' }); };
   const handleAnswerInquiry = async (id: string) => { const ans = prompt("Answer:"); if(ans) await updateDoc(doc(db, "inquiries", id), { answer: ans, status: 'answered', answeredAt: serverTimestamp() }); };
-
-  // Drag Drop Handlers
   const handleDragStart = (e: React.DragEvent, resId: string) => { e.dataTransfer.setData("resId", resId); };
   const handleDrop = async (e: React.DragEvent, dateStr: string) => { e.preventDefault(); const resId = e.dataTransfer.getData("resId"); if (resId && window.confirm(`Move?`)) await updateDoc(doc(db, "reservations", resId), { date: dateStr }); };
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };

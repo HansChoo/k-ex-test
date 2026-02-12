@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Info, Users, Lock, CheckCircle2, User, Zap, MessageCircle, Flame, Ban, CreditCard, ChevronDown, X, Share2, Check, Sparkles, Megaphone, Timer, Plus, CheckCircle, MapPin, Phone, Mail } from 'lucide-react';
+import { Calendar, Info, Users, Lock, CheckCircle2, User, Zap, MessageCircle, Flame, Ban, CreditCard, ChevronDown, X, Share2, Check, Sparkles, Megaphone, Timer, Plus, CheckCircle, MapPin, Phone, Mail, Copy } from 'lucide-react';
 import { initializePayment } from '../services/paymentService';
 import { auth, db } from '../services/firebaseConfig';
 import { createReservation } from '../services/reservationService';
@@ -19,54 +19,10 @@ interface GroupBuyItem {
 const PRICES = { basic: { male: 2205000, female: 2322000 }, premium: { male: 6012000, female: 6282000 } };
 const DEPOSIT_AMOUNT_PER_PERSON = 100000;
 
-// Skeleton Component for Group Buy Cards
-const GroupBuySkeleton = () => (
-    <div className="bg-white rounded-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-8">
-        <div className="w-full md:w-[340px] shrink-0">
-            <div className="rounded-xl bg-gray-200 h-[240px] md:h-full animate-pulse"></div>
-        </div>
-        <div className="flex-1 flex flex-col justify-between space-y-4">
-            <div>
-                <div className="flex justify-between items-start mb-3">
-                    <div className="h-8 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-                    <div className="h-6 bg-gray-200 rounded-full w-20 animate-pulse"></div>
-                </div>
-                <div className="h-4 bg-gray-200 rounded w-1/3 mb-4 animate-pulse"></div>
-                <div className="grid grid-cols-3 gap-4">
-                     <div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
-                     <div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
-                     <div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
-                </div>
-            </div>
-            <div className="h-12 bg-gray-200 rounded-[10px] w-full animate-pulse"></div>
-        </div>
-    </div>
-);
-
-const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
-    const [timeLeft, setTimeLeft] = useState('');
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const now = new Date(); const target = new Date(targetDate); target.setHours(23, 59, 59, 999);
-            const distance = target.getTime() - now.getTime();
-            if (distance < 0) { setTimeLeft('CLOSED'); clearInterval(interval); return; }
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            setTimeLeft(`${days}d ${hours}h`);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [targetDate]);
-    return <span className="font-mono tabular-nums tracking-tight">{timeLeft}</span>;
-};
-
-// Helper to get YYYY-MM-DD in local time reliably
-const getLocalTodayString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
+// ... (Keep existing Helper Components: GroupBuySkeleton, CountdownTimer, getLocalTodayString) ...
+const GroupBuySkeleton = () => ( <div className="bg-white rounded-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-8"><div className="w-full md:w-[340px] shrink-0"><div className="rounded-xl bg-gray-200 h-[240px] md:h-full animate-pulse"></div></div><div className="flex-1 flex flex-col justify-between space-y-4"><div><div className="flex justify-between items-start mb-3"><div className="h-8 bg-gray-200 rounded w-1/2 animate-pulse"></div><div className="h-6 bg-gray-200 rounded-full w-20 animate-pulse"></div></div><div className="h-4 bg-gray-200 rounded w-1/3 mb-4 animate-pulse"></div><div className="grid grid-cols-3 gap-4"><div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div><div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div><div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div></div></div><div className="h-12 bg-gray-200 rounded-[10px] w-full animate-pulse"></div></div></div> );
+const CountdownTimer = ({ targetDate }: { targetDate: string }) => { const [timeLeft, setTimeLeft] = useState(''); useEffect(() => { const interval = setInterval(() => { const now = new Date(); const target = new Date(targetDate); target.setHours(23, 59, 59, 999); const distance = target.getTime() - now.getTime(); if (distance < 0) { setTimeLeft('CLOSED'); clearInterval(interval); return; } const days = Math.floor(distance / (1000 * 60 * 60 * 24)); const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)); setTimeLeft(`${days}d ${hours}h`); }, 1000); return () => clearInterval(interval); }, [targetDate]); return <span className="font-mono tabular-nums tracking-tight">{timeLeft}</span>; };
+const getLocalTodayString = () => { const now = new Date(); const year = now.getFullYear(); const month = String(now.getMonth() + 1).padStart(2, '0'); const day = String(now.getDate()).padStart(2, '0'); return `${year}-${month}-${day}`; };
 
 export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const { t, convertPrice, language } = useGlobal();
@@ -75,7 +31,6 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const [publicGroups, setPublicGroups] = useState<GroupBuyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [joiningGroup, setJoiningGroup] = useState<GroupBuyItem | null>(null);
-  const [joinFormData, setJoinFormData] = useState({ name: '', email: '', phone: '', agreed: false });
   const [joinMaleCount, setJoinMaleCount] = useState(1);
   const [joinFemaleCount, setJoinFemaleCount] = useState(0);
   const [step, setStep] = useState<number>(0);
@@ -93,15 +48,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
     const q = query(collection(db, "group_buys"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const nowStr = getLocalTodayString();
-        
-        const activeGroups = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as GroupBuyItem))
-            // Robust Filter: Must have a date AND date must be >= today
-            .filter(g => g.visitDate && g.visitDate >= nowStr) 
-            .sort((a, b) => a.visitDate.localeCompare(b.visitDate));
-            
+        const activeGroups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GroupBuyItem)).filter(g => g.visitDate && g.visitDate >= nowStr).sort((a, b) => a.visitDate.localeCompare(b.visitDate));
         setPublicGroups(activeGroups);
-        // Delay setting loading to false slightly to show skeleton for UX
         setTimeout(() => setLoading(false), 500);
     });
     return () => unsubscribe();
@@ -110,7 +58,6 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   useEffect(() => {
     if (auth.currentUser) {
         setFormData(prev => ({ ...prev, name: auth.currentUser?.displayName || '', email: auth.currentUser?.email || '' }));
-        setJoinFormData(prev => ({ ...prev, name: auth.currentUser?.displayName || '', email: auth.currentUser?.email || '' }));
     }
   }, [auth.currentUser]);
 
@@ -156,6 +103,12 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
       setJoiningGroup(group); setJoinMaleCount(1);
   };
 
+  const handleCopyInvite = (group: GroupBuyItem) => {
+      const msg = `🎉 K-Experience Group Buy Invite!\n\nJoin ${group.creatorName}'s group for ${group.product.toUpperCase()} package on ${group.visitDate}.\nCurrent Discount: ${Math.min(50, 15 + (group.currentCount - 3) * 5)}%\n\nJoin here: ${window.location.href}`;
+      navigator.clipboard.writeText(msg);
+      alert(isEn ? "Invite copied!" : "초대장이 복사되었습니다!");
+  };
+
   const joinCalcs = (() => {
       if (!joiningGroup) return { discount: 0, deposit: 0, totalJoin: 0 };
       const totalJoin = joinMaleCount + joinFemaleCount;
@@ -196,13 +149,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
         </div>
 
         <div className="space-y-6 mb-20 min-h-[200px]">
-            {loading ? (
-                // Render Skeletons
-                <>
-                    <GroupBuySkeleton />
-                    <GroupBuySkeleton />
-                </>
-            ) : publicGroups.length === 0 ? (
+            {loading ? ( <><GroupBuySkeleton /><GroupBuySkeleton /></> ) : publicGroups.length === 0 ? (
                 <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center justify-center animate-fade-in relative overflow-hidden group">
                     <Megaphone size={32} className="animate-wiggle text-blue-500 mb-4" />
                     <h4 className="text-[20px] font-bold text-[#333] mb-2">{t('no_active')}</h4>
@@ -216,7 +163,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                     if (group.currentCount <= 2) currentDiscount = 10;
                     else currentDiscount = Math.min(50, 15 + (group.currentCount - 3) * 5);
                     return (
-                        <div key={group.id} className="bg-white rounded-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-8 animate-slide-up hover:shadow-lg transition-all">
+                        <div key={group.id} className="bg-white rounded-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-8 animate-slide-up hover:shadow-lg transition-all relative">
+                            <button onClick={(e) => { e.stopPropagation(); handleCopyInvite(group); }} className="absolute top-4 right-4 text-gray-300 hover:text-[#0070F0] transition-colors"><Share2 size={20}/></button>
                             <div className="w-full md:w-[340px] shrink-0">
                                 <div className="rounded-xl overflow-hidden bg-gray-100 h-[240px] md:h-full relative group/img">
                                     <img src={isBasic ? "https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/product/medium/20260111/ff52ffbd8b074f22f92879af29f72de4.png" : "https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/product/medium/20260111/38201343997edc3482db1092fb6f6d44.png"} alt={group.product} className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105"/>
@@ -240,6 +188,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
             )}
         </div>
 
+        {/* Create Group Section (Kept same logic, just visually refreshed) */}
         <div id="create-group-section" className="bg-[#EAF8FF] rounded-[24px] p-6 md:p-14 mb-20 mx-auto max-w-[1200px] scroll-mt-20">
             <div className="text-center mb-10"><h3 className="text-[28px] font-black text-[#111] mb-2 flex items-center justify-center gap-2"><Plus size={24} /> {t('create_group')}</h3></div>
             {step === 0 && (
@@ -262,6 +211,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div><label className="block text-xs font-bold text-[#333] mb-2">{t('male_cnt')}</label><select value={maleCount} onChange={(e) => setMaleCount(Number(e.target.value))} className="w-full h-[50px] px-4 rounded-lg border border-[#DDD] appearance-none font-bold text-[#333] bg-white cursor-pointer">{[...Array(10)].map((_, i) => (<option key={i} value={i}>{i}</option>))}</select></div><div><label className="block text-xs font-bold text-[#333] mb-2">{t('female_cnt')}</label><select value={femaleCount} onChange={(e) => setFemaleCount(Number(e.target.value))} className="w-full h-[50px] px-4 rounded-lg border border-[#DDD] appearance-none font-bold text-[#333] bg-white cursor-pointer">{[...Array(10)].map((_, i) => (<option key={i} value={i}>{i}</option>))}</select></div></div>
                     </div>
+                    <div className="text-center mb-6 text-xs text-red-500 font-bold bg-red-50 p-2 rounded-lg">* 100% Refund guaranteed if group fails to form.</div>
                     <button onClick={handlePaymentClick} className={`w-full py-4 rounded-lg font-bold text-[16px] text-white shadow-md active:scale-95 transition-transform ${totalCount > 0 ? 'bg-[#00B57F]' : 'bg-gray-300'}`}>{t('create_pay')}</button>
                 </div>
             )}
