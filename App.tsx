@@ -2,14 +2,14 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { GlobalProvider, useGlobal } from './contexts/GlobalContext';
 import { Navbar } from './components/Navbar';
+import { BottomNav } from './components/BottomNav';
 import { HeroSection } from './components/HeroSection';
+import { CategorySection } from './components/CategorySection';
 import { PromoSection } from './components/PromoSection';
 import { PackageSection } from './components/PackageSection';
 import { ProductList } from './components/ProductList';
 import { BottomHero } from './components/BottomHero';
 import { Footer } from './components/Footer';
-import { AIAssistant } from './components/AIAssistant';
-import { FloatingButtons } from './components/FloatingButtons';
 import { ReservationBasic } from './pages/ReservationBasic';
 import { ReservationPremium } from './pages/ReservationPremium';
 import { GroupBuyingPage } from './pages/GroupBuyingPage';
@@ -17,13 +17,16 @@ import { MyPage } from './pages/MyPage';
 import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
 import { MagazinePage } from './pages/MagazinePage';
-import { collection, onSnapshot, query, orderBy, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
+import { collection, query, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
 import { db } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
+import { subscribeToAuthChanges } from './services/authService';
+import { User } from 'firebase/auth';
+import { AuthModal } from './components/AuthModal';
 
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 
-export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine';
+export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine' | 'product_list';
 
 interface ToastMsg {
   id: number;
@@ -31,36 +34,18 @@ interface ToastMsg {
   type: 'success' | 'error' | 'info';
 }
 
-// Fallback Data if DB is empty
-const DEFAULT_PACKAGES = [
-    {
-        id: 'package_basic',
-        title: 'K-체험 올인원 패키지 - 베이직',
-        title_en: 'K-Experience All-in-One Package - Basic',
-        price: 2763000,
-        originalPrice: 3070000,
-        description: '건강검진 (Basic) + K-IDOL (Basic) + GLASS SKIN Package',
-        description_en: 'Health Check (Basic) + K-IDOL (Basic) + GLASS SKIN Package',
-    },
-    {
-        id: 'package_premium',
-        title: 'K-체험 올인원 패키지 - 프리미엄',
-        title_en: 'K-Experience All-in-One Package - Premium',
-        price: 7515000,
-        originalPrice: 8350000,
-        description: '건강검진 (Premium) + K-IDOL (Premium) + REJURAN BOOST Package',
-        description_en: 'Health Check (Premium) + K-IDOL (Premium) + REJURAN BOOST Package',
-    }
-];
-
 const AppContent: React.FC = () => {
   const { language, t } = useGlobal();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [packages, setPackages] = useState<any[]>([]);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [socialProof, setSocialProof] = useState<{name: string, country: string, product: string} | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  // Auth State Lifted to App Level
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -68,6 +53,32 @@ const AppContent: React.FC = () => {
     setCurrentView(page);
     window.scrollTo(0, 0);
   };
+
+  // Protected Navigation Handler
+  const handleProtectedNav = (page: string) => {
+      // Protected Routes check
+      if ((page === 'mypage' || page === 'wishlist') && !user) {
+          setIsAuthModalOpen(true);
+          return;
+      }
+      
+      // Default Navigation
+      if (page === 'home' || page === 'group_buying' || page === 'product_list' || page === 'wishlist' || page === 'mypage') {
+          navigateTo(page as PageView);
+      }
+  };
+
+  const handleCategoryClick = (category: string) => {
+      setSelectedCategory(category);
+      navigateTo('product_list');
+  };
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges((currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleToast = (e: any) => {
@@ -85,17 +96,12 @@ const AppContent: React.FC = () => {
 
   const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  // --- Affiliate & Admin Check ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    
-    // Admin Route
     if (params.get('mode') === 'admin') {
         setCurrentView('admin');
         window.history.replaceState({}, '', window.location.pathname);
     }
-
-    // Affiliate Tracking
     const refCode = params.get('ref');
     if (refCode) {
         sessionStorage.setItem('k_exp_ref', refCode);
@@ -103,26 +109,10 @@ const AppContent: React.FC = () => {
             try {
                 const q = query(collection(db, "affiliates"), where("code", "==", refCode));
                 const snap = await getDocs(q);
-                if(!snap.empty) {
-                    await updateDoc(snap.docs[0].ref, { clicks: increment(1) });
-                }
+                if(!snap.empty) await updateDoc(snap.docs[0].ref, { clicks: increment(1) });
             } catch(e) { console.error("Ref track error", e); }
         })();
     }
-  }, []);
-
-  useEffect(() => {
-    const q = collection(db, "cms_packages");
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        if (snapshot.empty) {
-            setPackages(DEFAULT_PACKAGES);
-        } else {
-            const pkgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            pkgs.sort((a,b) => a.id.localeCompare(b.id)); 
-            setPackages(pkgs);
-        }
-    });
-    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -141,7 +131,7 @@ const AppContent: React.FC = () => {
       };
   }, []);
 
-  // Correctly Matched Social Proof Data
+  // Social Proof Logic
   useEffect(() => {
       const SOCIAL_DATA = [
           { country: "🇺🇸 USA", names: ["James", "Emma", "Michael", "Olivia", "William"] },
@@ -152,61 +142,56 @@ const AppContent: React.FC = () => {
           { country: "🇫🇷 France", names: ["Gabriel", "Leo", "Louise", "Alice"] },
           { country: "🇩🇪 Germany", names: ["Noah", "Leon", "Mia", "Hannah"] }
       ];
-      
       const products = ["K-IDOL Basic", "Health Checkup", "Glass Skin Pkg", "Rejuran Boost"];
-
       const showPopup = () => {
           const randomRegion = SOCIAL_DATA[Math.floor(Math.random() * SOCIAL_DATA.length)];
           const randomName = randomRegion.names[Math.floor(Math.random() * randomRegion.names.length)];
           const randomProduct = products[Math.floor(Math.random() * products.length)];
-          
           setSocialProof({ name: randomName, country: randomRegion.country, product: randomProduct });
-          
           setTimeout(() => setSocialProof(null), 5000);
           const nextInterval = Math.random() * 30000 + 20000;
           setTimeout(showPopup, nextInterval);
       };
-
       const timer = setTimeout(showPopup, 10000);
       return () => clearTimeout(timer);
   }, []);
 
   const handlePackageBookClick = (pkgId: string) => {
-      if (pkgId.includes('premium')) {
-          navigateTo('reservation_premium');
-      } else {
-          navigateTo('reservation_basic');
-      }
+      if (pkgId.includes('pkg_idol')) navigateTo('reservation_premium');
+      else if (pkgId.includes('pkg_glow')) navigateTo('reservation_premium');
+      else navigateTo('reservation_basic');
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight">
+    <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight text-[#111]">
       
-      <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
+      {/* Toast */}
+      <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none">
         {toasts.map(toast => (
-          <div key={toast.id} className={`pointer-events-auto flex items-center justify-between p-4 rounded-xl shadow-2xl backdrop-blur-md border animate-fade-in-down ${toast.type === 'success' ? 'bg-gray-900/95 text-white border-gray-800' : toast.type === 'error' ? 'bg-red-500/95 text-white border-red-600' : 'bg-blue-500/95 text-white border-blue-600'}`}>
+          <div key={toast.id} className={`pointer-events-auto flex items-center justify-between p-4 rounded-2xl shadow-xl backdrop-blur-md border animate-fade-in-down ${toast.type === 'success' ? 'bg-black/80 text-white border-black' : toast.type === 'error' ? 'bg-red-500/90 text-white border-red-600' : 'bg-blue-500/90 text-white border-blue-600'}`}>
             <div className="flex items-center gap-3">
-              {toast.type === 'success' && <CheckCircle size={20} className="text-green-400"/>}
-              {toast.type === 'error' && <AlertCircle size={20} className="text-white"/>}
-              {toast.type === 'info' && <Info size={20} className="text-white"/>}
-              <span className="font-bold text-sm tracking-tight">{toast.message}</span>
+              {toast.type === 'success' && <CheckCircle size={18} className="text-green-400"/>}
+              {toast.type === 'error' && <AlertCircle size={18} className="text-white"/>}
+              {toast.type === 'info' && <Info size={18} className="text-white"/>}
+              <span className="font-bold text-sm">{toast.message}</span>
             </div>
-            <button onClick={() => removeToast(toast.id)} className="opacity-70 hover:opacity-100 transition-opacity"><X size={16}/></button>
+            <button onClick={() => removeToast(toast.id)}><X size={16}/></button>
           </div>
         ))}
       </div>
 
+      {/* Social Proof */}
       {socialProof && currentView === 'home' && (
-          <div className="fixed bottom-24 right-4 md:left-6 md:right-auto z-40 bg-white/90 backdrop-blur-md border border-gray-200 p-4 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3 animate-slide-up max-w-[300px]">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                  <ShoppingBag size={20} />
+          <div className="fixed bottom-24 right-4 z-40 bg-white/95 backdrop-blur-md border border-gray-100 p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-up max-w-[90%] md:max-w-[320px]">
+              <div className="w-10 h-10 bg-gradient-to-tr from-green-400 to-green-600 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg">
+                  <ShoppingBag size={18} />
               </div>
-              <div>
-                  <p className="text-xs text-gray-500 font-bold mb-0.5">{t('just_purchased')}</p>
-                  <p className="text-sm font-bold text-[#333] leading-tight">
-                      {socialProof.country} <span className="text-blue-600">{socialProof.name}</span> {t('bought')} <br/>
-                      <span className="text-black font-black">"{socialProof.product}"</span>
+              <div className="min-w-0">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">{t('just_purchased')}</p>
+                  <p className="text-xs font-bold text-[#111] leading-tight truncate">
+                      {socialProof.country} <span className="text-blue-600">{socialProof.name}</span>
                   </p>
+                  <p className="text-xs font-black text-[#111] truncate">"{socialProof.product}"</p>
               </div>
               <button onClick={() => setSocialProof(null)} className="absolute top-2 right-2 text-gray-300 hover:text-gray-500"><X size={12}/></button>
           </div>
@@ -217,25 +202,26 @@ const AppContent: React.FC = () => {
             isMenuOpen={isMenuOpen} 
             toggleMenu={toggleMenu} 
             onLogoClick={() => navigateTo('home')}
-            onMyPageClick={() => navigateTo('mypage')}
+            onMyPageClick={() => handleProtectedNav('mypage')}
             onAdminClick={() => navigateTo('admin')}
-            onWishlistClick={() => navigateTo('wishlist')}
+            onWishlistClick={() => handleProtectedNav('wishlist')}
+            onLoginClick={() => setIsAuthModalOpen(true)}
           />
       )}
       
-      <main className="flex-grow">
+      <main className={`flex-grow pb-24 md:pb-0 transition-all duration-300 ${currentView === 'home' ? '' : 'pt-4'}`}>
         {currentView === 'home' && (
           <>
             <HeroSection language={language} />
+            <CategorySection onCategoryClick={handleCategoryClick} />
             <PromoSection language={language} onGroupBuyClick={() => navigateTo('group_buying')} />
-            <PackageSection 
-                language={language} 
-                packages={packages}
-                onBookClick={handlePackageBookClick}
-            />
-            <ProductList language={language} />
+            <PackageSection language={language} onBookClick={handlePackageBookClick} />
+            <ProductList language={language} initialCategory="all" />
             <BottomHero language={language} />
           </>
+        )}
+        {currentView === 'product_list' && (
+            <ProductList language={language} initialCategory={selectedCategory} />
         )}
         {currentView === 'reservation_basic' && <ReservationBasic language={language} />}
         {currentView === 'reservation_premium' && <ReservationPremium language={language} />}
@@ -253,9 +239,10 @@ const AppContent: React.FC = () => {
       </main>
 
       {currentView !== 'admin' && <Footer language={language} />}
+      {currentView !== 'admin' && <BottomNav onNavClick={handleProtectedNav} currentView={currentView} toggleMenu={toggleMenu} />}
       
-      {currentView !== 'admin' && (language === 'ko' ? <AIAssistant /> : <FloatingButtons />)}
-      {currentView !== 'admin' && <AIAssistant />}
+      {/* Global Auth Modal */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} language={language} />
     </div>
   );
 };

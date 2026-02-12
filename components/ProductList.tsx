@@ -2,39 +2,58 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
-import { Heart } from 'lucide-react';
+import { Heart, Star, Plus } from 'lucide-react';
 
 const ProductSkeleton = () => (
     <div className="flex flex-col">
-        <div className="relative overflow-hidden rounded-[12px] bg-gray-200 aspect-square mb-5 animate-pulse"></div>
-        <div className="h-4 bg-gray-200 w-1/3 rounded mb-2 animate-pulse"></div>
-        <div className="h-6 bg-gray-200 w-3/4 rounded mb-2 animate-pulse"></div>
-        <div className="h-4 bg-gray-200 w-full rounded mb-4 animate-pulse"></div>
-        <div className="h-8 bg-gray-200 w-1/2 rounded mt-auto animate-pulse"></div>
+        <div className="relative overflow-hidden rounded-[12px] bg-gray-100 aspect-square mb-3 animate-pulse"></div>
+        <div className="h-4 bg-gray-100 w-1/3 rounded mb-1 animate-pulse"></div>
+        <div className="h-5 bg-gray-100 w-3/4 rounded mb-2 animate-pulse"></div>
+        <div className="h-6 bg-gray-100 w-1/2 rounded mt-auto animate-pulse"></div>
     </div>
 );
 
-export const ProductList: React.FC<any> = () => {
-  const { t, products, wishlist, toggleWishlist, getLocalizedValue } = useGlobal();
-  const TABS = [t('tab_all'), t('tab_health'), t('tab_idol'), t('tab_beauty')];
-  const [activeTab, setActiveTab] = useState(TABS[0]);
+interface ProductListProps {
+    language: 'ko' | 'en';
+    initialCategory?: string | null;
+}
+
+export const ProductList: React.FC<ProductListProps> = ({ initialCategory }) => {
+  const { t, products, wishlist, toggleWishlist, getLocalizedValue, convertPrice } = useGlobal();
+  
+  // Mapping categories to filter keywords
+  const CATEGORY_MAP: Record<string, string> = {
+      'all': '전체',
+      'health': '건강검진',
+      'beauty': '뷰티시술',
+      'idol': 'K-IDOL',
+      'consulting': '뷰티컨설팅'
+  };
+
+  const [activeFilter, setActiveFilter] = useState('전체');
   const [loading, setLoading] = useState(true);
 
+  // Sync with initialCategory prop from parent
   useEffect(() => {
-      setActiveTab(TABS[0]);
-  }, [t]);
+      if (initialCategory && CATEGORY_MAP[initialCategory]) {
+          setActiveFilter(CATEGORY_MAP[initialCategory]);
+          // Scroll to product section
+          document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+      }
+  }, [initialCategory]);
 
-  useEffect(() => {
-      setLoading(true);
-      setTimeout(() => setLoading(false), 800);
-  }, [products]);
+  useEffect(() => { 
+      setLoading(true); 
+      setTimeout(() => setLoading(false), 500); 
+  }, [activeFilter, products]);
 
-  const filteredProducts = activeTab === t('tab_all') 
+  const filteredProducts = activeFilter === '전체' 
     ? products 
     : products.filter(p => {
-        if (activeTab === t('tab_health') && p.category.includes("Health") || p.category.includes("건강") || p.category.includes("健康")) return true;
-        if (activeTab === t('tab_idol') && p.category.includes("IDOL")) return true;
-        if (activeTab === t('tab_beauty') && (p.category.includes("Beauty") || p.category.includes("뷰티") || p.category.includes("美容"))) return true;
+        if (activeFilter === 'K-IDOL' && p.category.includes('IDOL')) return true;
+        if (activeFilter === '건강검진' && p.category.includes('건강')) return true;
+        if (activeFilter === '뷰티시술' && (p.category.includes('뷰티') || p.category.includes('Beauty'))) return true;
+        if (activeFilter === '뷰티컨설팅' && p.category.includes('컨설팅')) return true;
         return false;
     });
 
@@ -42,60 +61,72 @@ export const ProductList: React.FC<any> = () => {
       window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product }));
   };
 
-  const handleWishlistClick = (e: React.MouseEvent, id: number) => {
-      e.stopPropagation();
-      toggleWishlist(id);
-  };
-
   return (
-    <section id="products" className="w-full max-w-[1280px] mx-auto px-4 pb-32 font-sans tracking-tight">
+    <section id="products" className="w-full max-w-[1280px] mx-auto px-4 pb-32 font-sans tracking-tight pt-4">
         <ScrollReveal>
-            <div className="text-center mb-16">
-                <h2 className="text-[24px] font-extrabold text-[#111] mb-10 tracking-[-0.03em]">{t('prod_title')}</h2>
-                <div className="flex justify-center items-center gap-10 text-[15px]">
-                    {TABS.map(tab => (
-                        <button key={tab} onClick={() => setActiveTab(tab)} className={`transition-all duration-300 relative pb-1 tracking-tight ${activeTab === tab ? 'text-[#111] font-extrabold border-b-2 border-black scale-105' : 'text-[#999] hover:text-[#555] font-semibold hover:scale-105'}`}>{tab}</button>
+            <div className="mb-6 px-2">
+                <div className="flex items-center gap-1 mb-4">
+                    <Star className="fill-yellow-400 text-yellow-400 w-5 h-5"/>
+                    <h2 className="text-[20px] font-bold text-[#111]">{t('popular_products')}</h2>
+                </div>
+                
+                {/* Keyword Filter Buttons */}
+                <div className="flex flex-wrap gap-2">
+                    {Object.values(CATEGORY_MAP).map((keyword) => (
+                        <button 
+                            key={keyword}
+                            onClick={() => setActiveFilter(keyword)}
+                            className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-all ${
+                                activeFilter === keyword 
+                                ? 'bg-[#0070F0] text-white border-[#0070F0]' 
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                            }`}
+                        >
+                            {keyword}
+                        </button>
                     ))}
                 </div>
             </div>
         </ScrollReveal>
 
         {loading ? (
-             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
-                 {[1,2,3,4,5,6,7,8].map(i => <ProductSkeleton key={i} />)}
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-2">
+                 {[1,2,3,4].map(i => <ProductSkeleton key={i} />)}
              </div>
         ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-2">
                 {filteredProducts.map((product: any, idx: number) => {
-                    // Localize content on render
                     const title = getLocalizedValue(product, 'title');
-                    const desc = getLocalizedValue(product, 'description');
+                    // Ensure price is treated as a number. 
+                    // Constants provide 'priceVal' (numeric) which is mapped to this object.
+                    // If fallback needed, parse the 'price' string.
+                    const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price);
 
                     return (
-                        <ScrollReveal key={idx} delay={idx * 50}>
-                            <div onClick={() => handleProductClick(product)} className="group flex flex-col cursor-pointer">
-                                <div className="relative overflow-hidden rounded-[12px] bg-gray-50 aspect-square mb-5 shadow-sm group-hover:shadow-lg transition-all duration-500">
-                                    <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/>
-                                    {(idx === 0 || title.includes("Premium") || title.includes("프리미엄")) && (
-                                        <div className="absolute bottom-0 left-0 bg-[#007BFF] text-white text-[11px] font-bold px-3 py-1.5 rounded-tr-lg z-10 tracking-tight">BEST</div>
-                                    )}
+                        <ScrollReveal key={idx} delay={idx * 30}>
+                            <div className="bg-white rounded-[16px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col h-full cursor-pointer group relative" onClick={() => handleProductClick(product)}>
+                                <div className="relative aspect-square bg-gray-50 overflow-hidden">
+                                    <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                                     <button 
-                                        onClick={(e) => handleWishlistClick(e, product.id)}
-                                        className="absolute top-3 right-3 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:scale-110 active:scale-95 shadow-sm"
+                                        onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
+                                        className="absolute top-2 right-2 w-8 h-8 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"
                                     >
-                                        <Heart 
-                                            size={18} 
-                                            className={`transition-colors duration-300 ${wishlist.includes(product.id) ? "fill-red-500 text-red-500 animate-heart-pop" : "text-gray-400 hover:text-red-400"}`} 
-                                        />
+                                        <Heart size={14} className={`transition-colors ${wishlist.includes(product.id) ? "fill-red-500 text-red-500" : "text-white"}`} />
                                     </button>
                                 </div>
-                                <div className="flex flex-col text-left">
-                                    <div className="text-[11px] text-[#999] mb-2 font-semibold tracking-tight">{product.category}</div>
-                                    <h3 className="text-[16px] text-[#111] font-bold mb-1 line-clamp-1 group-hover:text-[#0070F0] transition-colors tracking-[-0.03em]">{title}</h3>
-                                    <p className="text-[13px] text-[#777] mb-4 line-clamp-1 tracking-tight">{desc}</p>
-                                    <div className="mt-auto border-t border-[#eee] w-full pt-4 flex justify-between items-center">
-                                        <span className="font-black text-[18px] text-[#111] tracking-[-0.03em]">{product.price}</span>
-                                        <span className="text-[11px] font-bold text-[#0070F0] opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 duration-300">View Details →</span>
+                                <div className="p-4 flex flex-col flex-1">
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mb-1">
+                                        {/* Icon based on category */}
+                                        {product.category.includes('건강') ? '🏥' : product.category.includes('뷰티') ? '💄' : '🎤'} 
+                                        <span>{product.category}</span>
+                                    </div>
+                                    <h3 className="text-[14px] font-bold text-[#111] leading-tight mb-4 line-clamp-2">{title}</h3>
+                                    
+                                    <div className="mt-auto flex items-center justify-between">
+                                        <span className="font-black text-[16px] text-[#111]">{convertPrice(numericPrice)}</span>
+                                        <div className="bg-[#0070F0] text-white rounded-lg p-1.5 hover:bg-blue-600 transition-colors">
+                                            <Plus size={16}/>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

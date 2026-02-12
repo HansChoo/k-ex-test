@@ -1,77 +1,126 @@
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
+import { Check, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../services/firebaseConfig';
 
 interface PackageSectionProps {
   language: 'ko' | 'en';
-  packages: any[];
   onBookClick: (pkgId: string) => void;
 }
 
-export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, packages }) => {
-  const { convertPrice, t, getLocalizedValue } = useGlobal();
+export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, language }) => {
+  const { convertPrice, t } = useGlobal();
+  const isEn = language !== 'ko';
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  const [packages, setPackages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Determine grid columns based on package count to ensure good layout
-  let gridClass = 'grid-cols-1 md:grid-cols-2'; // Default for 2
-  if (packages.length === 1) gridClass = 'grid-cols-1 max-w-[600px] mx-auto';
-  else if (packages.length === 3) gridClass = 'grid-cols-1 md:grid-cols-3';
-  else if (packages.length >= 4) gridClass = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
+  // Sync with Firestore (cms_packages) - NO FALLBACK to constants
+  useEffect(() => {
+    const q = query(collection(db, "cms_packages"), orderBy("id", "asc")); // Sort by ID to keep order roughly consistent
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setPackages(fetched);
+        setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const scroll = (direction: 'left' | 'right') => {
+      if (scrollContainerRef.current) {
+          const scrollAmount = 300;
+          scrollContainerRef.current.scrollBy({
+              left: direction === 'left' ? -scrollAmount : scrollAmount,
+              behavior: 'smooth'
+          });
+      }
+  };
+
+  const themeColors: any = {
+    mint: { bg: 'bg-[#40E0D0]', badge: 'BASIC', icon: '💪' },
+    yellow: { bg: 'bg-[#FFD700]', badge: 'PREMIUM', icon: '🎤' },
+    orange: { bg: 'bg-[#FFB800]', badge: 'PREMIUM', icon: '✨' }
+  };
+
+  if (loading) return null; // Don't show anything while initial loading
+  if (packages.length === 0) return null; // Don't show section if no packages in DB
 
   return (
-    <section className="w-full max-w-[1200px] mx-auto px-4 pb-20 pt-10 font-sans tracking-tight">
+    <section className="w-full max-w-[1280px] mx-auto px-6 pb-6 pt-10 font-sans tracking-tight relative">
         <ScrollReveal>
-            <div className="flex justify-center mb-12">
-                <div className="bg-white px-8 py-3 rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.08)] border border-gray-50 flex items-center gap-2 hover:scale-105 transition-transform duration-300">
-                    <span className="text-[#0070F0] font-black text-lg">★</span>
-                    <span className="text-[#111] font-bold text-[18px] tracking-[-0.03em]">{t('pkg_title')}</span>
-                </div>
+            <div className="mb-6">
+                <div className="text-[18px] mb-1">🎁 <strong>{t('pkg_title')}</strong></div>
+                <p className="text-[13px] text-gray-500">{t('pkg_desc_sub')}</p>
             </div>
         </ScrollReveal>
 
-        <div className={`grid ${gridClass} gap-6`}>
-            {packages.map((pkg, idx) => {
-                const isPremium = pkg.id.includes('premium');
-                const isBasic = pkg.id.includes('basic');
-                const headerColor = isPremium ? 'bg-[#C8A32B]' : isBasic ? 'bg-[#0070F0]' : 'bg-[#333]';
-                const shadowColor = isPremium ? 'hover:shadow-[0_20px_50px_rgba(200,163,43,0.15)]' : isBasic ? 'hover:shadow-[0_20px_50px_rgba(0,112,240,0.15)]' : 'hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)]';
-                const boxBg = isPremium ? 'group-hover:bg-[#FFFBE6]' : isBasic ? 'group-hover:bg-[#F0F8FF]' : 'group-hover:bg-gray-50';
-                
-                // Use localized values
-                const title = getLocalizedValue(pkg, 'title');
-                const description = getLocalizedValue(pkg, 'description');
+        {/* Scroll Buttons */}
+        <button 
+            onClick={() => scroll('left')} 
+            className="absolute left-2 top-[55%] z-20 w-8 h-8 rounded-full bg-black/20 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/40 transition-colors"
+        >
+            <ChevronLeft size={20} />
+        </button>
+        <button 
+            onClick={() => scroll('right')} 
+            className="absolute right-2 top-[55%] z-20 w-8 h-8 rounded-full bg-black/20 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/40 transition-colors"
+        >
+            <ChevronRight size={20} />
+        </button>
 
+        {/* Horizontal Scroll Container */}
+        <div 
+            ref={scrollContainerRef}
+            className="flex overflow-x-auto gap-4 pb-8 -mx-6 px-6 no-scrollbar snap-x snap-mandatory relative scroll-smooth"
+        >
+            {packages.map((pkg, idx) => {
+                const theme = themeColors[pkg.theme] || themeColors.mint;
+                
                 return (
-                    <ScrollReveal key={pkg.id} delay={100 + (idx * 100)} className="h-full">
-                        <div className={`bg-white rounded-[32px] overflow-hidden border border-[#EEE] shadow-[0_10px_30px_rgba(0,0,0,0.06)] ${shadowColor} transition-all duration-300 flex flex-col h-full group`}>
-                            <div className={`${headerColor} px-8 py-8 text-white relative overflow-hidden`}>
-                                <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                                <div className="text-[14px] font-extrabold opacity-90 mb-1 tracking-wide relative z-10 uppercase">
-                                    {isPremium ? 'PREMIUM' : isBasic ? 'BASIC' : 'SPECIAL'}
-                                </div>
-                                <div className="text-[24px] lg:text-[28px] font-black tracking-[-0.04em] keep-all leading-tight relative z-10">{title}</div>
-                            </div>
-                            <div className="p-8 flex flex-col h-full">
-                                <div className={`bg-[#F6F7F9] rounded-2xl p-6 mb-8 space-y-5 flex-grow ${boxBg} transition-colors duration-300`}>
-                                    {description ? (
-                                        <div className="whitespace-pre-line text-sm font-medium text-[#444]">{description}</div>
-                                    ) : (
-                                        <div className="text-gray-400 text-sm">No description available.</div>
-                                    )}
-                                </div>
-                                <div className="flex flex-col mb-8">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-[14px] line-through text-[#AAA] font-medium">{convertPrice(pkg.originalPrice)}</span>
-                                        <span className="bg-[#FF4D4D] text-white px-1.5 py-[2px] rounded-[4px] text-[11px] font-bold animate-pulse">SALE</span>
-                                    </div>
-                                    <div className={`text-[32px] font-black ${isPremium ? 'text-[#C8A32B]' : isBasic ? 'text-[#0070F0]' : 'text-[#333]'}`}>{convertPrice(pkg.price)}</div>
-                                </div>
-                                <button onClick={() => onBookClick(pkg.id)} className={`w-full ${headerColor} text-white font-bold py-4 rounded-[12px] opacity-90 hover:opacity-100 active:scale-95 transition-all text-[17px] shadow-lg`}>
-                                    {t('book_now')}
-                                </button>
-                            </div>
+                    <div 
+                        key={pkg.id || idx}
+                        className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-lg snap-center flex flex-col"
+                    >
+                        {/* Header */}
+                        <div className={`h-[140px] ${theme.bg} relative flex flex-col items-center justify-center text-center p-4`}>
+                            <span className="absolute top-4 left-4 bg-white/30 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded">{theme.badge}</span>
+                            <div className="text-4xl mb-2">{theme.icon}</div>
+                            <h3 className="text-white font-black text-[20px] leading-none drop-shadow-md">{isEn ? (pkg.title_en || pkg.title) : pkg.title}</h3>
                         </div>
-                    </ScrollReveal>
+
+                        {/* Body */}
+                        <div className="p-5 flex-1 flex flex-col">
+                            <p className="text-[12px] text-gray-500 font-medium mb-4 text-center">{pkg.description}</p>
+                            
+                            <ul className="space-y-2 mb-6 flex-1">
+                                {pkg.items?.map((item: string, i: number) => (
+                                    <li key={i} className="flex items-center gap-2 text-[13px] text-[#333] font-medium">
+                                        <div className="w-4 h-4 rounded-full bg-[#00C7AE] flex items-center justify-center text-white"><Check size={10} strokeWidth={4} /></div>
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <div className="border-t border-gray-100 pt-4 mb-4">
+                                <div className="flex justify-between items-center text-[12px] text-gray-500 mb-1">
+                                    <span>남성</span>
+                                    <div><span className="font-bold text-[#111]">{convertPrice(pkg.price * 0.9)}</span> <span className="text-red-500 text-[10px]">10% 할인</span></div>
+                                </div>
+                                <div className="flex justify-between items-center text-[12px] text-gray-500">
+                                    <span>여성</span>
+                                    <div><span className="font-bold text-[#111]">{convertPrice(pkg.price)}</span> <span className="text-red-500 text-[10px]">10% 할인</span></div>
+                                </div>
+                            </div>
+
+                            <button onClick={() => onBookClick(pkg.id)} className="w-full py-3 bg-[#40E0D0] text-white font-bold rounded-lg hover:brightness-95 transition-all text-sm shadow-md">
+                                {t('detail')}
+                            </button>
+                        </div>
+                    </div>
                 );
             })}
         </div>

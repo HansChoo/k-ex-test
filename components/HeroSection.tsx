@@ -2,6 +2,7 @@
 import React from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
+import { Flame } from 'lucide-react';
 
 interface HeroSectionProps {
   language: 'ko' | 'en'; 
@@ -11,26 +12,45 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
   const { t } = useGlobal();
 
   return (
-    <section className="w-full bg-[#F4FAFF] pt-[100px] pb-24 text-center font-sans tracking-tight overflow-hidden">
-      <div className="max-w-[1280px] mx-auto px-4 flex flex-col items-center">
+    <section className="w-full bg-[#0070F0] pt-[40px] pb-[60px] text-center font-sans tracking-tight relative overflow-hidden">
+      {/* Background Shapes for subtle depth */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-[-50%] right-[-20%] w-[80%] h-[80%] bg-[#005BC2] rounded-full blur-3xl opacity-50"></div>
+          <div className="absolute bottom-[-20%] left-[-20%] w-[60%] h-[60%] bg-[#4dabf7] rounded-full blur-3xl opacity-30"></div>
+      </div>
+
+      <div className="max-w-[1280px] mx-auto px-6 relative z-10 flex flex-col items-center">
+        
+        {/* Pill Badge */}
         <ScrollReveal delay={0}>
-            <div className="inline-flex items-center gap-2 bg-white px-8 py-3 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.06)] mb-10 hover:shadow-lg transition-shadow duration-300">
-            <span className="text-[#FF4D4D] font-black text-xl leading-none pt-0.5 animate-bounce">🔥</span>
-            <span className="text-[#FF4D4D] font-bold text-[16px] tracking-[-0.02em] pt-[1px]">{t('hero_badge')}</span>
+            <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full mb-6">
+                <span className="text-white font-bold text-[13px] tracking-tight flex items-center gap-1">
+                    <Flame size={12} className="fill-white text-white"/> {t('hero_badge')}
+                </span>
             </div>
         </ScrollReveal>
         
+        {/* Main Title */}
         <ScrollReveal delay={100}>
-            <h1 className="text-[46px] md:text-[68px] font-[900] text-[#111] mb-2 tracking-[-0.05em] leading-[1.1] keep-all">{t('hero_title')}</h1>
+            <h1 className="text-[32px] md:text-[56px] font-[900] text-white mb-2 tracking-[-0.04em] leading-tight drop-shadow-sm">
+                {t('hero_title')}
+            </h1>
         </ScrollReveal>
         
+        {/* Subtitle (Yellow) */}
         <ScrollReveal delay={200}>
-            <h2 className="text-[36px] md:text-[60px] font-[900] text-[#0070F0] mb-12 tracking-[-0.05em] leading-[1.1]">{t('hero_subtitle')}</h2>
+            <h2 className="text-[26px] md:text-[48px] font-[900] text-[#FFE812] mb-6 tracking-[-0.04em] leading-tight drop-shadow-md">
+                {t('hero_subtitle')}
+            </h2>
         </ScrollReveal>
         
+        {/* Description */}
         <ScrollReveal delay={300}>
-            <p className="text-[#555] text-lg md:text-[22px] font-bold leading-[1.6] tracking-[-0.03em] whitespace-pre-wrap keep-all opacity-80">{t('hero_desc')}</p>
+            <p className="text-white/90 text-[14px] md:text-[18px] font-medium leading-[1.5] tracking-[-0.02em] whitespace-pre-wrap keep-all max-w-[600px]">
+                {t('hero_desc')}
+            </p>
         </ScrollReveal>
+
       </div>
     </section>
   );

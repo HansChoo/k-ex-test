@@ -2,6 +2,7 @@
 import React from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
+import { Users } from 'lucide-react';
 
 interface PromoSectionProps {
   language: 'ko' | 'en';
@@ -12,24 +13,41 @@ export const PromoSection: React.FC<PromoSectionProps> = ({ onGroupBuyClick }) =
   const { t } = useGlobal();
 
   return (
-    <section id="promo" className="w-full max-w-[960px] mx-auto px-4 pb-24 font-sans tracking-tight">
-        <ScrollReveal>
-            <div className="relative w-full rounded-[30px] overflow-hidden group cursor-pointer bg-[#1a1a1a] min-h-[300px] md:h-[390px] flex items-center shadow-2xl hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] transition-all duration-500">
-                <div className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 ease-out group-hover:scale-110" style={{ backgroundImage: "url('https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/banner_1.png')" }}></div>
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"></div>
-                <div className="relative z-10 p-6 md:p-[50px] flex flex-col items-start justify-center h-full max-w-3xl">
-                    <div className="inline-flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full mb-6 group-hover:bg-black/60 transition-colors">
-                        <span className="text-orange-500 text-xs leading-none">🔥</span> 
-                        <span className="text-white text-[13px] font-bold tracking-[-0.02em]">{t('promo_badge')}</span>
+    <section className="w-full bg-[#D32F2F] font-sans tracking-tight relative overflow-hidden">
+        {/* SALE Watermark Background */}
+        <div className="absolute right-[-20px] bottom-[-20px] text-[100px] font-black text-black/10 transform -rotate-6 select-none pointer-events-none">
+            SALE
+        </div>
+
+        <div className="max-w-[1280px] mx-auto px-6 py-8 relative z-10">
+            <ScrollReveal>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        {/* Badge */}
+                        <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full mb-3 border border-white/20">
+                            <Users size={12} className="text-white fill-white" /> 
+                            <span className="text-white text-[11px] font-bold">{t('promo_badge')}</span>
+                        </div>
+                        
+                        {/* Text */}
+                        <h2 className="text-[24px] font-[900] text-white leading-[1.2] mb-2 whitespace-pre-wrap drop-shadow-md">
+                            {t('promo_title')}
+                        </h2>
+                        <p className="text-[12px] text-white/80 font-medium leading-[1.5] max-w-md">
+                            {t('promo_desc')}
+                        </p>
                     </div>
-                    <h2 className="text-[32px] md:text-[46px] font-[900] text-white leading-[1.15] mb-4 tracking-[-0.04em] whitespace-pre-wrap keep-all drop-shadow-lg">{t('promo_title')}</h2>
-                    <p className="text-[15px] md:text-[17px] text-gray-100 mb-8 leading-[1.6] font-bold tracking-[-0.03em] whitespace-pre-wrap keep-all drop-shadow-md opacity-90">{t('promo_desc')}</p>
-                    <button onClick={onGroupBuyClick} className="bg-white text-[#111] px-8 py-3.5 rounded-[12px] font-extrabold text-[15px] hover:bg-blue-50 transition-all shadow-lg hover:shadow-blue-500/30 transform active:scale-95 tracking-[-0.02em]">
+
+                    {/* Button */}
+                    <button 
+                        onClick={onGroupBuyClick} 
+                        className="bg-white text-[#D32F2F] px-6 py-3 rounded-[10px] font-bold text-[14px] shadow-lg hover:bg-gray-50 transition-all active:scale-95 self-start md:self-center"
+                    >
                         {t('promo_btn')}
                     </button>
                 </div>
-            </div>
-        </ScrollReveal>
+            </ScrollReveal>
+        </div>
     </section>
   );
 };
