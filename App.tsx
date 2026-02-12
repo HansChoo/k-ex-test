@@ -16,7 +16,7 @@ import { GroupBuyingPage } from './pages/GroupBuyingPage';
 import { MyPage } from './pages/MyPage';
 import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
 
@@ -75,16 +75,22 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
+  // --- Real-time CMS Package Data ---
   useEffect(() => {
-    const fetchPackages = async () => {
-        try {
-            const basicSnap = await getDoc(doc(db, "cms_packages", "package_basic"));
-            if (basicSnap.exists()) setBasicPkgData(basicSnap.data());
-            const premiumSnap = await getDoc(doc(db, "cms_packages", "package_premium"));
-            if (premiumSnap.exists()) setPremiumPkgData(premiumSnap.data());
-        } catch(e) { console.error("Pkg error", e); }
+    // Listener for Basic Package
+    const unsubBasic = onSnapshot(doc(db, "cms_packages", "package_basic"), (doc) => {
+        if (doc.exists()) setBasicPkgData(doc.data());
+    });
+
+    // Listener for Premium Package
+    const unsubPremium = onSnapshot(doc(db, "cms_packages", "package_premium"), (doc) => {
+        if (doc.exists()) setPremiumPkgData(doc.data());
+    });
+
+    return () => {
+        unsubBasic();
+        unsubPremium();
     };
-    fetchPackages();
   }, []);
 
   useEffect(() => {

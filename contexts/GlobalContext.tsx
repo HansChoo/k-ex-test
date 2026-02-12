@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS_DATA } from '../constants';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../services/firebaseConfig';
 
 type Currency = 'KRW' | 'USD' | 'JPY' | 'CNY';
 type Language = 'ko' | 'en' | 'ja' | 'zh';
@@ -191,25 +193,6 @@ const TRANSLATIONS: any = {
     login: '登录', signup: '注册', mypage: '我的页面', logout: '退出',
     admin: '管理员', share: '分享', map: '地图', wishlist: '愿望清单', view_wishlist: '我的愿望清单',
     book_now: '立即预订', total: '总计', select_date: '选择日期',
-    hero_badge: '已有2,847人体验中！',
-    hero_title: 'K-体验的一切！',
-    hero_subtitle: '你想要的所有K都在这里！',
-    hero_desc: '健康检查 · 美容手术 · 美容咨询 · K-POP\n一次性体验各种K-体验的一站式平台！',
-    promo_badge: '团购促销',
-    promo_title: '人越多\n折扣越大！',
-    promo_desc: '和朋友一起更便宜！根据人数最多可享受30%的折扣',
-    promo_btn: '查看团购',
-    pkg_title: 'K-体验 一站式套餐',
-    pkg_basic: '一站式套餐 - 基础',
-    pkg_prem: '一站式套餐 - 高级',
-    prod_title: '一目了然的所有K-体验产品！',
-    bottom_title: '享受你自己的K-体验',
-    bottom_desc: '从健康检查到美容护理，K-偶像体验！\n你想要的所有韩国体验都在这里。',
-    tab_all: '全部商品', tab_health: '健康检查', tab_idol: 'K-IDOL', tab_beauty: '美容手术',
-    detail: '详细信息', notice: '注意事项', faq: '常见问题',
-    // Reservation Pages
-    step1: 'STEP 1', step1_label: '选择日期',
-    step2: 'STEP 2', step2_label: '选择选项',
     gender: '性别', male: '男性', female: '女性',
     payment_type: '支付方式', pay_deposit: '定金 (20%)', pay_full: '全额付款',
     res_guide: '预订指南', res_guide_desc: '确认后凭证将发送至您的电子邮箱。',
@@ -248,6 +231,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [language, setLanguage] = useState<Language>('ko');
   const [currency, setCurrency] = useState<Currency>('KRW');
   const [wishlist, setWishlist] = useState<number[]>([]);
+  const [realtimeProducts, setRealtimeProducts] = useState<any[]>([]);
 
   // Init from Local Storage
   useEffect(() => {
@@ -258,6 +242,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const savedCurr = localStorage.getItem('k_exp_curr') as Currency;
     if (savedLang) setLanguage(savedLang);
     if (savedCurr) setCurrency(savedCurr);
+  }, []);
+
+  // Fetch Products from Firestore Real-time
+  useEffect(() => {
+    const q = query(collection(db, "products"), orderBy("order", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setRealtimeProducts(products);
+    });
+    return () => unsubscribe();
   }, []);
 
   const setGlobalMode = (countryCode: string) => {
@@ -300,8 +294,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const t = (key: string) => TRANSLATIONS[language][key] || TRANSLATIONS['en'][key] || key;
 
+  // Prefer Real-time DB products, fallback to constants only if DB is empty (initial load)
+  // This ensures that as soon as the admin creates products, the site uses them.
+  const displayProducts = realtimeProducts.length > 0 ? realtimeProducts : PRODUCTS_DATA[language];
+
   return (
-    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: PRODUCTS_DATA[language] }}>
+    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: displayProducts }}>
       {children}
     </GlobalContext.Provider>
   );

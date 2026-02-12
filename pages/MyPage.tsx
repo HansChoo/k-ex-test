@@ -1,10 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { auth, db } from '../services/firebaseConfig';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon } from 'lucide-react';
+import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer } from 'lucide-react';
 import { useGlobal } from '../contexts/GlobalContext';
+import { printReceipt } from '../services/receiptService';
 
 export const MyPage: React.FC<any> = () => {
   const { t, language } = useGlobal();
@@ -20,18 +21,25 @@ export const MyPage: React.FC<any> = () => {
   const [editForm, setEditForm] = useState({ phone: '', nationality: '' });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    let unsubscribeReservations: (() => void) | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Fetch Reservations
+        // Real-time Reservations Sync
         const q = query(collection(db, "reservations"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
-        try {
-          const querySnapshot = await getDocs(q);
-          const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setReservations(data);
-        } catch (e) { console.error("Error fetching reservations:", e); }
+        
+        // Use onSnapshot instead of getDocs
+        unsubscribeReservations = onSnapshot(q, (snapshot) => {
+             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+             setReservations(data);
+             setLoading(false);
+        }, (error) => {
+            console.error("Error fetching reservations:", error);
+            setLoading(false);
+        });
 
-        // Fetch User Data for Profile
+        // Fetch User Data for Profile (One-time fetch is usually enough for profile, unless we expect external edits)
         try {
             const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", currentUser.uid)));
             if (!userSnap.empty) {
@@ -40,10 +48,15 @@ export const MyPage: React.FC<any> = () => {
                 setEditForm({ phone: data.phone || '', nationality: data.nationality || '' });
             }
         } catch(e) { console.error("User fetch error", e); }
+      } else {
+          setLoading(false);
       }
-      setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+        unsubscribeAuth();
+        if (unsubscribeReservations) unsubscribeReservations();
+    };
   }, []);
 
   const handleUpdateProfile = async () => {
@@ -57,6 +70,10 @@ export const MyPage: React.FC<any> = () => {
           setIsEditing(false);
           alert(isEn ? "Profile updated." : "회원정보가 수정되었습니다.");
       } catch (e) { alert("Error updating profile"); }
+  };
+
+  const handlePrint = (res: any) => {
+      printReceipt(res, { ...user, ...userData });
   };
 
   if (loading) return <div className="p-20 text-center">Loading...</div>;
@@ -106,11 +123,19 @@ export const MyPage: React.FC<any> = () => {
             {reservations.map((res) => (
                 <div key={res.id} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between gap-6 transition-all hover:shadow-md">
                     <div className="flex-1">
-                        <h3 className="text-lg font-bold text-[#111] mb-1">{res.productName}</h3>
+                        <div className="flex justify-between items-start">
+                            <h3 className="text-lg font-bold text-[#111] mb-1">{res.productName}</h3>
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${res.status === 'confirmed' ? 'bg-green-100 text-green-700' : res.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                {res.status === 'confirmed' ? (isEn ? 'Confirmed' : '예약확정') : res.status === 'cancelled' ? (isEn ? 'Cancelled' : '취소됨') : (isEn ? 'Pending' : '예약대기')}
+                            </span>
+                        </div>
                         <p className="text-gray-600 text-sm mb-4">Date: <strong>{res.date}</strong> | People: <strong>{res.peopleCount}</strong></p>
                         <div className="flex gap-2">
                             {res.status === 'confirmed' && (
-                                <button onClick={() => setSelectedVoucher(res)} className="text-xs flex items-center gap-1 bg-[#0070F0] text-white px-3 py-2 rounded-lg font-bold hover:bg-blue-600 transition-colors"><Ticket size={14} /> Voucher</button>
+                                <>
+                                    <button onClick={() => setSelectedVoucher(res)} className="text-xs flex items-center gap-1 bg-[#0070F0] text-white px-3 py-2 rounded-lg font-bold hover:bg-blue-600 transition-colors"><Ticket size={14} /> Voucher</button>
+                                    <button onClick={() => handlePrint(res)} className="text-xs flex items-center gap-1 bg-white border border-gray-200 text-gray-600 px-3 py-2 rounded-lg font-bold hover:bg-gray-50 transition-colors"><Printer size={14} /> Invoice</button>
+                                </>
                             )}
                         </div>
                     </div>

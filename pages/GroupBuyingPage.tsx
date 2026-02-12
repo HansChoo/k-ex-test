@@ -19,6 +19,30 @@ interface GroupBuyItem {
 const PRICES = { basic: { male: 2205000, female: 2322000 }, premium: { male: 6012000, female: 6282000 } };
 const DEPOSIT_AMOUNT_PER_PERSON = 100000;
 
+// Skeleton Component for Group Buy Cards
+const GroupBuySkeleton = () => (
+    <div className="bg-white rounded-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 p-6 md:p-8 flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-[340px] shrink-0">
+            <div className="rounded-xl bg-gray-200 h-[240px] md:h-full animate-pulse"></div>
+        </div>
+        <div className="flex-1 flex flex-col justify-between space-y-4">
+            <div>
+                <div className="flex justify-between items-start mb-3">
+                    <div className="h-8 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                    <div className="h-6 bg-gray-200 rounded-full w-20 animate-pulse"></div>
+                </div>
+                <div className="h-4 bg-gray-200 rounded w-1/3 mb-4 animate-pulse"></div>
+                <div className="grid grid-cols-3 gap-4">
+                     <div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
+                     <div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
+                     <div className="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
+                </div>
+            </div>
+            <div className="h-12 bg-gray-200 rounded-[10px] w-full animate-pulse"></div>
+        </div>
+    </div>
+);
+
 const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
     const [timeLeft, setTimeLeft] = useState('');
     useEffect(() => {
@@ -77,7 +101,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
             .sort((a, b) => a.visitDate.localeCompare(b.visitDate));
             
         setPublicGroups(activeGroups);
-        setLoading(false);
+        // Delay setting loading to false slightly to show skeleton for UX
+        setTimeout(() => setLoading(false), 500);
     });
     return () => unsubscribe();
   }, []);
@@ -155,7 +180,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   return (
     <div className="w-full font-sans text-[#1a1a1a] bg-[#F5F9FC] pb-0">
       <div className="pt-20 pb-16 text-center bg-[#F0F8FF] px-4">
-        <div className="inline-flex items-center gap-1.5 bg-white px-5 py-2 rounded-full border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.05)] mb-8">
+        <div className="inline-flex items-center gap-1.5 bg-white px-5 py-2 rounded-full border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.05)] mb-8 animate-fade-in-up">
             <span className="text-[#FF4D4D] text-lg leading-none animate-pulse">🔥</span>
             <span className="text-[#333] text-[13px] font-bold tracking-tight">{t('hot_group')}</span>
         </div>
@@ -171,7 +196,13 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
         </div>
 
         <div className="space-y-6 mb-20 min-h-[200px]">
-            {loading ? <div className="text-center py-20 text-gray-400">Loading...</div> : publicGroups.length === 0 ? (
+            {loading ? (
+                // Render Skeletons
+                <>
+                    <GroupBuySkeleton />
+                    <GroupBuySkeleton />
+                </>
+            ) : publicGroups.length === 0 ? (
                 <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center justify-center animate-fade-in relative overflow-hidden group">
                     <Megaphone size={32} className="animate-wiggle text-blue-500 mb-4" />
                     <h4 className="text-[20px] font-bold text-[#333] mb-2">{t('no_active')}</h4>
@@ -201,7 +232,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                                         <div className="bg-[#FFF0F0] border border-[#FFD6D6] rounded-lg py-3 relative"><span className="block text-[12px] text-[#FF4D4D] mb-1 font-bold">{t('time_left')}</span><div className="text-[16px] font-black text-[#FF4D4D] flex items-center justify-center gap-1"><Timer size={14} /><CountdownTimer targetDate={group.visitDate} /></div></div>
                                     </div>
                                 </div>
-                                <div className="bg-[#fff] pt-4 flex gap-2.5"><button onClick={() => handleJoinClick(group)} className="w-full bg-[#0070F0] text-white py-3.5 rounded-[10px] text-[14px] font-bold flex items-center justify-center gap-1.5 hover:bg-blue-600 shadow-md transition-all"><Users size={16} fill="white" /> {t('join_group')}</button></div>
+                                <div className="bg-[#fff] pt-4 flex gap-2.5"><button onClick={() => handleJoinClick(group)} className="w-full bg-[#0070F0] text-white py-3.5 rounded-[10px] text-[14px] font-bold flex items-center justify-center gap-1.5 hover:bg-blue-600 shadow-md transition-all active:scale-95"><Users size={16} fill="white" /> {t('join_group')}</button></div>
                             </div>
                         </div>
                     );
@@ -213,15 +244,15 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
             <div className="text-center mb-10"><h3 className="text-[28px] font-black text-[#111] mb-2 flex items-center justify-center gap-2"><Plus size={24} /> {t('create_group')}</h3></div>
             {step === 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div onClick={() => handleTypeSelect('public')} className="bg-[#F0F8FF] rounded-[20px] p-8 cursor-pointer border border-[#D0E6F9] hover:border-blue-500 hover:shadow-xl transition-all">
+                    <div onClick={() => handleTypeSelect('public')} className="bg-[#F0F8FF] rounded-[20px] p-8 cursor-pointer border border-[#D0E6F9] hover:border-blue-500 hover:shadow-xl transition-all active:scale-95">
                         <h4 className="text-[22px] font-black text-[#111] mb-1">{t('ongoing_public')}</h4>
                     </div>
-                    <div onClick={() => handleTypeSelect('private')} className="bg-[#FFF5F5] rounded-[20px] p-8 cursor-pointer border border-[#F9D0D0] hover:border-red-400 hover:shadow-xl transition-all">
+                    <div onClick={() => handleTypeSelect('private')} className="bg-[#FFF5F5] rounded-[20px] p-8 cursor-pointer border border-[#F9D0D0] hover:border-red-400 hover:shadow-xl transition-all active:scale-95">
                         <h4 className="text-[22px] font-black text-[#111] mb-1">Private Group</h4>
                     </div>
                 </div>
             )}
-            {step === 1 && (<div className="animate-fade-in max-w-[1000px] mx-auto"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div onClick={() => handleProductSelect('basic')} className="bg-white rounded-2xl p-6 cursor-pointer border-2 border-transparent hover:border-[#0070F0] shadow-sm hover:shadow-xl transition-all flex flex-col h-full"><h4 className="text-[20px] font-extrabold text-[#111] mb-2">{t('pkg_basic')}</h4></div><div onClick={() => handleProductSelect('premium')} className="bg-white rounded-2xl p-6 cursor-pointer border-2 border-transparent hover:border-[#0070F0] shadow-sm hover:shadow-xl transition-all flex flex-col h-full"><h4 className="text-[20px] font-extrabold text-[#111] mb-2">{t('pkg_prem')}</h4></div></div></div>)}
+            {step === 1 && (<div className="animate-fade-in max-w-[1000px] mx-auto"><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div onClick={() => handleProductSelect('basic')} className="bg-white rounded-2xl p-6 cursor-pointer border-2 border-transparent hover:border-[#0070F0] shadow-sm hover:shadow-xl transition-all flex flex-col h-full active:scale-95"><h4 className="text-[20px] font-extrabold text-[#111] mb-2">{t('pkg_basic')}</h4></div><div onClick={() => handleProductSelect('premium')} className="bg-white rounded-2xl p-6 cursor-pointer border-2 border-transparent hover:border-[#0070F0] shadow-sm hover:shadow-xl transition-all flex flex-col h-full active:scale-95"><h4 className="text-[20px] font-extrabold text-[#111] mb-2">{t('pkg_prem')}</h4></div></div></div>)}
             {step === 2 && selectedProduct && (
                  <div className="animate-fade-in max-w-[800px] mx-auto">
                     <div className="bg-white rounded-[20px] p-8 md:p-10 shadow-sm border border-gray-100 mb-6">
@@ -229,9 +260,9 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                             <label className="block text-[14px] font-bold text-[#0070F0] mb-2">{t('visit_date_req')}</label>
                             <input type="date" value={formData.date} min={today} max={maxDate} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full h-[50px] px-4 rounded-lg border border-blue-200 focus:outline-none focus:border-blue-500 font-bold text-[#111] bg-white"/>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div><label className="block text-[14px] font-bold text-[#333] mb-2">{t('male_cnt')}</label><select value={maleCount} onChange={(e) => setMaleCount(Number(e.target.value))} className="w-full h-[50px] px-4 rounded-lg border border-[#DDD] appearance-none font-bold text-[#333] bg-white cursor-pointer">{[...Array(10)].map((_, i) => (<option key={i} value={i}>{i}</option>))}</select></div><div><label className="block text-[14px] font-bold text-[#333] mb-2">{t('female_cnt')}</label><select value={femaleCount} onChange={(e) => setFemaleCount(Number(e.target.value))} className="w-full h-[50px] px-4 rounded-lg border border-[#DDD] appearance-none font-bold text-[#333] bg-white cursor-pointer">{[...Array(10)].map((_, i) => (<option key={i} value={i}>{i}</option>))}</select></div></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div><label className="block text-xs font-bold text-[#333] mb-2">{t('male_cnt')}</label><select value={maleCount} onChange={(e) => setMaleCount(Number(e.target.value))} className="w-full h-[50px] px-4 rounded-lg border border-[#DDD] appearance-none font-bold text-[#333] bg-white cursor-pointer">{[...Array(10)].map((_, i) => (<option key={i} value={i}>{i}</option>))}</select></div><div><label className="block text-xs font-bold text-[#333] mb-2">{t('female_cnt')}</label><select value={femaleCount} onChange={(e) => setFemaleCount(Number(e.target.value))} className="w-full h-[50px] px-4 rounded-lg border border-[#DDD] appearance-none font-bold text-[#333] bg-white cursor-pointer">{[...Array(10)].map((_, i) => (<option key={i} value={i}>{i}</option>))}</select></div></div>
                     </div>
-                    <button onClick={handlePaymentClick} className={`w-full py-4 rounded-lg font-bold text-[16px] text-white shadow-md ${totalCount > 0 ? 'bg-[#00B57F]' : 'bg-gray-300'}`}>{t('create_pay')}</button>
+                    <button onClick={handlePaymentClick} className={`w-full py-4 rounded-lg font-bold text-[16px] text-white shadow-md active:scale-95 transition-transform ${totalCount > 0 ? 'bg-[#00B57F]' : 'bg-gray-300'}`}>{t('create_pay')}</button>
                 </div>
             )}
         </div>

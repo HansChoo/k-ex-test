@@ -21,12 +21,19 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [openSection, setOpenSection] = useState<'date' | 'options' | null>('date');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [peopleCount, setPeopleCount] = useState(1);
+  const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
   
   // Initialize Payment
   useEffect(() => {
     initializePayment('imp19424728');
     window.scrollTo(0,0);
   }, [product]);
+
+  const handleWishlistToggle = () => {
+      toggleWishlist(product.id || 999);
+      setIsWishlistAnimating(true);
+      setTimeout(() => setIsWishlistAnimating(false), 300);
+  };
 
   const handleReservation = async () => {
     if (!auth.currentUser) {
@@ -112,7 +119,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
         {/* LEFT COLUMN */}
         <div className="flex-1 w-full min-w-0">
             <div className="px-4 lg:px-0 mb-8">
-                <button onClick={() => window.location.href='/'} className="text-gray-400 mb-2 flex items-center gap-1 text-sm"><ChevronLeft size={14}/> Back to list</button>
+                <button onClick={() => window.location.href='/'} className="text-gray-400 mb-2 flex items-center gap-1 text-sm hover:text-black transition-colors"><ChevronLeft size={14}/> Back to list</button>
                 <div className="text-sm font-bold text-blue-600 mb-1">{product.category}</div>
                 <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em]">{product.title}</h1>
                 <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{product.description}</p>
@@ -123,11 +130,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                         <span className="text-[32px] font-black text-[#111]">{convertPrice(priceValue)}</span>
                     </div>
                     <div className="flex gap-4">
-                        <button onClick={() => toggleWishlist(product.id || 999)} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500">
-                            <Heart size={20} className={wishlist.includes(product.id || 999) ? "fill-red-500 text-red-500" : ""} />
+                        <button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group">
+                            <Heart 
+                                size={20} 
+                                className={`transition-all duration-300 ${wishlist.includes(product.id || 999) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"} ${isWishlistAnimating ? 'animate-heart-pop' : ''}`} 
+                            />
                             <span>Wishlist</span>
                         </button>
-                        <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500">
+                        <button onClick={handleShare} className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95">
                             <Share2 size={20} />
                             <span>{t('share')}</span>
                         </button>
@@ -137,7 +147,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
 
             {/* Main Image */}
             <div className="mb-12">
-                <div className="relative w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1]">
+                <div className="relative w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg">
                     <img src={product.image} className="w-full h-full object-cover" alt="Product" />
                 </div>
             </div>
@@ -146,7 +156,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             <div className="sticky top-[50px] lg:top-[90px] bg-white z-30 border-b border-gray-200 mb-8">
                 <div className="flex text-center">
                     {['detail', 'info', 'faq', 'map'].map((tab) => (
-                        <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 font-bold relative ${activeTab === tab ? 'text-[#111]' : 'text-[#888]'}`}>
+                        <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 font-bold relative transition-colors ${activeTab === tab ? 'text-[#111]' : 'text-[#888] hover:text-[#555]'}`}>
                             {tab === 'detail' ? (isEn ? 'Detail' : '상세정보') : tab === 'info' ? (isEn ? 'Notice' : '안내사항') : tab === 'map' ? (t('map')) : 'FAQ'}
                             {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#111]"></div>}
                         </button>
@@ -155,26 +165,34 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             </div>
 
             {/* Content */}
-            <div className="px-4 lg:px-0 min-h-[400px] pb-20">
+            <div className="px-4 lg:px-0 min-h-[400px] pb-20 animate-fade-in">
                 {activeTab === 'detail' && (
                     <div className="space-y-6">
-                        {product.detailTopImage && <img src={product.detailTopImage} className="w-full rounded-xl" />}
-                        {product.detailContentImage && <img src={product.detailContentImage} className="w-full" />}
-                        {!product.detailTopImage && !product.detailContentImage && <div className="p-10 text-center text-gray-400 bg-gray-50 rounded-xl">상세 이미지가 등록되지 않았습니다.</div>}
+                        {/* New Rich Text Content */}
+                        {product.content ? (
+                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: product.content }} />
+                        ) : (
+                            /* Legacy Content Fallback */
+                            <>
+                                {product.detailTopImage && <img src={product.detailTopImage} className="w-full rounded-xl" />}
+                                {product.detailContentImage && <img src={product.detailContentImage} className="w-full" />}
+                                {!product.detailTopImage && !product.detailContentImage && <div className="p-10 text-center text-gray-400 bg-gray-50 rounded-xl">상세 이미지가 등록되지 않았습니다.</div>}
+                            </>
+                        )}
                     </div>
                 )}
                 {activeTab === 'info' && (
-                    <div className="bg-gray-50 p-6 rounded-xl whitespace-pre-line text-sm leading-7">
+                    <div className="bg-gray-50 p-6 rounded-xl whitespace-pre-line text-sm leading-7 border border-gray-100">
                         {product.infoText || "등록된 안내사항이 없습니다."}
                     </div>
                 )}
                 {activeTab === 'faq' && (
-                    <div className="bg-gray-50 p-6 rounded-xl whitespace-pre-line text-sm leading-7">
+                    <div className="bg-gray-50 p-6 rounded-xl whitespace-pre-line text-sm leading-7 border border-gray-100">
                         {product.faqText || "등록된 FAQ가 없습니다."}
                     </div>
                 )}
                 {activeTab === 'map' && (
-                    <div className="w-full h-[400px] rounded-xl overflow-hidden border border-gray-200">
+                    <div className="w-full h-[400px] rounded-xl overflow-hidden border border-gray-200 shadow-md">
                         {/* Embed Google Maps (Gangnam Severance or generic Gangnam area as default) */}
                         <iframe 
                             width="100%" 
@@ -202,7 +220,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                              <button 
                                 key={day} 
                                 onClick={() => handleDateSelect(day)}
-                                className={`h-9 text-sm rounded hover:bg-gray-100 ${selectedDate?.endsWith(day.toString().padStart(2,'0')) ? 'bg-black text-white hover:bg-black font-bold' : ''}`}
+                                className={`h-9 text-sm rounded hover:bg-gray-100 transition-colors ${selectedDate?.endsWith(day.toString().padStart(2,'0')) ? 'bg-black text-white hover:bg-black font-bold' : ''}`}
                              >
                                  {day}
                              </button>
@@ -211,13 +229,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 </div>
                 
                 {selectedDate && (
-                    <div className="p-5 bg-blue-50">
+                    <div className="p-5 bg-blue-50 animate-fade-in">
                         <div className="flex justify-between items-center mb-4">
                             <span className="font-bold text-sm">People</span>
                             <div className="flex items-center bg-white border rounded">
-                                <button onClick={()=>setPeopleCount(Math.max(1, peopleCount-1))} className="px-3 py-1">-</button>
+                                <button onClick={()=>setPeopleCount(Math.max(1, peopleCount-1))} className="px-3 py-1 hover:bg-gray-50">-</button>
                                 <span className="px-2 text-sm font-bold">{peopleCount}</span>
-                                <button onClick={()=>setPeopleCount(peopleCount+1)} className="px-3 py-1">+</button>
+                                <button onClick={()=>setPeopleCount(peopleCount+1)} className="px-3 py-1 hover:bg-gray-50">+</button>
                             </div>
                         </div>
                         <div className="flex justify-between items-center pt-4 border-t border-blue-100">
@@ -228,7 +246,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 )}
 
                 <div className="p-5 bg-gray-50">
-                    <button onClick={handleReservation} className="w-full bg-[#0070F0] text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-600 transition-all">
+                    <button onClick={handleReservation} className="w-full bg-[#0070F0] text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-600 active:scale-95 transition-all">
                         {t('book_now')}
                     </button>
                 </div>
