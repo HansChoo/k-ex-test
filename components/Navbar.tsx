@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Menu, X, Search, User as UserIcon, Star, Globe, ChevronDown } from 'lucide-react';
+import { Menu, X, Search, User as UserIcon, Star, Globe, ChevronDown, Lock } from 'lucide-react';
 import { NAV_LINKS, COUNTRY_CODES } from '../constants';
 import { logoutUser, subscribeToAuthChanges } from '../services/authService';
 import { User } from 'firebase/auth';
@@ -58,7 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
            <span className="text-[20px] font-black text-[#0070F0] tracking-tighter">K-Experience</span>
         </div>
 
-        {/* Right: Icons (Language, User) */}
+        {/* Right: Icons (Language, User, Admin) */}
         <div className="flex items-center gap-4">
              {/* Language Dropdown */}
              <div className="relative" ref={langRef}>
@@ -90,6 +90,11 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
                      </div>
                  )}
              </div>
+
+             {/* Admin Button (Hidden shortcut) */}
+             <button onClick={onAdminClick} className="text-gray-300 hover:text-black transition-colors" title="Admin Dashboard">
+                <Lock size={18} />
+             </button>
 
              {/* User Profile */}
              <button onClick={user ? onMyPageClick : onLoginClick} className="text-[#333] hover:text-[#0070F0] transition-colors">
