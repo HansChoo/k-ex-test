@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, AlertCircle } from 'lucide-react';
-import { auth } from '../services/firebaseConfig';
+import { auth, db } from '../services/firebaseConfig';
 import { createReservation, checkAvailability } from '../services/reservationService';
 import { initializePayment, requestPayment } from '../services/paymentService';
 import { loginWithGoogle, handleAuthError } from '../services/authService';
 import { useGlobal } from '../contexts/GlobalContext';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface ReservationPremiumProps {
   language: 'ko' | 'en';
@@ -22,8 +23,17 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   const [selectedGender, setSelectedGender] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
+  
+  // CMS Data
+  const [cmsData, setCmsData] = useState<any>(null);
 
-  useEffect(() => { initializePayment('imp19424728'); }, []);
+  useEffect(() => { 
+      initializePayment('imp19424728'); 
+      const unsub = onSnapshot(doc(db, "cms_packages", "package_premium"), (doc) => {
+          if (doc.exists()) setCmsData(doc.data());
+      });
+      return () => unsub();
+  }, []);
 
   const handleReservation = async () => {
     if (!auth.currentUser) {
@@ -46,6 +56,12 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
         let priceNum = 7515000;
         if (selectedGender === 'Female') priceNum = 7785000;
         if (selectedPayment === 'deposit') priceNum = 1503000; 
+        
+        // Use CMS price if available and full payment
+        if (selectedPayment === 'full' && cmsData?.price) {
+             const baseDbPrice = cmsData.price;
+             priceNum = selectedGender === 'Female' ? (baseDbPrice + 270000) : baseDbPrice;
+        }
 
         const productName = `Premium Package (${selectedDate})`;
         const merchant_uid = `mid_${new Date().getTime()}`;
@@ -84,8 +100,8 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   };
 
   const getPrice = () => {
-    let price = 7515000;
-    if (selectedGender === 'Female') price = 7785000;
+    let price = cmsData?.price || 7515000;
+    if (selectedGender === 'Female') price += 270000;
     if (selectedPayment === 'deposit') price = 1503000;
     return convertPrice(price);
   };
@@ -96,19 +112,19 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
     <div className="w-full bg-white relative font-sans tracking-tight text-[#111]">
       <div className="lg:hidden flex items-center px-4 py-3 border-b border-gray-100 sticky top-[50px] bg-white z-40">
          <button onClick={() => window.history.back()} className="mr-4"><ChevronLeft size={24} /></button>
-         <span className="font-bold text-lg truncate">{t('pkg_prem')}</span>
+         <span className="font-bold text-lg truncate">{cmsData?.title || t('pkg_prem')}</span>
       </div>
 
       <div className="max-w-[1360px] mx-auto lg:px-4 lg:py-10 flex flex-col lg:flex-row gap-10 relative">
         <div className="flex-1 w-full min-w-0">
             <div className="px-4 lg:px-0 mb-8">
-                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em] keep-all">{t('pkg_prem')}</h1>
+                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em] keep-all">{cmsData?.title || t('pkg_prem')}</h1>
                 <p className="text-[14px] lg:text-[15px] text-[#888] mb-6 font-medium tracking-tight keep-all border-b border-gray-100 pb-5">
-                    {t('tab_health')} (Premium) + {t('tab_idol')} (Premium) + REJURAN BOOST
+                    {cmsData?.description || `${t('tab_health')} (Premium) + ${t('tab_idol')} (Premium) + REJURAN BOOST`}
                 </p>
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
                     <div className="flex items-baseline gap-2">
-                        <span className="text-[26px] lg:text-[32px] font-black text-[#111]">{convertPrice(7515000)} ~</span>
+                        <span className="text-[26px] lg:text-[32px] font-black text-[#111]">{convertPrice(cmsData?.price || 7515000)} ~</span>
                         <span className="text-[#FF4D4D] text-sm lg:text-base font-bold ml-1">10% OFF</span>
                     </div>
                 </div>
@@ -133,18 +149,26 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
             <div className="px-4 lg:px-0 min-h-[600px] pb-20">
                 {activeTab === 'detail' && (
                     <div className="flex flex-col space-y-12">
-                        <img src={DETAIL_IMAGES.topBanner} alt="Top Banner" className="w-full max-w-[850px] mx-auto mb-4" />
-                        <div className="bg-[#F9FAFB] p-6 rounded-xl border border-gray-100 text-left space-y-3 max-w-[850px] mx-auto">
-                            <h3 className="text-lg font-bold text-[#111] mb-2">🔳 {t('pkg_prem')}</h3>
-                            <div className="space-y-3 text-[14px] text-[#555] leading-relaxed">
-                                <p>🔶 {t('tab_health')} (Premium)</p>
-                                <p>🔶 {t('tab_idol')} (Premium)</p>
-                                <p>🔶 REJURAN BOOST Package</p>
-                            </div>
-                        </div>
-                        <img src={DETAIL_IMAGES.healthCheck} className="w-full max-w-[850px] mx-auto" />
-                        <img src={DETAIL_IMAGES.idolMain} className="w-full max-w-[850px] mx-auto" />
-                        <img src={DETAIL_IMAGES.rejuranMain} className="w-full max-w-[850px] mx-auto" />
+                         {/* Dynamic Content from CMS */}
+                         {cmsData?.content ? (
+                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: cmsData.content }} />
+                        ) : (
+                            /* Fallback to original hardcoded content */
+                            <>
+                                <img src={DETAIL_IMAGES.topBanner} alt="Top Banner" className="w-full max-w-[850px] mx-auto mb-4" />
+                                <div className="bg-[#F9FAFB] p-6 rounded-xl border border-gray-100 text-left space-y-3 max-w-[850px] mx-auto">
+                                    <h3 className="text-lg font-bold text-[#111] mb-2">🔳 {t('pkg_prem')}</h3>
+                                    <div className="space-y-3 text-[14px] text-[#555] leading-relaxed">
+                                        <p>🔶 {t('tab_health')} (Premium)</p>
+                                        <p>🔶 {t('tab_idol')} (Premium)</p>
+                                        <p>🔶 REJURAN BOOST Package</p>
+                                    </div>
+                                </div>
+                                <img src={DETAIL_IMAGES.healthCheck} className="w-full max-w-[850px] mx-auto" />
+                                <img src={DETAIL_IMAGES.idolMain} className="w-full max-w-[850px] mx-auto" />
+                                <img src={DETAIL_IMAGES.rejuranMain} className="w-full max-w-[850px] mx-auto" />
+                            </>
+                        )}
                     </div>
                 )}
                 {activeTab === 'info' && <div className="bg-white p-6 rounded-xl border border-gray-200 text-sm text-[#555] leading-7"><h3 className="font-bold text-lg text-[#111] mb-3">{t('res_guide')}</h3>{t('res_guide_desc')}</div>}
