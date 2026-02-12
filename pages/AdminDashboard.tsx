@@ -34,7 +34,8 @@ import {
     Settings as SettingsIcon,
     Printer,
     Mail,
-    FileText
+    FileText,
+    HelpCircle
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, writeBatch, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -58,12 +59,10 @@ interface ProductType {
     priceValue?: number;
     image: string;
     category: string;
-    // Legacy fields (optional)
     detailTopImage?: string;
     detailContentImage?: string;
     infoText?: string;
     faqText?: string;
-    // New Content Field
     content?: string;
 }
 
@@ -73,34 +72,15 @@ interface MainPackageType {
     price: number;
     originalPrice: number;
     description: string;
-    content?: string; // HTML content for detail page
+    content?: string;
+    themeColor?: string; // For dynamic styling (blue, gold, etc.)
 }
 
-// Default HTML content mimicking the hardcoded pages
-const DEFAULT_BASIC_CONTENT = `
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/7676076939ff6ba43d9bf00100968f4b.png" style="width: 100%;"></p>
-<div style="background-color: #F9FAFB; padding: 24px; border-radius: 12px; margin: 20px 0;">
-    <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 8px;">🔳 All-in-One Package - Basic</h3>
-    <p>🔶 Health Check (Basic)</p>
-    <p>🔶 K-IDOL (Basic)</p>
-    <p>🔶 GLASS SKIN Package</p>
+const DEFAULT_CONTENT = `
+<div style="padding: 20px; background-color: #f9fafb; border-radius: 12px;">
+    <h3>패키지 상세 내용을 입력하세요</h3>
+    <p>이곳에 이미지나 텍스트를 자유롭게 추가할 수 있습니다.</p>
 </div>
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/b354b41ad399d23b59c8b7476aa3f884.png" style="width: 100%;"></p>
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/13ada9aafbca4b183122c2395d78ef79.png" style="width: 100%;"></p>
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/9c1296c05c003793087dffe5e67613c4.png" style="width: 100%;"></p>
-`;
-
-const DEFAULT_PREMIUM_CONTENT = `
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/ad40f10cb05262e34595b3d2d79aa055.png" style="width: 100%;"></p>
-<div style="background-color: #F9FAFB; padding: 24px; border-radius: 12px; margin: 20px 0;">
-    <h3 style="font-size: 18px; font-weight: bold; margin-bottom: 8px;">🔳 All-in-One Package - Premium</h3>
-    <p>🔶 Health Check (Premium)</p>
-    <p>🔶 K-IDOL (Premium)</p>
-    <p>🔶 REJURAN BOOST Package</p>
-</div>
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/b354b41ad399d23b59c8b7476aa3f884.png" style="width: 100%;"></p>
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/13ada9aafbca4b183122c2395d78ef79.png" style="width: 100%;"></p>
-<p><img src="https://ecimg.cafe24img.com/pg2441b44963288024/samsongenm1/web/upload/NNEditor/20260123/9c1296c05c003793087dffe5e67613c4.png" style="width: 100%;"></p>
 `;
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
@@ -212,7 +192,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         setGroupBuys(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     const unsubPkg = onSnapshot(collection(db, "cms_packages"), (snapshot) => {
-        setMainPackages(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MainPackageType)));
+        // Sort specifically to keep basic first if possible, or by ID
+        const pkgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MainPackageType));
+        setMainPackages(pkgs.sort((a,b) => a.id.localeCompare(b.id)));
     });
     const unsubSettings = onSnapshot(collection(db, "settings"), (snapshot) => {
         snapshot.docs.forEach(doc => {
@@ -270,19 +252,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   // Package Management
   const updatePackage = async (pkg: MainPackageType, field: string, value: any) => {
       const ref = doc(db, "cms_packages", pkg.id);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) await setDoc(ref, { ...pkg, [field]: value });
-      else await updateDoc(ref, { [field]: value });
+      await updateDoc(ref, { [field]: value });
+  };
+
+  const createNewPackage = async () => {
+      const id = `package_${Date.now()}`;
+      await setDoc(doc(db, "cms_packages", id), {
+          id: id,
+          title: "New Package",
+          price: 1000000,
+          originalPrice: 1500000,
+          description: "새로운 패키지 설명입니다.",
+          content: DEFAULT_CONTENT,
+          themeColor: "blue" 
+      });
+  };
+
+  const deletePackage = async (id: string) => {
+      if(window.confirm("이 패키지를 메인 화면에서 삭제하시겠습니까? (복구 불가)")) {
+          await deleteDoc(doc(db, "cms_packages", id));
+      }
   };
   
   const openPackageEditor = (pkg: MainPackageType) => {
       setEditingPackage(pkg);
-      // If content is empty/undefined, use the default hardcoded HTML so the admin sees the current live content
-      if (!pkg.content) {
-          setPackageContentForm(pkg.id === 'package_basic' ? DEFAULT_BASIC_CONTENT : DEFAULT_PREMIUM_CONTENT);
-      } else {
-          setPackageContentForm(pkg.content);
-      }
+      setPackageContentForm(pkg.content || DEFAULT_CONTENT);
       setIsPackageModalOpen(true);
   };
 
@@ -295,7 +289,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const saveSettings = async () => {
       await setDoc(doc(db, "settings", "email_config"), emailConfig);
       await setDoc(doc(db, "settings", "receipt_config"), receiptConfig);
-      alert("Settings Saved!");
+      alert("설정이 저장되었습니다!");
   };
 
   const handleDragStart = (e: React.DragEvent, resId: string) => { e.dataTransfer.setData("resId", resId); };
@@ -374,21 +368,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 )}
                 {activeTab === 'packages' && (
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-bold mb-6">{t('admin_pkg')}</h3>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {['package_basic', 'package_premium'].map(pkgId => { 
-                                const pkg = mainPackages.find(p => p.id === pkgId) || { id: pkgId, title: 'Package', price: 0, originalPrice: 0, description: '' }; 
-                                const isBasic = pkgId === 'package_basic'; 
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold">{t('admin_pkg')}</h3>
+                            <button onClick={createNewPackage} className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition-colors flex items-center gap-2">
+                                <Plus size={16} /> Add New Package
+                            </button>
+                        </div>
+                        
+                        {/* Dynamic Grid: 1 col, 2 cols, or more depending on count */}
+                        <div className={`grid grid-cols-1 ${mainPackages.length > 1 ? 'lg:grid-cols-2' : ''} gap-8`}>
+                            {mainPackages.map(pkg => { 
+                                const isBasic = pkg.id.includes('basic'); 
+                                const isPremium = pkg.id.includes('premium');
+                                const themeClass = isBasic ? 'border-blue-100 bg-blue-50' : isPremium ? 'border-yellow-100 bg-yellow-50' : 'border-gray-100 bg-gray-50';
+                                const textClass = isBasic ? 'text-blue-700' : isPremium ? 'text-yellow-700' : 'text-gray-700';
+
                                 return (
-                                    <div key={pkgId} className={`p-6 rounded-xl border-2 ${isBasic ? 'border-blue-100 bg-blue-50' : 'border-yellow-100 bg-yellow-50'}`}>
+                                    <div key={pkg.id} className={`p-6 rounded-xl border-2 ${themeClass} relative group`}>
                                         <div className="flex justify-between items-start mb-4">
-                                            <h4 className={`text-xl font-black ${isBasic ? 'text-blue-700' : 'text-yellow-700'}`}>{isBasic ? 'BASIC PACKAGE' : 'PREMIUM PACKAGE'}</h4>
-                                            <button 
-                                                onClick={() => openPackageEditor(pkg)}
-                                                className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold shadow-sm hover:text-blue-600 flex items-center gap-1"
-                                            >
-                                                <FileText size={14} /> Edit Detail Content
-                                            </button>
+                                            <h4 className={`text-xl font-black ${textClass}`}>{pkg.title}</h4>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => openPackageEditor(pkg)}
+                                                    className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold shadow-sm hover:text-blue-600 flex items-center gap-1"
+                                                >
+                                                    <FileText size={14} /> Edit Detail
+                                                </button>
+                                                {!isBasic && !isPremium && (
+                                                    <button onClick={() => deletePackage(pkg.id)} className="bg-white p-1.5 rounded-lg border border-red-100 text-red-500 hover:bg-red-50">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="space-y-4">
                                             <div><label className="block text-xs font-bold text-gray-600 mb-1">Title</label><input className="w-full p-2 border rounded bg-white" value={pkg.title} onChange={e => updatePackage(pkg, 'title', e.target.value)} /></div>
@@ -411,7 +422,79 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 className="text-lg font-bold mb-4">{t('admin_users')}</h3><table className="w-full text-sm text-left"><thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Phone</th><th className="p-3">Role</th><th className="p-3">Joined</th><th className="p-3 text-right">Action</th></tr></thead><tbody>{users.map(u => (<tr key={u.id} className="border-b last:border-0 hover:bg-gray-50"><td className="p-3 font-bold">{u.name}</td><td className="p-3">{u.email}</td><td className="p-3">{u.phone}</td><td className="p-3">{u.email === ADMIN_EMAIL ? (<span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-black flex items-center gap-1 w-fit"><Shield size={12}/> SUPER</span>) : u.role === 'admin' ? (<span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 w-fit"><ShieldCheck size={12}/> ADMIN</span>) : (<span className="text-gray-400 text-xs">USER</span>)}</td><td className="p-3 text-gray-400">{u.createdAt?.seconds ? new Date(u.createdAt.seconds*1000).toLocaleDateString() : '-'}</td><td className="p-3 text-right">{u.email !== ADMIN_EMAIL && (<button onClick={() => toggleUserAdminRole(u.id, u.role, u.email)} className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 ml-auto ${u.role === 'admin' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>{u.role === 'admin' ? <><UserX size={14}/> Revoke</> : <><UserCheck size={14}/> Make Admin</>}</button>)}</td></tr>))}</tbody></table></div>
                 )}
                 {activeTab === 'settings' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8"><div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Mail size={20} className="text-blue-600"/> Email Automation</h3><p className="text-xs text-gray-500 mb-6">Configure EmailJS to send automated confirmation emails.</p><div className="space-y-4"><div><label className="text-xs font-bold text-gray-600">Service ID</label><input className="w-full border rounded p-2" value={emailConfig.serviceId} onChange={e => setEmailConfig({...emailConfig, serviceId: e.target.value})} placeholder="service_xxx"/></div><div><label className="text-xs font-bold text-gray-600">Template ID</label><input className="w-full border rounded p-2" value={emailConfig.templateId} onChange={e => setEmailConfig({...emailConfig, templateId: e.target.value})} placeholder="template_xxx"/></div><div><label className="text-xs font-bold text-gray-600">Public Key</label><input className="w-full border rounded p-2" value={emailConfig.publicKey} onChange={e => setEmailConfig({...emailConfig, publicKey: e.target.value})} placeholder="user_xxx"/></div><div><label className="text-xs font-bold text-gray-600">Confirmation Email Body</label><textarea className="w-full border rounded p-2 h-32 text-sm" value={emailConfig.confirmationBody} onChange={e => setEmailConfig({...emailConfig, confirmationBody: e.target.value})} placeholder="Hello {name}, your booking for {product} on {date} is confirmed." /><p className="text-[10px] text-gray-400 mt-1">Variables: {'{name}, {product}, {date}'}</p></div></div></div><div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Printer size={20} className="text-blue-600"/> Receipt Configuration</h3><p className="text-xs text-gray-500 mb-6">Customize the receipt generated for users.</p><div className="space-y-4"><div><label className="text-xs font-bold text-gray-600">Company Name</label><input className="w-full border rounded p-2" value={receiptConfig.companyName} onChange={e => setReceiptConfig({...receiptConfig, companyName: e.target.value})} /></div><div><label className="text-xs font-bold text-gray-600">Address</label><input className="w-full border rounded p-2" value={receiptConfig.address} onChange={e => setReceiptConfig({...receiptConfig, address: e.target.value})} /></div><div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-gray-600">CEO Name</label><input className="w-full border rounded p-2" value={receiptConfig.ceo} onChange={e => setReceiptConfig({...receiptConfig, ceo: e.target.value})} /></div><div><label className="text-xs font-bold text-gray-600">Reg No.</label><input className="w-full border rounded p-2" value={receiptConfig.regNo} onChange={e => setReceiptConfig({...receiptConfig, regNo: e.target.value})} /></div></div><div><label className="text-xs font-bold text-gray-600">Logo URL</label><input className="w-full border rounded p-2" value={receiptConfig.logoUrl} onChange={e => setReceiptConfig({...receiptConfig, logoUrl: e.target.value})} /></div><div><label className="text-xs font-bold text-gray-600">Footer Text</label><textarea className="w-full border rounded p-2 h-20 text-sm" value={receiptConfig.footerText} onChange={e => setReceiptConfig({...receiptConfig, footerText: e.target.value})} /></div></div></div><div className="col-span-1 md:col-span-2 flex justify-end"><button onClick={saveSettings} className="px-6 py-3 bg-[#0070F0] text-white font-bold rounded-lg shadow-lg flex items-center gap-2"><Save size={18}/> Save All Settings</button></div></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Email Settings (Translated with Tips) */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Mail size={20} className="text-blue-600"/> 이메일 자동 발송 설정</h3>
+                            <p className="text-xs text-gray-500 mb-6 border-l-2 border-blue-500 pl-2">EmailJS 서비스와 연동하여 예약 확정 시 고객에게 자동으로 메일을 발송합니다.</p>
+                            
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">서비스 ID (Service ID)</label>
+                                    <input className="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white" value={emailConfig.serviceId} onChange={e => setEmailConfig({...emailConfig, serviceId: e.target.value})} placeholder="예: service_xxxxx"/>
+                                    <p className="text-[11px] text-blue-600 mt-1 flex items-center gap-1"><HelpCircle size={10}/> EmailJS 대시보드 {'>'} Email Services 탭에서 확인 가능</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">템플릿 ID (Template ID)</label>
+                                    <input className="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white" value={emailConfig.templateId} onChange={e => setEmailConfig({...emailConfig, templateId: e.target.value})} placeholder="예: template_xxxxx"/>
+                                    <p className="text-[11px] text-blue-600 mt-1 flex items-center gap-1"><HelpCircle size={10}/> EmailJS 대시보드 {'>'} Email Templates 탭에서 생성한 템플릿 ID</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">공개 키 (Public Key)</label>
+                                    <input className="w-full border rounded p-2 text-sm bg-gray-50 focus:bg-white" value={emailConfig.publicKey} onChange={e => setEmailConfig({...emailConfig, publicKey: e.target.value})} placeholder="예: user_xxxxx"/>
+                                    <p className="text-[11px] text-blue-600 mt-1 flex items-center gap-1"><HelpCircle size={10}/> EmailJS 대시보드 {'>'} Account {'>'} API Keys 에서 확인 가능</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">확인 메일 내용 본문</label>
+                                    <textarea className="w-full border rounded p-2 h-32 text-sm bg-gray-50 focus:bg-white" value={emailConfig.confirmationBody} onChange={e => setEmailConfig({...emailConfig, confirmationBody: e.target.value})} placeholder="Hello {name}, your booking for {product} on {date} is confirmed." />
+                                    <p className="text-[11px] text-gray-500 mt-1">사용 가능한 변수: {'{name} (고객명), {product} (상품명), {date} (예약일)'}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Receipt Settings (Translated with Tips) */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Printer size={20} className="text-blue-600"/> 영수증/인보이스 출력 설정</h3>
+                            <p className="text-xs text-gray-500 mb-6 border-l-2 border-blue-500 pl-2">고객이 마이페이지에서 출력하는 영수증에 표시될 회사 정보를 입력하세요.</p>
+                            
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">회사명 (Company Name)</label>
+                                    <input className="w-full border rounded p-2 text-sm" value={receiptConfig.companyName} onChange={e => setReceiptConfig({...receiptConfig, companyName: e.target.value})} placeholder="예: K-Experience Corp." />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">주소 (Address)</label>
+                                    <input className="w-full border rounded p-2 text-sm" value={receiptConfig.address} onChange={e => setReceiptConfig({...receiptConfig, address: e.target.value})} placeholder="영수증 상단에 표시될 주소" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-700 block mb-1">대표자명 (CEO)</label>
+                                        <input className="w-full border rounded p-2 text-sm" value={receiptConfig.ceo} onChange={e => setReceiptConfig({...receiptConfig, ceo: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-700 block mb-1">사업자 등록번호 (Reg No.)</label>
+                                        <input className="w-full border rounded p-2 text-sm" value={receiptConfig.regNo} onChange={e => setReceiptConfig({...receiptConfig, regNo: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">로고 이미지 URL</label>
+                                    <input className="w-full border rounded p-2 text-sm" value={receiptConfig.logoUrl} onChange={e => setReceiptConfig({...receiptConfig, logoUrl: e.target.value})} placeholder="https://..." />
+                                    <p className="text-[11px] text-gray-400 mt-1">영수증 최상단에 들어갈 로고 이미지의 인터넷 주소</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 block mb-1">하단 문구 (Footer Text)</label>
+                                    <textarea className="w-full border rounded p-2 h-20 text-sm" value={receiptConfig.footerText} onChange={e => setReceiptConfig({...receiptConfig, footerText: e.target.value})} placeholder="예: Thank you for choosing us." />
+                                    <p className="text-[11px] text-gray-400 mt-1">영수증 맨 아래에 작게 들어가는 감사 인사나 안내 문구</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="col-span-1 md:col-span-2 flex justify-end">
+                            <button onClick={saveSettings} className="px-6 py-3 bg-[#0070F0] text-white font-bold rounded-lg shadow-lg flex items-center gap-2 hover:bg-blue-600 transition-colors">
+                                <Save size={18}/> 설정 저장하기
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
         </main>

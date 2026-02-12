@@ -5,25 +5,18 @@ import { ScrollReveal } from './ScrollReveal';
 
 interface PackageSectionProps {
   language: 'ko' | 'en';
-  onBookClick?: () => void;
-  onPremiumBookClick?: () => void;
-  basicData?: any;
-  premiumData?: any;
+  packages: any[];
+  onBookClick: (pkgId: string) => void;
 }
 
-export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, onPremiumBookClick, basicData, premiumData }) => {
+export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, packages }) => {
   const { convertPrice, t } = useGlobal();
 
-  // Use dynamic data from Firestore (passed via props) with fallbacks
-  const basicPrice = basicData?.price || 2763000;
-  const basicOrig = basicData?.originalPrice || 3070000;
-  const basicTitle = basicData?.title || t('pkg_basic');
-  const basicDesc = basicData?.description || '';
-
-  const premPrice = premiumData?.price || 7515000;
-  const premOrig = premiumData?.originalPrice || 8350000;
-  const premTitle = premiumData?.title || t('pkg_prem');
-  const premDesc = premiumData?.description || '';
+  // Determine grid columns based on package count to ensure good layout
+  let gridClass = 'grid-cols-1 md:grid-cols-2'; // Default for 2
+  if (packages.length === 1) gridClass = 'grid-cols-1 max-w-[600px] mx-auto';
+  else if (packages.length === 3) gridClass = 'grid-cols-1 md:grid-cols-3';
+  else if (packages.length >= 4) gridClass = 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
 
   return (
     <section className="w-full max-w-[1200px] mx-auto px-4 pb-20 pt-10 font-sans tracking-tight">
@@ -36,76 +29,51 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, onP
             </div>
         </ScrollReveal>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-            <div className="flex-1">
-                <ScrollReveal delay={100} className="h-full">
-                    <div className="bg-white rounded-[32px] overflow-hidden border border-[#EEE] shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_50px_rgba(0,112,240,0.15)] transition-all duration-300 flex flex-col h-full group">
-                        <div className="bg-[#0070F0] px-8 py-8 text-white relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                            <div className="text-[14px] font-extrabold opacity-90 mb-1 tracking-wide relative z-10">BASIC</div>
-                            <div className="text-[28px] font-black tracking-[-0.04em] keep-all leading-tight relative z-10">{basicTitle}</div>
-                        </div>
-                        <div className="p-8 flex flex-col h-full">
-                            <div className="bg-[#F6F7F9] rounded-2xl p-6 mb-8 space-y-5 flex-grow group-hover:bg-[#F0F8FF] transition-colors duration-300">
-                                {basicDesc ? (
-                                    <div className="whitespace-pre-line text-sm font-medium text-[#444]">{basicDesc}</div>
-                                ) : (
-                                    <>
-                                        <div><div className="font-bold text-[#111] mb-2">🩺 {t('tab_health')} - Basic</div></div>
-                                        <div><div className="font-bold text-[#111] mb-2">💉 GLASS SKIN Package</div></div>
-                                        <div><div className="font-bold text-[#111] mb-2">🎤 {t('tab_idol')} - Basic</div></div>
-                                    </>
-                                )}
-                            </div>
-                            <div className="flex flex-col mb-8">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-[14px] line-through text-[#AAA] font-medium">{convertPrice(basicOrig)}</span>
-                                    <span className="bg-[#FF4D4D] text-white px-1.5 py-[2px] rounded-[4px] text-[11px] font-bold animate-pulse">SALE</span>
-                                </div>
-                                <div className="text-[32px] font-black text-[#0070F0]">{convertPrice(basicPrice)}</div>
-                            </div>
-                            <button onClick={onBookClick} className="w-full bg-[#0070F0] text-white font-bold py-4 rounded-[12px] hover:bg-blue-600 active:scale-95 transition-all text-[17px] shadow-lg shadow-blue-100 group-hover:shadow-blue-300">
-                                {t('book_now')}
-                            </button>
-                        </div>
-                    </div>
-                </ScrollReveal>
-            </div>
+        <div className={`grid ${gridClass} gap-6`}>
+            {packages.map((pkg, idx) => {
+                // Determine styling based on package ID or order
+                const isPremium = pkg.id.includes('premium');
+                const isBasic = pkg.id.includes('basic');
+                // Fallback style for new dynamic packages
+                const isCustom = !isBasic && !isPremium;
 
-            <div className="flex-1">
-                <ScrollReveal delay={200} className="h-full">
-                    <div className="bg-white rounded-[32px] overflow-hidden border border-[#EEE] shadow-[0_10px_30px_rgba(0,0,0,0.06)] hover:shadow-[0_20px_50px_rgba(200,163,43,0.15)] transition-all duration-300 flex flex-col h-full group">
-                        <div className="bg-[#C8A32B] px-8 py-8 text-white relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-                            <div className="text-[14px] font-extrabold opacity-90 mb-1 tracking-wide relative z-10">PREMIUM</div>
-                            <div className="text-[28px] font-black tracking-[-0.04em] keep-all leading-tight relative z-10">{premTitle}</div>
-                        </div>
-                        <div className="p-8 flex flex-col h-full">
-                            <div className="bg-[#F6F7F9] rounded-2xl p-6 mb-8 space-y-5 flex-grow group-hover:bg-[#FFFBE6] transition-colors duration-300">
-                                {premDesc ? (
-                                    <div className="whitespace-pre-line text-sm font-medium text-[#444]">{premDesc}</div>
-                                ) : (
-                                    <>
-                                        <div><div className="font-bold text-[#111] mb-2">🩺 {t('tab_health')} - Premium</div></div>
-                                        <div><div className="font-bold text-[#111] mb-2">💉 REJURAN BOOST</div></div>
-                                        <div><div className="font-bold text-[#111] mb-2">🎤 {t('tab_idol')} - Premium</div></div>
-                                    </>
-                                )}
-                            </div>
-                            <div className="flex flex-col mb-8">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-[14px] line-through text-[#AAA] font-medium">{convertPrice(premOrig)}</span>
-                                    <span className="bg-[#FF4D4D] text-white px-1.5 py-[2px] rounded-[4px] text-[11px] font-bold animate-pulse">SALE</span>
+                const headerColor = isPremium ? 'bg-[#C8A32B]' : isBasic ? 'bg-[#0070F0]' : 'bg-[#333]';
+                const shadowColor = isPremium ? 'hover:shadow-[0_20px_50px_rgba(200,163,43,0.15)]' : isBasic ? 'hover:shadow-[0_20px_50px_rgba(0,112,240,0.15)]' : 'hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)]';
+                const boxBg = isPremium ? 'group-hover:bg-[#FFFBE6]' : isBasic ? 'group-hover:bg-[#F0F8FF]' : 'group-hover:bg-gray-50';
+                
+                return (
+                    <ScrollReveal key={pkg.id} delay={100 + (idx * 100)} className="h-full">
+                        <div className={`bg-white rounded-[32px] overflow-hidden border border-[#EEE] shadow-[0_10px_30px_rgba(0,0,0,0.06)] ${shadowColor} transition-all duration-300 flex flex-col h-full group`}>
+                            <div className={`${headerColor} px-8 py-8 text-white relative overflow-hidden`}>
+                                <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
+                                <div className="text-[14px] font-extrabold opacity-90 mb-1 tracking-wide relative z-10 uppercase">
+                                    {isPremium ? 'PREMIUM' : isBasic ? 'BASIC' : 'SPECIAL'}
                                 </div>
-                                <div className="text-[32px] font-black text-[#0070F0]">{convertPrice(premPrice)}</div>
+                                <div className="text-[24px] lg:text-[28px] font-black tracking-[-0.04em] keep-all leading-tight relative z-10">{pkg.title}</div>
                             </div>
-                            <button onClick={onPremiumBookClick} className="w-full bg-[#0070F0] text-white font-bold py-4 rounded-[12px] hover:bg-blue-600 active:scale-95 transition-all text-[17px] shadow-lg shadow-blue-100 group-hover:shadow-blue-300">
-                                {t('book_now')}
-                            </button>
+                            <div className="p-8 flex flex-col h-full">
+                                <div className={`bg-[#F6F7F9] rounded-2xl p-6 mb-8 space-y-5 flex-grow ${boxBg} transition-colors duration-300`}>
+                                    {pkg.description ? (
+                                        <div className="whitespace-pre-line text-sm font-medium text-[#444]">{pkg.description}</div>
+                                    ) : (
+                                        <div className="text-gray-400 text-sm">No description available.</div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col mb-8">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[14px] line-through text-[#AAA] font-medium">{convertPrice(pkg.originalPrice)}</span>
+                                        <span className="bg-[#FF4D4D] text-white px-1.5 py-[2px] rounded-[4px] text-[11px] font-bold animate-pulse">SALE</span>
+                                    </div>
+                                    <div className={`text-[32px] font-black ${isPremium ? 'text-[#C8A32B]' : isBasic ? 'text-[#0070F0]' : 'text-[#333]'}`}>{convertPrice(pkg.price)}</div>
+                                </div>
+                                <button onClick={() => onBookClick(pkg.id)} className={`w-full ${headerColor} text-white font-bold py-4 rounded-[12px] opacity-90 hover:opacity-100 active:scale-95 transition-all text-[17px] shadow-lg`}>
+                                    {t('book_now')}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </ScrollReveal>
-            </div>
+                    </ScrollReveal>
+                );
+            })}
         </div>
     </section>
   );

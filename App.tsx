@@ -16,7 +16,7 @@ import { GroupBuyingPage } from './pages/GroupBuyingPage';
 import { MyPage } from './pages/MyPage';
 import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
 
@@ -36,8 +36,10 @@ const AppContent: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [basicPkgData, setBasicPkgData] = useState<any>(null);
-  const [premiumPkgData, setPremiumPkgData] = useState<any>(null);
+  
+  // Dynamic Packages State
+  const [packages, setPackages] = useState<any[]>([]);
+  
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   
   const [socialProof, setSocialProof] = useState<{name: string, country: string, product: string} | null>(null);
@@ -70,27 +72,24 @@ const AppContent: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mode') === 'admin') {
         setCurrentView('admin');
-        // Optional: Clean URL
         window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
-  // --- Real-time CMS Package Data ---
+  // --- Real-time All Packages Data ---
   useEffect(() => {
-    // Listener for Basic Package
-    const unsubBasic = onSnapshot(doc(db, "cms_packages", "package_basic"), (doc) => {
-        if (doc.exists()) setBasicPkgData(doc.data());
+    // Listen to the entire 'cms_packages' collection
+    // We sort simply by ID or assume a created time if available, or just fetch all.
+    // For now, simple fetch.
+    const q = collection(db, "cms_packages");
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const pkgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort: Basic first, Premium second, then others by creation or ID
+        pkgs.sort((a,b) => a.id.localeCompare(b.id)); 
+        setPackages(pkgs);
     });
 
-    // Listener for Premium Package
-    const unsubPremium = onSnapshot(doc(db, "cms_packages", "package_premium"), (doc) => {
-        if (doc.exists()) setPremiumPkgData(doc.data());
-    });
-
-    return () => {
-        unsubBasic();
-        unsubPremium();
-    };
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -131,6 +130,16 @@ const AppContent: React.FC = () => {
       const timer = setTimeout(showPopup, 10000);
       return () => clearTimeout(timer);
   }, []);
+
+  const handlePackageBookClick = (pkgId: string) => {
+      // Logic to route based on package ID
+      if (pkgId.includes('premium')) {
+          navigateTo('reservation_premium');
+      } else {
+          // Default fallback for Basic and any new packages (unless we create new pages)
+          navigateTo('reservation_basic');
+      }
+  };
 
   return (
     <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight">
@@ -186,10 +195,8 @@ const AppContent: React.FC = () => {
             <PromoSection language={language} onGroupBuyClick={() => navigateTo('group_buying')} />
             <PackageSection 
                 language={language} 
-                basicData={basicPkgData}
-                premiumData={premiumPkgData}
-                onBookClick={() => navigateTo('reservation_basic')}
-                onPremiumBookClick={() => navigateTo('reservation_premium')}
+                packages={packages}
+                onBookClick={handlePackageBookClick}
             />
             <ProductList language={language} />
             <BottomHero language={language} />
