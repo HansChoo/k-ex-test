@@ -90,6 +90,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   });
 
   const ADMIN_EMAIL = "admin@k-experience.com";
+  const MONTHS_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const MONTHS_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   // Auth Check
   useEffect(() => {
@@ -113,14 +115,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         // Stats Calc
         const revenueByMonth = Array(12).fill(0);
         let totalRev = 0;
+        
         data.forEach((r: any) => {
             if (r.status !== 'cancelled' && r.createdAt) {
-                const date = new Date(r.createdAt.seconds * 1000);
-                const amt = Number(r.totalPrice) || 0;
-                revenueByMonth[date.getMonth()] += amt;
-                totalRev += amt;
+                // Robust Date Parsing
+                let date: Date | null = null;
+                if (r.createdAt?.seconds) {
+                    date = new Date(r.createdAt.seconds * 1000);
+                } else if (r.createdAt instanceof Date) {
+                    date = r.createdAt;
+                } else if (typeof r.createdAt === 'string') {
+                    date = new Date(r.createdAt);
+                }
+
+                if (date && !isNaN(date.getTime())) {
+                     const monthIndex = date.getMonth(); // 0-11
+                     if (monthIndex >= 0 && monthIndex < 12) {
+                        const amt = Number(r.totalPrice) || 0;
+                        revenueByMonth[monthIndex] += amt;
+                        totalRev += amt;
+                     }
+                }
             }
         });
+        
         setMonthlyRevenue(revenueByMonth);
         setStats(prev => ({ ...prev, revenue: totalRev, orders: data.length }));
     });
@@ -267,7 +285,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                                 <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between"><div><p className="text-sm text-gray-500 font-medium mb-1">{s.label}</p><h3 className="text-2xl font-black">{s.val}</h3></div><div className={`w-12 h-12 ${s.bg} rounded-full flex items-center justify-center ${s.color}`}><s.icon size={24} /></div></div>
                             ))}
                         </div>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 className="text-lg font-bold mb-6 flex items-center gap-2"><BarChart3 size={20}/> {t('monthly_rev')}</h3><div className="h-64 flex items-end gap-2 md:gap-4 justify-between px-2 md:px-10 border-b border-gray-200 pb-2">{monthlyRevenue.map((amount, idx) => { const maxVal = Math.max(...monthlyRevenue, 1); const heightPercent = (amount / maxVal) * 100; return (<div key={idx} className="w-full flex flex-col items-center gap-2 group relative"><div className="w-full max-w-[40px] bg-blue-500 rounded-t-sm hover:bg-blue-600 transition-all relative" style={{ height: `${Math.max(heightPercent, 2)}%` }}><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">₩{amount.toLocaleString()}</div></div><span className="text-xs text-gray-500 font-bold">{idx + 1}</span></div>); })}</div></div>
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><BarChart3 size={20}/> {t('monthly_rev')}</h3>
+                            <div className="h-64 flex items-end gap-2 md:gap-4 justify-between px-2 md:px-10 border-b border-gray-200 pb-2">
+                                {monthlyRevenue.map((amount, idx) => {
+                                     // Safe calculation to prevent NaN
+                                     const safeAmount = isNaN(amount) ? 0 : amount;
+                                     const safeMax = Math.max(...monthlyRevenue.map(v => isNaN(v) ? 0 : v), 1);
+                                     const heightPercent = (safeAmount / safeMax) * 100;
+                                     
+                                     return (
+                                         <div key={idx} className="w-full flex flex-col items-center gap-2 group relative">
+                                             <div 
+                                                className="w-full max-w-[40px] bg-blue-500 rounded-t-sm hover:bg-blue-600 transition-all relative" 
+                                                style={{ height: `${Math.max(heightPercent, 2)}%` }}
+                                             >
+                                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 font-bold">
+                                                    ₩{safeAmount.toLocaleString()}
+                                                </div>
+                                             </div>
+                                             <span className="text-[10px] md:text-xs text-gray-500 font-bold">
+                                                 {language === 'ko' ? MONTHS_KO[idx] : MONTHS_EN[idx]}
+                                             </span>
+                                         </div>
+                                     );
+                                })}
+                            </div>
+                        </div>
                     </div>
                 )}
 
