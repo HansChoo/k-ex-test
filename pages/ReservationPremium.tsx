@@ -13,7 +13,7 @@ interface ReservationPremiumProps {
 }
 
 export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
-  const { t, convertPrice, language } = useGlobal();
+  const { t, convertPrice, language, getLocalizedValue } = useGlobal();
   const isEn = language !== 'ko';
   
   const [activeTab, setActiveTab] = useState<'detail' | 'info' | 'faq'>('detail');
@@ -26,6 +26,11 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   
   // CMS Data
   const [cmsData, setCmsData] = useState<any>(null);
+
+  // Localized Values
+  const title = getLocalizedValue(cmsData, 'title') || t('pkg_prem');
+  const description = getLocalizedValue(cmsData, 'description') || `${t('tab_health')} (Premium) + ${t('tab_idol')} (Premium) + REJURAN BOOST`;
+  const content = getLocalizedValue(cmsData, 'content');
 
   useEffect(() => { 
       initializePayment('imp19424728'); 
@@ -112,15 +117,15 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
     <div className="w-full bg-white relative font-sans tracking-tight text-[#111]">
       <div className="lg:hidden flex items-center px-4 py-3 border-b border-gray-100 sticky top-[50px] bg-white z-40">
          <button onClick={() => window.history.back()} className="mr-4"><ChevronLeft size={24} /></button>
-         <span className="font-bold text-lg truncate">{cmsData?.title || t('pkg_prem')}</span>
+         <span className="font-bold text-lg truncate">{title}</span>
       </div>
 
       <div className="max-w-[1360px] mx-auto lg:px-4 lg:py-10 flex flex-col lg:flex-row gap-10 relative">
         <div className="flex-1 w-full min-w-0">
             <div className="px-4 lg:px-0 mb-8">
-                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em] keep-all">{cmsData?.title || t('pkg_prem')}</h1>
+                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em] keep-all">{title}</h1>
                 <p className="text-[14px] lg:text-[15px] text-[#888] mb-6 font-medium tracking-tight keep-all border-b border-gray-100 pb-5">
-                    {cmsData?.description || `${t('tab_health')} (Premium) + ${t('tab_idol')} (Premium) + REJURAN BOOST`}
+                    {description}
                 </p>
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
                     <div className="flex items-baseline gap-2">
@@ -150,8 +155,8 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
                 {activeTab === 'detail' && (
                     <div className="flex flex-col space-y-12">
                          {/* Dynamic Content from CMS */}
-                         {cmsData?.content ? (
-                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: cmsData.content }} />
+                         {content ? (
+                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: content }} />
                         ) : (
                             /* Fallback to original hardcoded content */
                             <>

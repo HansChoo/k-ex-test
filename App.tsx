@@ -31,6 +31,28 @@ interface ToastMsg {
   type: 'success' | 'error' | 'info';
 }
 
+// Fallback Data if DB is empty
+const DEFAULT_PACKAGES = [
+    {
+        id: 'package_basic',
+        title: 'K-체험 올인원 패키지 - 베이직',
+        title_en: 'K-Experience All-in-One Package - Basic',
+        price: 2763000,
+        originalPrice: 3070000,
+        description: '건강검진 (Basic) + K-IDOL (Basic) + GLASS SKIN Package',
+        description_en: 'Health Check (Basic) + K-IDOL (Basic) + GLASS SKIN Package',
+    },
+    {
+        id: 'package_premium',
+        title: 'K-체험 올인원 패키지 - 프리미엄',
+        title_en: 'K-Experience All-in-One Package - Premium',
+        price: 7515000,
+        originalPrice: 8350000,
+        description: '건강검진 (Premium) + K-IDOL (Premium) + REJURAN BOOST Package',
+        description_en: 'Health Check (Premium) + K-IDOL (Premium) + REJURAN BOOST Package',
+    }
+];
+
 const AppContent: React.FC = () => {
   const { language, t } = useGlobal();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -77,8 +99,6 @@ const AppContent: React.FC = () => {
     const refCode = params.get('ref');
     if (refCode) {
         sessionStorage.setItem('k_exp_ref', refCode);
-        // Increment Click Count
-        // We do this silently
         (async () => {
             try {
                 const q = query(collection(db, "affiliates"), where("code", "==", refCode));
@@ -94,9 +114,13 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const q = collection(db, "cms_packages");
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const pkgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        pkgs.sort((a,b) => a.id.localeCompare(b.id)); 
-        setPackages(pkgs);
+        if (snapshot.empty) {
+            setPackages(DEFAULT_PACKAGES);
+        } else {
+            const pkgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            pkgs.sort((a,b) => a.id.localeCompare(b.id)); 
+            setPackages(pkgs);
+        }
     });
     return () => unsubscribe();
   }, []);

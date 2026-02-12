@@ -13,7 +13,7 @@ interface ReservationBasicProps {
 }
 
 export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
-  const { t, convertPrice, language } = useGlobal();
+  const { t, convertPrice, language, getLocalizedValue } = useGlobal();
   const isEn = language !== 'ko';
   
   // --- States ---
@@ -32,6 +32,11 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
 
   // CMS Data
   const [cmsData, setCmsData] = useState<any>(null);
+
+  // Localized Values
+  const title = getLocalizedValue(cmsData, 'title') || t('pkg_basic');
+  const description = getLocalizedValue(cmsData, 'description') || `${t('tab_health')} (Basic) + ${t('tab_idol')} (Basic) + GLASS SKIN Package`;
+  const content = getLocalizedValue(cmsData, 'content');
 
   useEffect(() => {
     initializePayment('imp19424728');
@@ -170,16 +175,16 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
     <div className="w-full bg-white relative font-sans tracking-tight text-[#111]">
       <div className="lg:hidden flex items-center px-4 py-3 border-b border-gray-100 sticky top-[50px] bg-white z-40">
          <button onClick={() => window.history.back()} className="mr-4"><ChevronLeft size={24} /></button>
-         <span className="font-bold text-lg truncate">{cmsData?.title || t('pkg_basic')}</span>
+         <span className="font-bold text-lg truncate">{title}</span>
       </div>
 
       <div className="max-w-[1360px] mx-auto lg:px-4 lg:py-10 flex flex-col lg:flex-row gap-10 relative">
         <div className="flex-1 w-full min-w-0">
             {/* Same Left Content */}
             <div className="px-4 lg:px-0 mb-8">
-                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em] keep-all">{cmsData?.title || t('pkg_basic')}</h1>
+                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em] keep-all">{title}</h1>
                 <p className="text-[14px] lg:text-[15px] text-[#888] mb-6 font-medium tracking-tight keep-all border-b border-gray-100 pb-5">
-                    {cmsData?.description || `${t('tab_health')} (Basic) + ${t('tab_idol')} (Basic) + GLASS SKIN Package`}
+                    {description}
                 </p>
                 <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
                     <div className="flex items-baseline gap-2">
@@ -210,13 +215,13 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
             <div className="px-4 lg:px-0 min-h-[600px] pb-20">
                 {activeTab === 'detail' && (
                     <div className="flex flex-col space-y-12">
-                        {cmsData?.content ? (
-                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: cmsData.content }} />
+                        {content ? (
+                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: content }} />
                         ) : (
                             <>
                                 <img src={DETAIL_IMAGES.topBanner} alt="Top Banner" className="w-full max-w-[850px] mx-auto mb-4" />
                                 <div className="bg-[#F9FAFB] p-6 rounded-xl border border-gray-100 text-left space-y-3 max-w-[850px] mx-auto">
-                                    <h3 className="text-lg font-bold text-[#111] mb-2">🔳 {t('pkg_basic')}</h3>
+                                    <h3 className="text-lg font-bold text-[#111] mb-2">🔳 {title}</h3>
                                     <div className="space-y-3 text-[14px] text-[#555] leading-relaxed">
                                         <p>🔶 {t('tab_health')} (Basic)</p>
                                         <p>🔶 {t('tab_idol')} (Basic)</p>

@@ -13,7 +13,7 @@ interface ProductDetailProps {
 }
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
-  const { language, t, convertPrice, wishlist, toggleWishlist } = useGlobal();
+  const { language, t, convertPrice, wishlist, toggleWishlist, getLocalizedValue } = useGlobal();
   const isEn = language !== 'ko';
   
   // States
@@ -23,7 +23,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [peopleCount, setPeopleCount] = useState(1);
   const [isWishlistAnimating, setIsWishlistAnimating] = useState(false);
   
-  // Initialize Payment
+  // Localized Product Data
+  const title = getLocalizedValue(product, 'title');
+  const description = getLocalizedValue(product, 'description');
+  const content = getLocalizedValue(product, 'content');
+  const infoText = getLocalizedValue(product, 'infoText');
+  const faqText = getLocalizedValue(product, 'faqText');
+
   useEffect(() => {
     initializePayment('imp19424728');
     window.scrollTo(0,0);
@@ -47,7 +53,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     const { available } = await checkAvailability(selectedDate);
     if (available < peopleCount) return alert("Sold Out");
 
-    // Parse Price
     const numericPrice = typeof product.price === 'string' 
         ? Number(product.price.replace(/[^0-9]/g, '')) 
         : product.price;
@@ -59,7 +64,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     try {
         const paymentResult = await requestPayment({
             merchant_uid,
-            name: product.title,
+            name: title, // Use localized title
             amount: totalAmount,
             buyer_email: auth.currentUser.email || '',
             buyer_name: auth.currentUser.displayName || ''
@@ -68,7 +73,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
         if (paymentResult.success) {
             await createReservation({
                 userId: auth.currentUser.uid,
-                productName: product.title,
+                productName: title,
                 date: selectedDate,
                 peopleCount: peopleCount,
                 totalPrice: totalAmount,
@@ -91,13 +96,12 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       if (navigator.share) {
           try {
               await navigator.share({
-                  title: product.title,
-                  text: product.description,
+                  title: title,
+                  text: description,
                   url: window.location.href,
               });
           } catch (error) { console.log('Error sharing', error); }
       } else {
-          // Fallback
           navigator.clipboard.writeText(window.location.href);
           alert(isEn ? "Link copied to clipboard" : "링크가 복사되었습니다.");
       }
@@ -106,7 +110,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const CALENDAR_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
-  // Price Calculation for Display
   const numericPrice = typeof product.price === 'string' 
         ? Number(product.price.replace(/[^0-9]/g, '')) 
         : product.price;
@@ -121,10 +124,9 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             <div className="px-4 lg:px-0 mb-8">
                 <button onClick={() => window.location.href='/'} className="text-gray-400 mb-2 flex items-center gap-1 text-sm hover:text-black transition-colors"><ChevronLeft size={14}/> Back to list</button>
                 <div className="text-sm font-bold text-blue-600 mb-1">{product.category}</div>
-                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em]">{product.title}</h1>
-                <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{product.description}</p>
+                <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em]">{title}</h1>
+                <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{description}</p>
                 
-                {/* Action Bar */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-baseline gap-2">
                         <span className="text-[32px] font-black text-[#111]">{convertPrice(priceValue)}</span>
@@ -148,7 +150,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             {/* Main Image */}
             <div className="mb-12">
                 <div className="relative w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg">
-                    <img src={product.image} className="w-full h-full object-cover" alt="Product" />
+                    <img src={product.image} className="w-full h-full object-cover" alt={title} />
                 </div>
             </div>
 
@@ -169,8 +171,8 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 {activeTab === 'detail' && (
                     <div className="space-y-6">
                         {/* New Rich Text Content */}
-                        {product.content ? (
-                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: product.content }} />
+                        {content ? (
+                            <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: content }} />
                         ) : (
                             /* Legacy Content Fallback */
                             <>
@@ -183,17 +185,16 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 )}
                 {activeTab === 'info' && (
                     <div className="bg-gray-50 p-6 rounded-xl whitespace-pre-line text-sm leading-7 border border-gray-100">
-                        {product.infoText || "등록된 안내사항이 없습니다."}
+                        {infoText || "등록된 안내사항이 없습니다."}
                     </div>
                 )}
                 {activeTab === 'faq' && (
                     <div className="bg-gray-50 p-6 rounded-xl whitespace-pre-line text-sm leading-7 border border-gray-100">
-                        {product.faqText || "등록된 FAQ가 없습니다."}
+                        {faqText || "등록된 FAQ가 없습니다."}
                     </div>
                 )}
                 {activeTab === 'map' && (
                     <div className="w-full h-[400px] rounded-xl overflow-hidden border border-gray-200 shadow-md">
-                        {/* Embed Google Maps (Gangnam Severance or generic Gangnam area as default) */}
                         <iframe 
                             width="100%" 
                             height="100%" 

@@ -4,7 +4,6 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
 import { Heart } from 'lucide-react';
 
-// Enhanced Skeleton Component
 const ProductSkeleton = () => (
     <div className="flex flex-col">
         <div className="relative overflow-hidden rounded-[12px] bg-gray-200 aspect-square mb-5 animate-pulse"></div>
@@ -16,19 +15,18 @@ const ProductSkeleton = () => (
 );
 
 export const ProductList: React.FC<any> = () => {
-  const { t, products, wishlist, toggleWishlist } = useGlobal();
+  const { t, products, wishlist, toggleWishlist, getLocalizedValue } = useGlobal();
   const TABS = [t('tab_all'), t('tab_health'), t('tab_idol'), t('tab_beauty')];
   const [activeTab, setActiveTab] = useState(TABS[0]);
   const [loading, setLoading] = useState(true);
 
-  // Sync tab language when language changes
   useEffect(() => {
       setActiveTab(TABS[0]);
   }, [t]);
 
   useEffect(() => {
       setLoading(true);
-      setTimeout(() => setLoading(false), 800); // Slightly longer for skeleton demo
+      setTimeout(() => setLoading(false), 800);
   }, [products]);
 
   const filteredProducts = activeTab === t('tab_all') 
@@ -68,37 +66,42 @@ export const ProductList: React.FC<any> = () => {
              </div>
         ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
-                {filteredProducts.map((product: any, idx: number) => (
-                    <ScrollReveal key={idx} delay={idx * 50}>
-                        <div onClick={() => handleProductClick(product)} className="group flex flex-col cursor-pointer">
-                            <div className="relative overflow-hidden rounded-[12px] bg-gray-50 aspect-square mb-5 shadow-sm group-hover:shadow-lg transition-all duration-500">
-                                <img src={product.image} alt={product.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/>
-                                {(idx === 0 || product.title.includes("Premium") || product.title.includes("프리미엄")) && (
-                                    <div className="absolute bottom-0 left-0 bg-[#007BFF] text-white text-[11px] font-bold px-3 py-1.5 rounded-tr-lg z-10 tracking-tight">BEST</div>
-                                )}
-                                {/* Wishlist Heart Micro-interaction */}
-                                <button 
-                                    onClick={(e) => handleWishlistClick(e, product.id)}
-                                    className="absolute top-3 right-3 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:scale-110 active:scale-95 shadow-sm"
-                                >
-                                    <Heart 
-                                        size={18} 
-                                        className={`transition-colors duration-300 ${wishlist.includes(product.id) ? "fill-red-500 text-red-500 animate-heart-pop" : "text-gray-400 hover:text-red-400"}`} 
-                                    />
-                                </button>
-                            </div>
-                            <div className="flex flex-col text-left">
-                                <div className="text-[11px] text-[#999] mb-2 font-semibold tracking-tight">{product.category}</div>
-                                <h3 className="text-[16px] text-[#111] font-bold mb-1 line-clamp-1 group-hover:text-[#0070F0] transition-colors tracking-[-0.03em]">{product.title}</h3>
-                                <p className="text-[13px] text-[#777] mb-4 line-clamp-1 tracking-tight">{product.description}</p>
-                                <div className="mt-auto border-t border-[#eee] w-full pt-4 flex justify-between items-center">
-                                    <span className="font-black text-[18px] text-[#111] tracking-[-0.03em]">{product.price}</span>
-                                    <span className="text-[11px] font-bold text-[#0070F0] opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 duration-300">View Details →</span>
+                {filteredProducts.map((product: any, idx: number) => {
+                    // Localize content on render
+                    const title = getLocalizedValue(product, 'title');
+                    const desc = getLocalizedValue(product, 'description');
+
+                    return (
+                        <ScrollReveal key={idx} delay={idx * 50}>
+                            <div onClick={() => handleProductClick(product)} className="group flex flex-col cursor-pointer">
+                                <div className="relative overflow-hidden rounded-[12px] bg-gray-50 aspect-square mb-5 shadow-sm group-hover:shadow-lg transition-all duration-500">
+                                    <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"/>
+                                    {(idx === 0 || title.includes("Premium") || title.includes("프리미엄")) && (
+                                        <div className="absolute bottom-0 left-0 bg-[#007BFF] text-white text-[11px] font-bold px-3 py-1.5 rounded-tr-lg z-10 tracking-tight">BEST</div>
+                                    )}
+                                    <button 
+                                        onClick={(e) => handleWishlistClick(e, product.id)}
+                                        className="absolute top-3 right-3 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:scale-110 active:scale-95 shadow-sm"
+                                    >
+                                        <Heart 
+                                            size={18} 
+                                            className={`transition-colors duration-300 ${wishlist.includes(product.id) ? "fill-red-500 text-red-500 animate-heart-pop" : "text-gray-400 hover:text-red-400"}`} 
+                                        />
+                                    </button>
+                                </div>
+                                <div className="flex flex-col text-left">
+                                    <div className="text-[11px] text-[#999] mb-2 font-semibold tracking-tight">{product.category}</div>
+                                    <h3 className="text-[16px] text-[#111] font-bold mb-1 line-clamp-1 group-hover:text-[#0070F0] transition-colors tracking-[-0.03em]">{title}</h3>
+                                    <p className="text-[13px] text-[#777] mb-4 line-clamp-1 tracking-tight">{desc}</p>
+                                    <div className="mt-auto border-t border-[#eee] w-full pt-4 flex justify-between items-center">
+                                        <span className="font-black text-[18px] text-[#111] tracking-[-0.03em]">{product.price}</span>
+                                        <span className="text-[11px] font-bold text-[#0070F0] opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0 duration-300">View Details →</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </ScrollReveal>
-                ))}
+                        </ScrollReveal>
+                    );
+                })}
             </div>
         )}
     </section>

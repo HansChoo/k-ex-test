@@ -25,14 +25,16 @@ interface ReservationData {
 
 /**
  * [핵심 기능] 날짜별 인원 제한 체크 및 예약 생성
+ * + 쿠폰 재고 차감 (Coupon Usage Tracking)
+ * + 제휴 파트너 매출 집계 (Affiliate Revenue Tracking)
  */
 export const createReservation = async (data: ReservationData) => {
   const inventoryRef = doc(db, "inventory", data.date); 
   
   try {
     await runTransaction(db, async (transaction) => {
+      // 1. Inventory Check
       const inventoryDoc = await transaction.get(inventoryRef);
-      
       let currentCount = 0;
       let maxCapacity = 50; 
 
@@ -46,6 +48,25 @@ export const createReservation = async (data: ReservationData) => {
         throw new Error("Sold Out: 해당 날짜의 예약 정원이 초과되었습니다.");
       }
 
+      // 2. Coupon Validation & Consumption (Atomic)
+      if (data.options?.couponId) {
+          const couponRef = doc(db, "coupons", data.options.couponId);
+          const couponDoc = await transaction.get(couponRef);
+          
+          if (!couponDoc.exists()) throw new Error("Invalid Coupon");
+          
+          const couponData = couponDoc.data();
+          const currentUsage = couponData.currentUsage || 0;
+          const maxUsage = couponData.maxUsage || 999999;
+
+          if (currentUsage >= maxUsage) {
+              throw new Error("Coupon Limit Reached: 쿠폰 사용 한도가 초과되었습니다.");
+          }
+
+          transaction.update(couponRef, { currentUsage: currentUsage + 1 });
+      }
+
+      // 3. Create Reservation
       const reservationRef = doc(collection(db, "reservations"));
       transaction.set(reservationRef, {
         ...data,
@@ -53,29 +74,24 @@ export const createReservation = async (data: ReservationData) => {
         status: "confirmed"
       });
 
+      // 4. Update Inventory
       transaction.set(inventoryRef, {
         currentCount: currentCount + data.peopleCount,
         maxCapacity: maxCapacity
       }, { merge: true });
-      
-      // Affiliate Tracking: If affiliate code exists in options, increment sales
-      if (data.options?.affiliateCode) {
-          // This part ideally runs in a cloud function, but for now we try a client-side update (requires proper rules)
-          // or we just log it in the reservation and let admin handle it.
-          // We will update the affiliate doc asynchronously outside transaction to avoid complexity here if needed,
-          // but doing it here ensures consistency.
-          // Note: Needs query to find doc by code. Since transaction needs refs, we skip complex query inside transaction.
-          // We will handle affiliate increment after this function succeeds in the calling component or separate logic.
-      }
     });
     
-    // Post-transaction: Update Affiliate Stats if exists
+    // 5. Post-transaction: Update Affiliate Stats (Click count handles in app.tsx, this is Sales/Revenue)
+    // We do this outside transaction to avoid complexity, but could be inside if critical consistency needed.
     if (data.options?.affiliateCode) {
         const q = query(collection(db, "affiliates"), where("code", "==", data.options.affiliateCode));
         const snap = await getDocs(q);
         if (!snap.empty) {
             const affDoc = snap.docs[0].ref;
-            await updateDoc(affDoc, { sales: increment(1) });
+            await updateDoc(affDoc, { 
+                sales: increment(1),
+                totalRevenue: increment(data.totalPrice) // Add actual transaction amount to revenue
+            });
         }
     }
 
@@ -138,6 +154,7 @@ export const checkAvailability = async (date: string) => {
 
 /**
  * [쿠폰] 쿠폰 유효성 검증
+ * Returns Coupon ID for usage tracking
  */
 export const validateCoupon = async (code: string) => {
     try {
@@ -146,15 +163,25 @@ export const validateCoupon = async (code: string) => {
         
         if (snapshot.empty) return { valid: false, message: "Invalid Code" };
         
-        const coupon = snapshot.docs[0].data();
+        const couponDoc = snapshot.docs[0];
+        const coupon = couponDoc.data();
         const today = new Date().toISOString().split('T')[0];
         
+        // Expiry Check
         if (coupon.expiryDate && coupon.expiryDate < today) {
             return { valid: false, message: "Expired Coupon" };
         }
+
+        // Limit Check
+        const currentUsage = coupon.currentUsage || 0;
+        const maxUsage = coupon.maxUsage || 999999;
+        if (currentUsage >= maxUsage) {
+            return { valid: false, message: "Coupon limit reached" };
+        }
         
         return { 
-            valid: true, 
+            valid: true,
+            id: couponDoc.id, 
             type: coupon.type, // 'percent' | 'fixed'
             value: coupon.value,
             code: coupon.code

@@ -10,7 +10,7 @@ interface PackageSectionProps {
 }
 
 export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, packages }) => {
-  const { convertPrice, t } = useGlobal();
+  const { convertPrice, t, getLocalizedValue } = useGlobal();
 
   // Determine grid columns based on package count to ensure good layout
   let gridClass = 'grid-cols-1 md:grid-cols-2'; // Default for 2
@@ -31,16 +31,16 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, pac
 
         <div className={`grid ${gridClass} gap-6`}>
             {packages.map((pkg, idx) => {
-                // Determine styling based on package ID or order
                 const isPremium = pkg.id.includes('premium');
                 const isBasic = pkg.id.includes('basic');
-                // Fallback style for new dynamic packages
-                const isCustom = !isBasic && !isPremium;
-
                 const headerColor = isPremium ? 'bg-[#C8A32B]' : isBasic ? 'bg-[#0070F0]' : 'bg-[#333]';
                 const shadowColor = isPremium ? 'hover:shadow-[0_20px_50px_rgba(200,163,43,0.15)]' : isBasic ? 'hover:shadow-[0_20px_50px_rgba(0,112,240,0.15)]' : 'hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)]';
                 const boxBg = isPremium ? 'group-hover:bg-[#FFFBE6]' : isBasic ? 'group-hover:bg-[#F0F8FF]' : 'group-hover:bg-gray-50';
                 
+                // Use localized values
+                const title = getLocalizedValue(pkg, 'title');
+                const description = getLocalizedValue(pkg, 'description');
+
                 return (
                     <ScrollReveal key={pkg.id} delay={100 + (idx * 100)} className="h-full">
                         <div className={`bg-white rounded-[32px] overflow-hidden border border-[#EEE] shadow-[0_10px_30px_rgba(0,0,0,0.06)] ${shadowColor} transition-all duration-300 flex flex-col h-full group`}>
@@ -49,12 +49,12 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, pac
                                 <div className="text-[14px] font-extrabold opacity-90 mb-1 tracking-wide relative z-10 uppercase">
                                     {isPremium ? 'PREMIUM' : isBasic ? 'BASIC' : 'SPECIAL'}
                                 </div>
-                                <div className="text-[24px] lg:text-[28px] font-black tracking-[-0.04em] keep-all leading-tight relative z-10">{pkg.title}</div>
+                                <div className="text-[24px] lg:text-[28px] font-black tracking-[-0.04em] keep-all leading-tight relative z-10">{title}</div>
                             </div>
                             <div className="p-8 flex flex-col h-full">
                                 <div className={`bg-[#F6F7F9] rounded-2xl p-6 mb-8 space-y-5 flex-grow ${boxBg} transition-colors duration-300`}>
-                                    {pkg.description ? (
-                                        <div className="whitespace-pre-line text-sm font-medium text-[#444]">{pkg.description}</div>
+                                    {description ? (
+                                        <div className="whitespace-pre-line text-sm font-medium text-[#444]">{description}</div>
                                     ) : (
                                         <div className="text-gray-400 text-sm">No description available.</div>
                                     )}
