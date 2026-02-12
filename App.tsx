@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { GlobalProvider, useGlobal } from './contexts/GlobalContext';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
@@ -14,12 +14,14 @@ import { ReservationBasic } from './pages/ReservationBasic';
 import { ReservationPremium } from './pages/ReservationPremium';
 import { GroupBuyingPage } from './pages/GroupBuyingPage';
 import { MyPage } from './pages/MyPage';
-import { AdminDashboard } from './pages/AdminDashboard';
 import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './services/firebaseConfig';
-import { X, CheckCircle, AlertCircle, Info, ShoppingBag } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
+
+// Lazy Load Admin Dashboard for Security & Performance
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 
 export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist';
 
@@ -62,6 +64,16 @@ const AppContent: React.FC = () => {
   }, []);
 
   const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  // --- Secret Admin Route Check ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'admin') {
+        setCurrentView('admin');
+        // Optional: Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -133,7 +145,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {/* SOCIAL PROOF POPUP */}
-      {socialProof && (
+      {socialProof && currentView === 'home' && (
           <div className="fixed bottom-24 right-4 md:left-6 md:right-auto z-40 bg-white/90 backdrop-blur-md border border-gray-200 p-4 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3 animate-slide-up max-w-[300px]">
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
                   <ShoppingBag size={20} />
@@ -149,14 +161,17 @@ const AppContent: React.FC = () => {
           </div>
       )}
 
-      <Navbar 
-        isMenuOpen={isMenuOpen} 
-        toggleMenu={toggleMenu} 
-        onLogoClick={() => navigateTo('home')}
-        onMyPageClick={() => navigateTo('mypage')}
-        onAdminClick={() => navigateTo('admin')}
-        onWishlistClick={() => navigateTo('wishlist')}
-      />
+      {/* Conditionally Render Navbar based on View */}
+      {currentView !== 'admin' && (
+          <Navbar 
+            isMenuOpen={isMenuOpen} 
+            toggleMenu={toggleMenu} 
+            onLogoClick={() => navigateTo('home')}
+            onMyPageClick={() => navigateTo('mypage')}
+            onAdminClick={() => navigateTo('admin')}
+            onWishlistClick={() => navigateTo('wishlist')}
+          />
+      )}
       
       <main className="flex-grow">
         {currentView === 'home' && (
@@ -179,14 +194,21 @@ const AppContent: React.FC = () => {
         {currentView === 'product_detail' && selectedProduct && <ProductDetail language={language} product={selectedProduct} />}
         {currentView === 'group_buying' && <GroupBuyingPage language={language} />}
         {currentView === 'mypage' && <MyPage language={language} />}
-        {currentView === 'admin' && <AdminDashboard language={language} />}
+        
+        {/* Secured Admin Route */}
+        {currentView === 'admin' && (
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>}>
+            <AdminDashboard language={language} />
+          </Suspense>
+        )}
+        
         {currentView === 'wishlist' && <WishlistPage language={language} />}
       </main>
 
       {currentView !== 'admin' && <Footer language={language} />}
       
-      {language === 'ko' ? <AIAssistant /> : <FloatingButtons />}
-      <AIAssistant />
+      {currentView !== 'admin' && (language === 'ko' ? <AIAssistant /> : <FloatingButtons />)}
+      {currentView !== 'admin' && <AIAssistant />}
     </div>
   );
 };

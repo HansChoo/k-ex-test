@@ -24,7 +24,10 @@ import {
     AlertTriangle,
     MessageSquare,
     Clock,
-    Info
+    Info,
+    ShieldCheck,
+    ChevronRight,
+    LogOut
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, writeBatch, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -236,21 +239,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
       await batch.commit();
   };
 
+  const handleExitAdmin = () => {
+    window.location.href = '/';
+  };
+
   // --- Render ---
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500"><RefreshCw className="animate-spin mr-2"/> Connecting to Real-time DB...</div>;
 
+  // Professional "System Login" Screen
   if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
       return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F6F8] px-4">
-              <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-                  <h2 className="text-2xl font-black text-center mb-6">{t('login')}</h2>
-                  {loginError && <div className={`p-3 rounded mb-4 text-sm ${loginError.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>{loginError.message}</div>}
-                  <form onSubmit={handleAdminLogin} className="space-y-4">
-                      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full h-12 border rounded px-4" placeholder="admin@k-experience.com"/>
-                      <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full h-12 border rounded px-4" placeholder="Password"/>
-                      <button disabled={authLoading} className="w-full h-12 bg-black text-white rounded font-bold">{authLoading ? 'Loading...' : t('login')}</button>
-                  </form>
-                  <button onClick={createDefaultAdmin} className="mt-4 text-xs text-blue-500 underline w-full text-center">Create Init Account</button>
+          <div className="min-h-screen flex items-center justify-center bg-[#111827] px-4 font-sans">
+              <div className="w-full max-w-md">
+                  <div className="text-center mb-10">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-[#0070F0] rounded-2xl mb-4 shadow-lg shadow-blue-500/20">
+                        <ShieldCheck size={32} className="text-white" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-white tracking-tight mb-2">K-Experience Admin</h1>
+                    <p className="text-gray-400 text-sm">Authorized Personnel Only</p>
+                  </div>
+
+                  <div className="bg-[#1F2937] p-8 rounded-2xl shadow-2xl border border-gray-700/50 backdrop-blur-sm">
+                      {loginError && (
+                        <div className={`p-3 rounded-lg mb-6 text-xs font-bold flex items-center gap-2 ${loginError.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                            <AlertCircle size={16} /> {loginError.message}
+                        </div>
+                      )}
+                      
+                      <form onSubmit={handleAdminLogin} className="space-y-5">
+                          <div>
+                              <label className="block text-xs font-bold text-gray-500 mb-2 ml-1 uppercase">Admin ID</label>
+                              <div className="relative">
+                                  <Users size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                                  <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full h-11 pl-11 pr-4 bg-[#374151] border border-gray-600 rounded-lg focus:outline-none focus:border-[#0070F0] text-white placeholder-gray-500 transition-all font-mono text-sm" placeholder="admin@k-experience.com"/>
+                              </div>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-500 mb-2 ml-1 uppercase">Password</label>
+                              <div className="relative">
+                                  <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
+                                  <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full h-11 pl-11 pr-4 bg-[#374151] border border-gray-600 rounded-lg focus:outline-none focus:border-[#0070F0] text-white placeholder-gray-500 transition-all font-mono text-sm" placeholder="••••••••"/>
+                              </div>
+                          </div>
+                          <button disabled={authLoading} className="w-full h-12 bg-[#0070F0] hover:bg-blue-600 text-white rounded-lg font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 mt-2">
+                              {authLoading ? <RefreshCw className="animate-spin" size={18}/> : <>Access System <ChevronRight size={18} /></>}
+                          </button>
+                      </form>
+                  </div>
+
+                  <div className="mt-8 text-center space-y-4">
+                      <button onClick={handleExitAdmin} className="text-gray-500 hover:text-white text-xs font-medium transition-colors">
+                          ← Return to Store
+                      </button>
+                      {/* Init helper - remove in production if needed */}
+                      <div>
+                          <button onClick={createDefaultAdmin} className="text-[10px] text-gray-600 hover:text-gray-400 underline">
+                              Initialize System Account
+                          </button>
+                      </div>
+                  </div>
               </div>
           </div>
       );
@@ -259,22 +306,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   return (
     <div className="flex min-h-screen bg-[#F4F6F8] font-sans text-[#333]">
         <aside className="w-64 bg-[#1e2330] text-white flex-shrink-0 hidden md:flex flex-col">
-            <div className="h-16 flex items-center px-6 border-b border-gray-700 font-bold text-lg">K-Experience Admin</div>
+            <div className="h-16 flex items-center px-6 border-b border-gray-700 font-bold text-lg tracking-tight">K-Experience</div>
             <nav className="flex-1 py-6 space-y-1 px-3">
                 {[{ id: 'dashboard', icon: LayoutDashboard, label: t('admin_dash') }, { id: 'calendar', icon: CalendarIcon, label: t('admin_cal') }, { id: 'reservations', icon: ShoppingCart, label: t('admin_res') }, { id: 'products', icon: Package, label: t('admin_prod') }, { id: 'packages', icon: Star, label: t('admin_pkg') }, { id: 'groupbuys', icon: Megaphone, label: t('admin_gb') }, { id: 'users', icon: Users, label: t('admin_users') }].map((item) => (
                     <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === item.id ? 'bg-[#0070F0] text-white' : 'text-gray-400 hover:bg-gray-800'}`}><item.icon size={18} /> {item.label}</button>
                 ))}
             </nav>
-            <div className="p-4 border-t border-gray-700"><button onClick={() => logoutUser()} className="w-full py-2 bg-gray-800 text-xs rounded text-gray-300">{t('logout')}</button></div>
+            <div className="p-4 border-t border-gray-700">
+                <button onClick={() => { logoutUser(); window.location.reload(); }} className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-xs rounded-lg text-gray-300 font-bold flex items-center justify-center gap-2 transition-colors">
+                    <LogOut size={14} /> {t('logout')}
+                </button>
+            </div>
         </aside>
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden h-screen">
             <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0">
                 <h2 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">
                     {t(activeTab === 'dashboard' ? 'admin_dash' : activeTab === 'calendar' ? 'admin_cal' : activeTab === 'reservations' ? 'admin_res' : activeTab === 'products' ? 'admin_prod' : activeTab === 'packages' ? 'admin_pkg' : activeTab === 'groupbuys' ? 'admin_gb' : 'admin_users')}
-                    <span className="text-xs text-green-500 bg-green-50 px-2 py-1 rounded-full border border-green-100 flex items-center gap-1"><Clock size={10}/> Real-time</span>
+                    <span className="text-xs text-green-500 bg-green-50 px-2 py-1 rounded-full border border-green-100 flex items-center gap-1"><Clock size={10}/> Live Sync</span>
                 </h2>
-                <div className="text-xs text-gray-400">Auto-sync active</div>
+                <div className="flex items-center gap-4">
+                     <button onClick={handleExitAdmin} className="text-xs font-bold text-gray-500 hover:text-[#0070F0] border border-gray-200 px-3 py-1.5 rounded-lg transition-colors">Go to Shop</button>
+                     <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-bold text-xs border border-gray-200">A</div>
+                </div>
             </header>
 
             <div className="flex-1 overflow-auto p-8">
