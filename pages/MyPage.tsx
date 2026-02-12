@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { auth, db } from '../services/firebaseConfig';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Ticket, XCircle, Download } from 'lucide-react';
+import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon } from 'lucide-react';
 import { useGlobal } from '../contexts/GlobalContext';
 
 export const MyPage: React.FC<any> = () => {
@@ -12,23 +12,52 @@ export const MyPage: React.FC<any> = () => {
   const [reservations, setReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+  
+  // Edit Profile Mode
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ phone: '', nationality: '' });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        // Fetch Reservations
         const q = query(collection(db, "reservations"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
         try {
           const querySnapshot = await getDocs(q);
           const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setReservations(data);
         } catch (e) { console.error("Error fetching reservations:", e); }
+
+        // Fetch User Data for Profile
+        try {
+            const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", currentUser.uid)));
+            if (!userSnap.empty) {
+                const data = userSnap.docs[0].data();
+                setUserData(data);
+                setEditForm({ phone: data.phone || '', nationality: data.nationality || '' });
+            }
+        } catch(e) { console.error("User fetch error", e); }
       }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  const handleUpdateProfile = async () => {
+      if (!user) return;
+      try {
+          await updateDoc(doc(db, "users", user.uid), {
+              phone: editForm.phone,
+              nationality: editForm.nationality
+          });
+          setUserData({ ...userData, phone: editForm.phone, nationality: editForm.nationality });
+          setIsEditing(false);
+          alert(isEn ? "Profile updated." : "회원정보가 수정되었습니다.");
+      } catch (e) { alert("Error updating profile"); }
+  };
 
   if (loading) return <div className="p-20 text-center">Loading...</div>;
   if (!user) return <div className="p-20 text-center">{t('login')}</div>;
@@ -36,6 +65,40 @@ export const MyPage: React.FC<any> = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-16 min-h-[60vh]">
       <h1 className="text-3xl font-bold mb-8 text-[#111] border-b pb-4">{t('mypage')}</h1>
+      
+      {/* Profile Section */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-10 shadow-sm relative">
+          <div className="flex items-start justify-between mb-4">
+              <h2 className="text-lg font-bold flex items-center gap-2"><UserIcon size={20} /> {isEn ? "My Profile" : "내 정보"}</h2>
+              <button onClick={() => { if(isEditing) handleUpdateProfile(); else setIsEditing(true); }} className="text-sm font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                  {isEditing ? <><Save size={14}/> {isEn ? 'Save' : '저장'}</> : <><Edit2 size={14}/> {isEn ? 'Edit' : '수정'}</>}
+              </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              <div>
+                  <span className="block text-gray-400 text-xs font-bold mb-1">NAME</span>
+                  <span className="font-bold text-gray-800">{userData?.name || user.displayName}</span>
+              </div>
+              <div>
+                  <span className="block text-gray-400 text-xs font-bold mb-1">EMAIL</span>
+                  <span className="font-bold text-gray-800">{user.email}</span>
+              </div>
+              <div>
+                  <span className="block text-gray-400 text-xs font-bold mb-1">PHONE</span>
+                  {isEditing ? (
+                      <input type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="border rounded px-2 py-1 w-full font-bold" />
+                  ) : <span className="font-bold text-gray-800">{userData?.phone}</span>}
+              </div>
+              <div>
+                  <span className="block text-gray-400 text-xs font-bold mb-1">NATIONALITY</span>
+                   {isEditing ? (
+                      <input type="text" value={editForm.nationality} onChange={e => setEditForm({...editForm, nationality: e.target.value})} className="border rounded px-2 py-1 w-full font-bold" />
+                  ) : <span className="font-bold text-gray-800">{userData?.nationality}</span>}
+              </div>
+          </div>
+      </div>
+
+      <h2 className="text-xl font-bold mb-4">{isEn ? "My Reservations" : "예약 내역"}</h2>
       {reservations.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-xl"><p className="text-gray-500">No Reservations.</p></div>
       ) : (

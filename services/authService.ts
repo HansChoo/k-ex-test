@@ -7,13 +7,31 @@ import {
   User,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendEmailVerification
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db } from "./firebaseConfig";
 
 // Google Login Provider
 const googleProvider = new GoogleAuthProvider();
+
+// --- Helper: Check if Phone Number exists ---
+const checkPhoneNumberExists = async (phoneNumber: string) => {
+  // Normalize phone number (remove spaces, dashes)
+  const cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
+  
+  // Since we store phone numbers with country code/formatting in this app, 
+  // we should check loosely or ensure format consistency. 
+  // Ideally, store a 'cleanPhone' field in DB for searching.
+  // For now, we will query strictly. In production, ensure consistent saving format.
+  
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("phone", "==", phoneNumber)); // Exact match check
+  const querySnapshot = await getDocs(q);
+  
+  return !querySnapshot.empty;
+};
 
 // --- Google Login ---
 export const loginWithGoogle = async () => {
@@ -51,6 +69,13 @@ interface SignUpData {
 
 export const registerWithEmail = async (data: SignUpData) => {
   try {
+    // 0. Pre-check: Phone Number Duplication
+    // This is crucial for preventing abuse.
+    const isPhoneTaken = await checkPhoneNumberExists(data.phone);
+    if (isPhoneTaken) {
+        throw new Error("PHONE_EXISTS");
+    }
+
     // 1. Create Auth User
     const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
     const user = userCredential.user;
@@ -70,9 +95,14 @@ export const registerWithEmail = async (data: SignUpData) => {
       createdAt: new Date()
     });
 
+    // 4. Send Verification Email
+    await sendEmailVerification(user);
+
     return user;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration failed", error);
+    // Pass specific errors up
+    if (error.message === "PHONE_EXISTS") throw error;
     throw error;
   }
 };
@@ -109,7 +139,11 @@ export const handleAuthError = (error: any, isEn: boolean = false) => {
   
   let msg = error.message;
 
-  if (error.code === 'auth/email-already-in-use') {
+  if (msg === "PHONE_EXISTS") {
+      msg = isEn 
+        ? "This phone number is already registered. Please log in." 
+        : "이미 가입된 휴대전화 번호입니다. 로그인해주세요.";
+  } else if (error.code === 'auth/email-already-in-use') {
     msg = isEn ? 'Email already in use.' : '이미 사용 중인 이메일입니다.';
   } else if (error.code === 'auth/invalid-email') {
     msg = isEn ? 'Invalid email address.' : '유효하지 않은 이메일 주소입니다.';

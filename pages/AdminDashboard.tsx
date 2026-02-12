@@ -100,13 +100,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      if (!user) setLoading(false);
+      // FIX: Stop loading if user is not logged in OR logged in but not admin
+      if (!user || user.email !== ADMIN_EMAIL) {
+          setLoading(false);
+      }
     });
     return () => unsubscribe();
   }, []);
 
   // REAL-TIME DATA SYNC
   useEffect(() => {
+    // If not admin, do not subscribe to data
     if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
 
     // 1. Reservations Sync

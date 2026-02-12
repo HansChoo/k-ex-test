@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, AlertCircle } from 'lucide-react';
 import { auth } from '../services/firebaseConfig';
 import { createReservation, checkAvailability } from '../services/reservationService';
 import { initializePayment, requestPayment } from '../services/paymentService';
@@ -21,6 +21,7 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedGender, setSelectedGender] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false);
 
   useEffect(() => { initializePayment('imp19424728'); }, []);
 
@@ -32,6 +33,11 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
         return;
     }
     if (!selectedDate || !selectedGender || !selectedPayment) { alert(t('select_options')); return; }
+    
+    if (!agreedToPolicy) {
+        alert(isEn ? "Please agree to the cancellation policy." : "취소 및 환불 규정에 동의해주세요.");
+        return;
+    }
 
     try {
         const { available } = await checkAvailability(selectedDate);
@@ -172,11 +178,29 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
                 </div>
 
                 <div className="bg-[#f9f9f9] p-5">
+                    {/* Cancellation Policy Checkbox */}
+                    <div className="bg-white p-3 rounded-lg border border-red-100 mb-4 shadow-sm">
+                        <div className="flex items-start gap-2 mb-2">
+                             <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0"/>
+                             <div className="text-[11px] text-[#666] leading-tight">
+                                 <strong className="block text-[#111] mb-1">{isEn ? 'Cancellation Policy' : '취소 및 환불 규정'}</strong>
+                                 <p>{isEn ? '• 3 days prior: 100% Refund' : '• 이용 3일 전: 100% 환불'}</p>
+                                 <p>{isEn ? '• On the day: Non-refundable' : '• 이용 당일: 환불 불가'}</p>
+                             </div>
+                        </div>
+                        <div onClick={() => setAgreedToPolicy(!agreedToPolicy)} className="flex items-center gap-2 cursor-pointer pt-2 border-t border-gray-100 mt-2">
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${agreedToPolicy ? 'bg-red-500 border-red-500' : 'bg-white border-gray-300'}`}>
+                                {agreedToPolicy && <Check size={12} className="text-white"/>}
+                            </div>
+                            <span className={`text-xs font-bold ${agreedToPolicy ? 'text-red-600' : 'text-gray-400'}`}>{isEn ? 'I agree to the policy' : '위 규정에 동의합니다'}</span>
+                        </div>
+                    </div>
+
                     <div className="flex justify-between items-center mb-4">
                         <span className="text-[14px] font-bold text-[#555]">{t('total')}</span>
                         <div className="text-right"><span className="text-[20px] font-black text-[#111]">{selectedDate && selectedGender && selectedPayment ? getPrice() : '0'}</span></div>
                     </div>
-                    <button onClick={handleReservation} className={`w-full py-4 rounded-lg font-bold text-[16px] text-white ${selectedDate && selectedGender ? 'bg-[#0070F0]' : 'bg-[#999]'}`}>{t('book_now')}</button>
+                    <button onClick={handleReservation} className={`w-full py-4 rounded-lg font-bold text-[16px] text-white transition-colors ${selectedDate && selectedGender && agreedToPolicy ? 'bg-[#0070F0] hover:bg-blue-600' : 'bg-[#999] cursor-not-allowed'}`}>{t('book_now')}</button>
                 </div>
             </div>
         </div>
