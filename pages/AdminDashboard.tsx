@@ -20,7 +20,9 @@ import {
     Save,
     RefreshCw,
     Star,
-    BarChart3
+    BarChart3,
+    AlertTriangle,
+    MessageSquare
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, updateDoc, doc, addDoc, deleteDoc, writeBatch, setDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -91,7 +93,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
   });
 
   const ADMIN_EMAIL = "admin@k-experience.com";
-  const STATUS_MAP: {[key: string]: string} = {
+  
+  const STATUS_MAP_KO: {[key: string]: string} = {
       'pending': '입금대기',
       'confirmed': '예약확정',
       'cancelled': '취소됨',
@@ -220,9 +223,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
       } catch (e) { alert("상태 변경 실패"); }
   };
 
+  const handleAdminNoteUpdate = async (id: string, note: string) => {
+      const newNote = prompt("관리자 메모를 입력하세요:", note);
+      if (newNote === null) return;
+      try {
+          await updateDoc(doc(db, "reservations", id), { adminNote: newNote });
+          setReservations(prev => prev.map(r => r.id === id ? { ...r, adminNote: newNote } : r));
+      } catch (e) { alert("메모 저장 실패"); }
+  };
+
   // --- Product CRUD ---
   const handleSeedProducts = async () => {
-      if (!window.confirm("기본 데이터로 초기화하시겠습니까?")) return;
+      if (!window.confirm("기본 데이터 8개를 DB로 가져오시겠습니까? 기존 DB 데이터는 유지됩니다.")) return;
       setLoading(true);
       try {
           const batch = writeBatch(db);
@@ -232,6 +244,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
           });
           await batch.commit();
           await fetchAllData();
+          alert("완료! 이제 상품 데이터는 DB에서 영구적으로 관리됩니다.");
       } catch (e) { alert("초기화 실패"); } finally { setLoading(false); }
   };
 
@@ -275,12 +288,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
   const updatePackage = async (pkg: MainPackageType, field: string, value: any) => {
       try {
           const newPkg = { ...pkg, [field]: value };
-          // Optimistic UI update
           setMainPackages(prev => prev.map(p => p.id === pkg.id ? newPkg : p));
-          
-          // DB Update
           const ref = doc(db, "cms_packages", pkg.id);
-          // Check if exists first (lazy init)
           const snap = await getDoc(ref);
           if (!snap.exists()) {
              await setDoc(ref, newPkg);
@@ -290,7 +299,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
       } catch (e) { console.error(e); alert("패키지 업데이트 실패"); }
   };
 
-  // --- Delete Group Buy ---
   const deleteGroupBuy = async (id: string) => {
       if (!window.confirm("삭제하시겠습니까?")) return;
       try {
@@ -299,12 +307,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
       } catch (e) { alert("삭제 실패"); }
   }
 
-
   // --- Render Helpers ---
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50 font-bold"><RefreshCw className="animate-spin mr-2"/> Admin Loading...</div>;
   
   if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
-      // Login Form (Same as before, abbreviated for brevity in this response block if unchanged)
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-[#F4F6F8] px-4">
               <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
@@ -387,7 +393,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                                          <div key={idx} className="w-full flex flex-col items-center gap-2 group relative">
                                              <div 
                                                 className="w-full max-w-[40px] bg-blue-500 rounded-t-sm hover:bg-blue-600 transition-all relative" 
-                                                style={{ height: `${Math.max(heightPercent, 2)}%` }} // Min height 2%
+                                                style={{ height: `${Math.max(heightPercent, 2)}%` }}
                                              >
                                                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10">
                                                     ₩{amount.toLocaleString()}
@@ -431,7 +437,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                     </div>
                 )}
 
-                {/* 3. RESERVATIONS (Korean Status) */}
+                {/* 3. RESERVATIONS (Enhanced Status & Note) */}
                 {activeTab === 'reservations' && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <table className="w-full text-sm text-left">
@@ -440,27 +446,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                                     <th className="px-6 py-4">주문일시</th>
                                     <th className="px-6 py-4">상품명/이용일</th>
                                     <th className="px-6 py-4">결제금액</th>
-                                    <th className="px-6 py-4">상태 변경 (이용자 노출)</th>
+                                    <th className="px-6 py-4">상태 변경</th>
+                                    <th className="px-6 py-4">관리</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {reservations.map((res) => (
-                                    <tr key={res.id} className="hover:bg-gray-50">
+                                {reservations.map((res) => {
+                                    const statusColor = res.status === 'confirmed' ? 'text-green-600 bg-green-50 border-green-200' : 
+                                                      res.status === 'cancelled' ? 'text-red-600 bg-red-50 border-red-200' : 
+                                                      'text-yellow-600 bg-yellow-50 border-yellow-200';
+                                    return (
+                                    <tr key={res.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 text-gray-500">
                                             {new Date(res.createdAt?.seconds * 1000).toLocaleDateString()}
                                             <div className="text-xs">{new Date(res.createdAt?.seconds * 1000).toLocaleTimeString()}</div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="font-bold">{res.productName}</div>
-                                            <div className="text-xs text-blue-600">예약일: {res.date}</div>
-                                            <div className="text-xs text-gray-400">ID: {res.id}</div>
+                                            <div className="font-bold text-[#111]">{res.productName}</div>
+                                            <div className="text-xs text-blue-600 font-medium">예약일: {res.date}</div>
+                                            <div className="text-[10px] text-gray-400 mt-1">ID: {res.id}</div>
+                                            {res.adminNote && (
+                                                <div className="mt-2 text-xs bg-gray-100 p-2 rounded flex items-start gap-1">
+                                                    <MessageSquare size={12} className="mt-0.5 text-gray-500"/>
+                                                    <span className="text-gray-700">{res.adminNote}</span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 font-bold">₩{Number(res.totalPrice).toLocaleString()}</td>
                                         <td className="px-6 py-4">
                                             <select 
                                                 value={res.status}
                                                 onChange={(e) => handleStatusUpdate(res.id, e.target.value)}
-                                                className="px-2 py-1.5 rounded border border-gray-300 text-xs font-bold"
+                                                className={`px-2 py-1.5 rounded border text-xs font-bold focus:outline-none ${statusColor}`}
                                             >
                                                 <option value="pending">입금대기 (Pending)</option>
                                                 <option value="confirmed">예약확정 (Confirmed)</option>
@@ -468,27 +485,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ language }) => {
                                                 <option value="cancelled">취소됨 (Cancelled)</option>
                                             </select>
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <button 
+                                                onClick={() => handleAdminNoteUpdate(res.id, res.adminNote || '')}
+                                                className="text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded font-bold text-gray-600"
+                                            >
+                                                메모
+                                            </button>
+                                        </td>
                                     </tr>
-                                ))}
+                                )})}
                             </tbody>
                         </table>
                     </div>
                 )}
 
-                {/* 4. PRODUCTS (Enhanced) */}
+                {/* 4. PRODUCTS (Enhanced with Seed Prompt) */}
                 {activeTab === 'products' && (
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <h3 className="text-lg font-bold">일반 상품 관리</h3>
                             <div className="flex gap-2">
-                                {products.length === 0 && (
-                                    <button onClick={handleSeedProducts} className="btn-secondary text-xs"><RefreshCw size={14}/> 초기화</button>
-                                )}
+                                <button onClick={handleSeedProducts} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm font-bold flex items-center gap-2">
+                                    <RefreshCw size={16}/> {isEn ? 'Import Defaults' : '기본 상품 DB로 가져오기'}
+                                </button>
                                 <button onClick={() => openProductModal()} className="px-4 py-2 bg-[#0070F0] text-white rounded font-bold text-sm flex gap-2">
                                     <Plus size={16}/> 상품 등록
                                 </button>
                             </div>
                         </div>
+
+                        {/* WARNING ALERT for Initial State */}
+                        {products.length === 0 && (
+                            <div className="bg-yellow-50 border border-yellow-200 p-6 rounded-xl text-center mb-6">
+                                <AlertTriangle className="mx-auto text-yellow-600 mb-2" size={32} />
+                                <h4 className="font-bold text-yellow-800 text-lg mb-2">등록된 상품이 없습니다!</h4>
+                                <p className="text-yellow-700 text-sm mb-4">
+                                    현재 DB에 상품이 없습니다. 일반 사용자에게는 하드코딩된 기본 상품이 보이지만,<br/>
+                                    <strong>관리자가 여기서 새 상품을 1개라도 추가하면 하드코딩된 상품들은 사라지고 DB 상품만 보이게 됩니다.</strong><br/>
+                                    기존 상품들이 사라지지 않게 하려면 아래 버튼을 눌러 기본 상품을 DB로 복사하세요.
+                                </p>
+                                <button onClick={handleSeedProducts} className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-yellow-700 transition-colors">
+                                    기본 상품 8개 DB로 복사하기
+                                </button>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {products.map(product => (
