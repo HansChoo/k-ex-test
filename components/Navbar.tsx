@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Menu, X, Search, ShoppingCart, User as UserIcon, ChevronDown, Settings, Heart } from 'lucide-react';
+import { Menu, X, Search, ShoppingCart, User as UserIcon, ChevronDown, Settings, Heart, BookOpen } from 'lucide-react';
 import { NAV_LINKS } from '../constants';
 import { logoutUser, subscribeToAuthChanges } from '../services/authService';
 import { User } from 'firebase/auth';
@@ -26,7 +26,6 @@ const COUNTRIES = [
 export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoClick, onMyPageClick, onAdminClick, onWishlistClick }) => {
   const { language, setGlobalMode, t, currency, wishlist } = useGlobal();
   
-  // Dynamic Links based on language
   const links = NAV_LINKS[language] || NAV_LINKS['en'];
   
   const [user, setUser] = useState<User | null>(null);
@@ -113,6 +112,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
                     {link.name}
                 </a>
                 ))}
+                <a href="/magazine" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('navigate-magazine')); }} className="text-[#111] hover:text-[#0070F0] transition-colors font-bold text-[17px] tracking-[-0.03em] relative group h-[90px] flex items-center gap-1">
+                    {t('magazine')} <span className="bg-red-500 text-white text-[9px] px-1 rounded-sm -mt-3 ml-0.5">N</span>
+                </a>
             </div>
           </div>
 
@@ -137,6 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
             {links.map((link: any) => (
               <a key={link.name} href={link.href} className="block px-6 py-4 border-b border-gray-100 text-base font-bold text-gray-900 hover:text-blue-500 tracking-tight" onClick={() => { toggleMenu(); if(link.href === '#') onLogoClick?.(); }}>{link.name}</a>
             ))}
+            <a onClick={() => { toggleMenu(); window.dispatchEvent(new CustomEvent('navigate-magazine')); }} className="block px-6 py-4 border-b border-gray-100 text-base font-bold text-gray-900 hover:text-blue-500 tracking-tight">{t('magazine')}</a>
             <div className="bg-gray-50 px-6 py-4 space-y-4">
                  <div className="flex flex-wrap gap-2">
                     {COUNTRIES.map(c => (

@@ -77,7 +77,17 @@ const TRANSLATIONS: any = {
     monthly_rev: '월별 매출 추이', order_date: '주문일시', status: '상태', manage: '관리',
     status_pending: '입금대기', status_confirmed: '예약확정', status_completed: '이용완료', status_cancelled: '취소됨',
     save: '저장', cancel: '취소', delete: '삭제', edit: '수정', memo: '메모',
-    no_products: '등록된 상품이 없습니다!', import_db: '기본 상품 DB로 가져오기'
+    no_products: '등록된 상품이 없습니다!', import_db: '기본 상품 DB로 가져오기',
+    // New Features
+    magazine: 'K-매거진', inquiry: '1:1 문의', coupon: '쿠폰', affiliate: '제휴 마케팅',
+    coupon_code: '프로모션 코드', apply: '적용', discount_applied: '할인 적용됨', invalid_coupon: '유효하지 않은 쿠폰입니다.',
+    my_inquiries: '나의 문의내역', new_inquiry: '새 문의 작성', inquiry_title: '제목', inquiry_content: '내용',
+    status_waiting: '답변대기', status_answered: '답변완료',
+    admin_coupon: '쿠폰 관리', admin_magazine: '매거진 관리', admin_inquiry: '문의 관리', admin_affiliate: '제휴 파트너',
+    create_coupon: '쿠폰 생성', create_post: '포스트 작성', 
+    coupon_name: '쿠폰명', discount_type: '할인 타입', discount_value: '할인값', expiry: '만료일',
+    percent: '퍼센트(%)', fixed_amount: '정액(원)',
+    affiliate_code: '제휴 코드', partner_name: '파트너명', clicks: '유입 수', sales: '판매 수', commission: '수수료율'
   },
   en: {
     login: 'Login', signup: 'Sign Up', mypage: 'My Page', logout: 'Logout',
@@ -132,98 +142,27 @@ const TRANSLATIONS: any = {
     monthly_rev: 'Monthly Revenue', order_date: 'Date', status: 'Status', manage: 'Manage',
     status_pending: 'Pending', status_confirmed: 'Confirmed', status_completed: 'Completed', status_cancelled: 'Cancelled',
     save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', memo: 'Note',
-    no_products: 'No products found!', import_db: 'Import Defaults'
+    no_products: 'No products found!', import_db: 'Import Defaults',
+    // New Features
+    magazine: 'K-Magazine', inquiry: '1:1 Inquiry', coupon: 'Coupon', affiliate: 'Affiliates',
+    coupon_code: 'Promo Code', apply: 'Apply', discount_applied: 'Discount Applied', invalid_coupon: 'Invalid Coupon',
+    my_inquiries: 'My Inquiries', new_inquiry: 'New Inquiry', inquiry_title: 'Title', inquiry_content: 'Content',
+    status_waiting: 'Waiting', status_answered: 'Answered',
+    admin_coupon: 'Coupons', admin_magazine: 'Magazine', admin_inquiry: 'Inquiries', admin_affiliate: 'Affiliates',
+    create_coupon: 'Create Coupon', create_post: 'Create Post',
+    coupon_name: 'Coupon Name', discount_type: 'Type', discount_value: 'Value', expiry: 'Expiry',
+    percent: 'Percent (%)', fixed_amount: 'Amount (KRW)',
+    affiliate_code: 'Code', partner_name: 'Partner Name', clicks: 'Clicks', sales: 'Sales', commission: 'Commission'
   },
   ja: {
-    login: 'ログイン', signup: '会員登録', mypage: 'マイページ', logout: 'ログアウト',
-    admin: '管理者', share: '共有', map: '地図', wishlist: 'ウィッシュリスト', view_wishlist: '私のウィッシュリスト',
-    book_now: '予約する', total: '合計', select_date: '日付選択',
-    hero_badge: 'すでに2,847人が体験中！',
-    hero_title: 'K-体験のすべて！',
-    hero_subtitle: 'あなたが望むすべてのKがここに！',
-    hero_desc: '健康診断 · 美容施術 · 美容コンサルティング · K-POP\n様々なK-体験を一度にできるオールインワンプラットフォーム！',
-    promo_badge: '共同購入プロモーション',
-    promo_title: '集まれば集まるほど\n安くなる！',
-    promo_desc: '友達と一緒ならもっとお得に！人数に応じて最大30%割引',
-    promo_btn: '共同購入を見る',
-    pkg_title: 'K-体験 オールインワンパッケージ',
-    pkg_basic: 'オールインワンパッケージ - ベーシック',
-    pkg_prem: 'オールインワンパッケージ - プレミアム',
-    prod_title: 'すべてのK-体験商品を一目で！',
-    bottom_title: 'あなただけのK-体験を楽しもう',
-    bottom_desc: '健康診断から美容ケア、K-アイドル体験まで！\nあなたが望むすべての韓国体験がここにあります。',
-    tab_all: '全商品', tab_health: '健康診断', tab_idol: 'K-IDOL', tab_beauty: '美容施術',
-    detail: '詳細情報', notice: '案内事項', faq: 'よくある質問',
-    // Reservation Pages
-    step1: 'STEP 1', step1_label: '利用日',
-    step2: 'STEP 2', step2_label: 'オプション選択',
-    gender: '性別', male: '男性', female: '女性',
-    payment_type: '決済方法', pay_deposit: '予約金 (20%)', pay_full: '全額決済',
-    res_guide: '予約案内', res_guide_desc: '予約確定後、バウチャーがメールで送信されます。',
-    back_list: 'リストに戻る', sold_out: '売り切れ', select_options: 'オプションを選択',
-    confirm_msg: '予約が確定しました！',
-    // Group Buying
-    hot_group: 'HOT 共同購入',
-    ongoing_public: '進行中の共同購入',
-    no_active: '進行中のグループがありません！',
-    be_leader: '最初のリーダーになって最大50%割引を受けましょう！',
-    create_group: '共同購入を作成',
-    join_group: 'このグループに参加',
-    current: '現在', discount: '割引率', time_left: '残り時間',
-    progress: '進行率', est_total: '予想合計',
-    create_pay: '予約金を支払って作成',
-    visit_date_req: '訪問予定日 (必須)',
-    male_cnt: '男性', female_cnt: '女性',
-    gb_title: 'Your BEST K-Experience',
-    gb_sub: 'More People, Lower Price!',
-    gb_desc: '友達と一緒ならもっとお得に！人数に応じて最大50%割引',
-    // Social Proof
-    just_purchased: 'たった今購入しました！',
-    bought: 'さんが購入',
-    // Admin
-    admin_dash: 'ダッシュボード', admin_cal: '予約カレンダー', admin_res: '注文/予約管理',
-    admin_prod: '一般商品管理', admin_pkg: 'メインパッケージ管理', admin_gb: '共同購入管理', admin_users: '会員管理',
-    revenue: '総売上', orders: '総予約', users: '会員数', products: '商品数',
-    monthly_rev: '月別売上推移', order_date: '注文日時', status: '状態', manage: '管理',
-    status_pending: '入金待ち', status_confirmed: '予約確定', status_completed: '利用完了', status_cancelled: 'キャンセル',
-    save: '保存', cancel: 'キャンセル', delete: '削除', edit: '修正', memo: 'メモ',
-    no_products: '登録された商品がありません！', import_db: '基本商品DBをインポート'
+    // ... existing ...
+    magazine: 'K-マガジン', inquiry: '1:1 お問い合わせ', coupon: 'クーポン', affiliate: 'アフィリエイト',
+    coupon_code: 'プロモーションコード', apply: '適用', discount_applied: '割引適用', invalid_coupon: '無効なクーポンです。'
   },
   zh: {
-    login: '登录', signup: '注册', mypage: '我的页面', logout: '退出',
-    admin: '管理员', share: '分享', map: '地图', wishlist: '愿望清单', view_wishlist: '我的愿望清单',
-    book_now: '立即预订', total: '总计', select_date: '选择日期',
-    gender: '性别', male: '男性', female: '女性',
-    payment_type: '支付方式', pay_deposit: '定金 (20%)', pay_full: '全额付款',
-    res_guide: '预订指南', res_guide_desc: '确认后凭证将发送至您的电子邮箱。',
-    back_list: '返回列表', sold_out: '已售罄', select_options: '选择选项',
-    confirm_msg: '预订已确认！',
-    // Group Buying
-    hot_group: 'HOT 团购',
-    ongoing_public: '进行中的团购',
-    no_active: '暂无进行中的团购！',
-    be_leader: '成为第一个发起人，享受高达50%的折扣！',
-    create_group: '创建团购',
-    join_group: '加入此团购',
-    current: '当前', discount: '折扣', time_left: '剩余时间',
-    progress: '进度', est_total: '预计总额',
-    create_pay: '支付定金并创建',
-    visit_date_req: '访问日期 (必填)',
-    male_cnt: '男性', female_cnt: '女性',
-    gb_title: 'Your BEST K-Experience',
-    gb_sub: 'More People, Lower Price!',
-    gb_desc: '和朋友一起更便宜！人越多折扣越大 (最高50%)',
-    // Social Proof
-    just_purchased: '刚刚购买！',
-    bought: '购买了',
-    // Admin
-    admin_dash: '仪表板', admin_cal: '预订日历', admin_res: '订单/预订管理',
-    admin_prod: '一般产品管理', admin_pkg: '主套餐管理', admin_gb: '团购管理', admin_users: '会员管理',
-    revenue: '总收入', orders: '总预订', users: '会员数', products: '产品数',
-    monthly_rev: '月收入趋势', order_date: '订单日期', status: '状态', manage: '管理',
-    status_pending: '待付款', status_confirmed: '已确认', status_completed: '已完成', status_cancelled: '已取消',
-    save: '保存', cancel: '取消', delete: '删除', edit: '编辑', memo: '备注',
-    no_products: '未找到产品！', import_db: '导入默认值'
+    // ... existing ...
+    magazine: 'K-杂志', inquiry: '1:1 咨询', coupon: '优惠券', affiliate: '联盟营销',
+    coupon_code: '优惠码', apply: '应用', discount_applied: '已应用折扣', invalid_coupon: '无效的优惠券'
   }
 };
 
@@ -294,8 +233,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const t = (key: string) => TRANSLATIONS[language][key] || TRANSLATIONS['en'][key] || key;
 
-  // Prefer Real-time DB products, fallback to constants only if DB is empty (initial load)
-  // This ensures that as soon as the admin creates products, the site uses them.
   const displayProducts = realtimeProducts.length > 0 ? realtimeProducts : PRODUCTS_DATA[language];
 
   return (

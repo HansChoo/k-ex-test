@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, AlertCircle, Ticket } from 'lucide-react';
 import { auth, db } from '../services/firebaseConfig';
-import { createReservation, checkAvailability } from '../services/reservationService';
+import { createReservation, checkAvailability, validateCoupon } from '../services/reservationService';
 import { initializePayment, requestPayment } from '../services/paymentService';
 import { loginWithGoogle, handleAuthError } from '../services/authService';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -25,6 +25,11 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
   
+  // Coupon
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponMessage, setCouponMessage] = useState('');
+
   // CMS Data
   const [cmsData, setCmsData] = useState<any>(null);
 
@@ -36,6 +41,18 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
     });
     return () => unsub();
   }, []);
+
+  const handleApplyCoupon = async () => {
+      if (!couponCode) return;
+      const res = await validateCoupon(couponCode);
+      if (res.valid) {
+          setAppliedCoupon(res);
+          setCouponMessage(t('discount_applied'));
+      } else {
+          setAppliedCoupon(null);
+          setCouponMessage(t('invalid_coupon'));
+      }
+  };
 
   const handleReservation = async () => {
     if (!auth.currentUser) {
@@ -66,18 +83,27 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
         if (selectedGender === 'Female') priceNum = 2880000;
         if (selectedPayment === 'deposit') priceNum = 550000; 
 
-        // Use CMS price if available and full payment
+        // CMS Price Logic
         if (selectedPayment === 'full' && cmsData?.price) {
-             // Basic logic: if male, use base price, if female add adjustment.
-             // For simplicity, we stick to hardcoded logic for gender diffs unless DB structure changes.
-             // But we can update base price from DB
              const baseDbPrice = cmsData.price;
              priceNum = selectedGender === 'Female' ? (baseDbPrice + 117000) : baseDbPrice;
+        }
+
+        // Apply Coupon
+        if (appliedCoupon) {
+            if (appliedCoupon.type === 'percent') {
+                priceNum = priceNum * (1 - appliedCoupon.value / 100);
+            } else if (appliedCoupon.type === 'fixed') {
+                priceNum = Math.max(0, priceNum - appliedCoupon.value);
+            }
         }
 
         const productName = `Basic Package (${selectedDate})`;
         const merchant_uid = `mid_${new Date().getTime()}`;
         
+        // Affiliate Tracking Check
+        const affiliateCode = sessionStorage.getItem('k_exp_ref');
+
         const paymentResult = await requestPayment({
             merchant_uid, name: productName, amount: priceNum,
             buyer_email: auth.currentUser.email || '', buyer_name: auth.currentUser.displayName || ''
@@ -86,7 +112,12 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
         if (paymentResult.success) {
             await createReservation({
                 userId: auth.currentUser.uid, productName, date: selectedDate, peopleCount: 1, totalPrice: priceNum,
-                options: { gender: selectedGender, payment: selectedPayment }
+                options: { 
+                    gender: selectedGender, 
+                    payment: selectedPayment,
+                    coupon: appliedCoupon ? appliedCoupon.code : null,
+                    affiliateCode: affiliateCode 
+                }
             });
             alert(t('confirm_msg'));
             window.location.href = "/";
@@ -118,8 +149,18 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
 
   const getPrice = () => {
     let price = cmsData?.price || 2763000;
-    if (selectedGender === 'Female') price += 117000; // Adjustment
+    if (selectedGender === 'Female') price += 117000; 
     if (selectedPayment === 'deposit') price = 550000;
+    
+    // Display coupon effect visually if applied
+    if (appliedCoupon) {
+        if (appliedCoupon.type === 'percent') {
+            price = price * (1 - appliedCoupon.value / 100);
+        } else {
+            price = Math.max(0, price - appliedCoupon.value);
+        }
+    }
+    
     return convertPrice(price);
   };
 
@@ -127,7 +168,6 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
 
   return (
     <div className="w-full bg-white relative font-sans tracking-tight text-[#111]">
-      {/* Mobile Top Actions */}
       <div className="lg:hidden flex items-center px-4 py-3 border-b border-gray-100 sticky top-[50px] bg-white z-40">
          <button onClick={() => window.history.back()} className="mr-4"><ChevronLeft size={24} /></button>
          <span className="font-bold text-lg truncate">{cmsData?.title || t('pkg_basic')}</span>
@@ -135,6 +175,7 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
 
       <div className="max-w-[1360px] mx-auto lg:px-4 lg:py-10 flex flex-col lg:flex-row gap-10 relative">
         <div className="flex-1 w-full min-w-0">
+            {/* Same Left Content */}
             <div className="px-4 lg:px-0 mb-8">
                 <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug tracking-[-0.03em] keep-all">{cmsData?.title || t('pkg_basic')}</h1>
                 <p className="text-[14px] lg:text-[15px] text-[#888] mb-6 font-medium tracking-tight keep-all border-b border-gray-100 pb-5">
@@ -169,11 +210,9 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
             <div className="px-4 lg:px-0 min-h-[600px] pb-20">
                 {activeTab === 'detail' && (
                     <div className="flex flex-col space-y-12">
-                        {/* Dynamic Content from CMS */}
                         {cmsData?.content ? (
                             <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: cmsData.content }} />
                         ) : (
-                            /* Fallback to original hardcoded content */
                             <>
                                 <img src={DETAIL_IMAGES.topBanner} alt="Top Banner" className="w-full max-w-[850px] mx-auto mb-4" />
                                 <div className="bg-[#F9FAFB] p-6 rounded-xl border border-gray-100 text-left space-y-3 max-w-[850px] mx-auto">
@@ -222,7 +261,25 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
                 </div>
 
                 <div className="bg-[#f9f9f9] p-5">
-                    {/* Cancellation Policy Checkbox */}
+                    {/* Coupon Input */}
+                    <div className="bg-white p-3 rounded-lg border border-gray-200 mb-4 shadow-sm">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">{t('coupon_code')}</label>
+                        <div className="flex gap-2">
+                            <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="flex-1 border border-gray-200 rounded px-2 text-sm uppercase" placeholder="CODE"/>
+                            <button onClick={handleApplyCoupon} className="bg-black text-white px-3 py-1 rounded text-xs font-bold">{t('apply')}</button>
+                        </div>
+                        {couponMessage && <p className={`text-[10px] mt-1 font-bold ${appliedCoupon ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}
+                    </div>
+
+                    <div className="flex justify-between items-center mb-4">
+                        <span className="text-[14px] font-bold text-[#555]">{t('total')}</span>
+                        <div className="text-right">
+                            {appliedCoupon && <span className="block text-xs text-green-600 font-bold mb-1 line-through">{selectedDate && selectedGender ? convertPrice(cmsData?.price || 2763000) : ''}</span>}
+                            <span className="text-[20px] font-black text-[#111]">{selectedDate && selectedGender && selectedPayment ? getPrice() : '0'}</span>
+                        </div>
+                    </div>
+                    
+                    {/* Policy ... (kept same) */}
                     <div className="bg-white p-3 rounded-lg border border-red-100 mb-4 shadow-sm">
                         <div className="flex items-start gap-2 mb-2">
                              <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0"/>
@@ -240,10 +297,6 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
                         </div>
                     </div>
 
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="text-[14px] font-bold text-[#555]">{t('total')}</span>
-                        <div className="text-right"><span className="text-[20px] font-black text-[#111]">{selectedDate && selectedGender && selectedPayment ? getPrice() : '0'}</span></div>
-                    </div>
                     <button onClick={handleReservation} className={`w-full py-4 rounded-lg font-bold text-[16px] text-white transition-colors ${selectedDate && selectedGender && agreedToPolicy ? 'bg-[#0070F0] hover:bg-blue-600' : 'bg-[#999] cursor-not-allowed'}`}>{t('book_now')}</button>
                 </div>
             </div>

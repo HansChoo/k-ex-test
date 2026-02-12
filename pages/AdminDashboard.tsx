@@ -35,9 +35,12 @@ import {
     Printer,
     Mail,
     FileText,
-    HelpCircle
+    HelpCircle,
+    Ticket,
+    BookOpen,
+    Link as LinkIcon
 } from 'lucide-react';
-import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, writeBatch, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, writeBatch, setDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
 import { onAuthStateChanged, User, sendPasswordResetEmail } from 'firebase/auth';
 import { loginWithEmail, registerWithEmail, logoutUser } from '../services/authService';
@@ -73,7 +76,7 @@ interface MainPackageType {
     originalPrice: number;
     description: string;
     content?: string;
-    themeColor?: string; // For dynamic styling (blue, gold, etc.)
+    themeColor?: string;
 }
 
 const DEFAULT_CONTENT = `
@@ -87,7 +90,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const { t, language } = useGlobal();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'calendar' | 'reservations' | 'products' | 'packages' | 'groupbuys' | 'users' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'calendar' | 'reservations' | 'products' | 'packages' | 'groupbuys' | 'users' | 'settings' | 'coupons' | 'magazine' | 'inquiries' | 'affiliates'>('dashboard');
   
   const [stats, setStats] = useState({ revenue: 0, orders: 0, users: 0, products: 0 });
   const [monthlyRevenue, setMonthlyRevenue] = useState<number[]>(Array(12).fill(0));
@@ -97,6 +100,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [mainPackages, setMainPackages] = useState<MainPackageType[]>([]);
   const [groupBuys, setGroupBuys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // New Data States
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [magazinePosts, setMagazinePosts] = useState<any[]>([]);
+  const [inquiries, setInquiries] = useState<any[]>([]);
+  const [affiliates, setAffiliates] = useState<any[]>([]);
 
   // Settings Forms
   const [emailConfig, setEmailConfig] = useState({ serviceId: '', templateId: '', publicKey: '', confirmationBody: '' });
@@ -120,6 +129,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState<MainPackageType | null>(null);
   const [packageContentForm, setPackageContentForm] = useState('');
+
+  // Magazine Modal
+  const [isMagModalOpen, setIsMagModalOpen] = useState(false);
+  const [magForm, setMagForm] = useState({ title: '', category: '', image: '', content: '' });
+
+  // Coupon Form
+  const [couponForm, setCouponForm] = useState({ code: '', type: 'percent', value: 10, expiryDate: '' });
+
+  // Affiliate Form
+  const [affiliateForm, setAffiliateForm] = useState({ code: '', name: '', commission: 10 });
 
   const ADMIN_EMAIL = "admin@k-experience.com"; 
   const MONTHS_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
@@ -192,7 +211,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
         setGroupBuys(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     const unsubPkg = onSnapshot(collection(db, "cms_packages"), (snapshot) => {
-        // Sort specifically to keep basic first if possible, or by ID
         const pkgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as MainPackageType));
         setMainPackages(pkgs.sort((a,b) => a.id.localeCompare(b.id)));
     });
@@ -202,8 +220,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
             if (doc.id === 'receipt_config') setReceiptConfig(doc.data() as any);
         });
     });
+    // New Features Sync
+    const unsubCoupons = onSnapshot(collection(db, "coupons"), snap => setCoupons(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+    const unsubMag = onSnapshot(query(collection(db, "cms_magazine"), orderBy("createdAt", "desc")), snap => setMagazinePosts(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+    const unsubInq = onSnapshot(query(collection(db, "inquiries"), orderBy("createdAt", "desc")), snap => setInquiries(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+    const unsubAff = onSnapshot(collection(db, "affiliates"), snap => setAffiliates(snap.docs.map(d => ({id: d.id, ...d.data()}))));
+
     setLoading(false);
-    return () => { unsubRes(); unsubUsers(); unsubProds(); unsubGb(); unsubPkg(); unsubSettings(); };
+    return () => { unsubRes(); unsubUsers(); unsubProds(); unsubGb(); unsubPkg(); unsubSettings(); unsubCoupons(); unsubMag(); unsubInq(); unsubAff(); };
   }, [currentUser, isAdmin]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -249,7 +273,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   const deleteProduct = async (id: string) => { if (window.confirm(t('delete') + "?")) await deleteDoc(doc(db, "products", id)); };
   const deleteGroupBuy = async (id: string) => { if (window.confirm(t('delete') + "?")) await deleteDoc(doc(db, "group_buys", id)); };
   
-  // Package Management
   const updatePackage = async (pkg: MainPackageType, field: string, value: any) => {
       const ref = doc(db, "cms_packages", pkg.id);
       await updateDoc(ref, { [field]: value });
@@ -314,6 +337,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
   };
   const handleExitAdmin = () => { window.location.href = '/'; };
 
+  // --- New Logic for Coupon, Mag, etc. ---
+  const handleCreateCoupon = async () => {
+      await addDoc(collection(db, "coupons"), {
+          ...couponForm,
+          value: Number(couponForm.value),
+          isActive: true,
+          createdAt: serverTimestamp()
+      });
+      setCouponForm({ code: '', type: 'percent', value: 10, expiryDate: '' });
+  };
+  const deleteCoupon = async (id: string) => { if(window.confirm(t('delete')+"?")) await deleteDoc(doc(db, "coupons", id)); };
+
+  const handleCreateAffiliate = async () => {
+      await addDoc(collection(db, "affiliates"), {
+          ...affiliateForm,
+          clicks: 0, sales: 0,
+          createdAt: serverTimestamp()
+      });
+      setAffiliateForm({ code: '', name: '', commission: 10 });
+  };
+
+  const handleMagSubmit = async () => {
+      await addDoc(collection(db, "cms_magazine"), {
+          ...magForm,
+          createdAt: serverTimestamp(),
+          author: 'Admin'
+      });
+      setIsMagModalOpen(false);
+      setMagForm({ title: '', category: '', image: '', content: '' });
+  };
+
+  const handleAnswerInquiry = async (id: string) => {
+      const ans = prompt("Answer:");
+      if(ans) {
+          await updateDoc(doc(db, "inquiries", id), {
+              answer: ans,
+              status: 'answered',
+              answeredAt: serverTimestamp()
+          });
+      }
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500"><RefreshCw className="animate-spin mr-2"/> Connecting to Real-time DB...</div>;
   if (!isAdmin) {
       return (
@@ -332,10 +397,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F4F6F8] font-sans text-[#333]">
-        <aside className="w-64 bg-[#1e2330] text-white flex-shrink-0 hidden md:flex flex-col">
+        <aside className="w-64 bg-[#1e2330] text-white flex-shrink-0 hidden md:flex flex-col h-screen overflow-y-auto">
             <div className="h-16 flex items-center px-6 border-b border-gray-700 font-bold text-lg tracking-tight">K-Experience</div>
             <nav className="flex-1 py-6 space-y-1 px-3">
-                {[{ id: 'dashboard', icon: LayoutDashboard, label: t('admin_dash') }, { id: 'calendar', icon: CalendarIcon, label: t('admin_cal') }, { id: 'reservations', icon: ShoppingCart, label: t('admin_res') }, { id: 'products', icon: Package, label: t('admin_prod') }, { id: 'packages', icon: Star, label: t('admin_pkg') }, { id: 'groupbuys', icon: Megaphone, label: t('admin_gb') }, { id: 'users', icon: Users, label: t('admin_users') }, { id: 'settings', icon: SettingsIcon, label: 'Settings' }].map((item) => (
+                {[{ id: 'dashboard', icon: LayoutDashboard, label: t('admin_dash') }, { id: 'calendar', icon: CalendarIcon, label: t('admin_cal') }, { id: 'reservations', icon: ShoppingCart, label: t('admin_res') }, { id: 'products', icon: Package, label: t('admin_prod') }, { id: 'packages', icon: Star, label: t('admin_pkg') }, { id: 'groupbuys', icon: Megaphone, label: t('admin_gb') }, { id: 'users', icon: Users, label: t('admin_users') }, { id: 'coupons', icon: Ticket, label: t('admin_coupon') }, { id: 'magazine', icon: BookOpen, label: t('admin_magazine') }, { id: 'inquiries', icon: MessageSquare, label: t('admin_inquiry') }, { id: 'affiliates', icon: LinkIcon, label: t('admin_affiliate') }, { id: 'settings', icon: SettingsIcon, label: 'Settings' }].map((item) => (
                     <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === item.id ? 'bg-[#0070F0] text-white' : 'text-gray-400 hover:bg-gray-800'}`}><item.icon size={18} /> {item.label}</button>
                 ))}
             </nav>
@@ -344,7 +409,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden h-screen">
             <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 flex-shrink-0">
-                <h2 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">{t(activeTab === 'dashboard' ? 'admin_dash' : activeTab === 'calendar' ? 'admin_cal' : activeTab === 'reservations' ? 'admin_res' : activeTab === 'products' ? 'admin_prod' : activeTab === 'packages' ? 'admin_pkg' : activeTab === 'groupbuys' ? 'admin_gb' : activeTab === 'settings' ? 'Settings' : 'admin_users')}<span className="text-xs text-green-500 bg-green-50 px-2 py-1 rounded-full border border-green-100 flex items-center gap-1"><Clock size={10}/> Live Sync</span></h2>
+                <h2 className="text-lg font-bold text-gray-800 capitalize flex items-center gap-2">{t(`admin_${activeTab}` as any) || activeTab.toUpperCase()}<span className="text-xs text-green-500 bg-green-50 px-2 py-1 rounded-full border border-green-100 flex items-center gap-1"><Clock size={10}/> Live Sync</span></h2>
                 <div className="flex items-center gap-4"><button onClick={handleExitAdmin} className="text-xs font-bold text-gray-500 hover:text-[#0070F0] border border-gray-200 px-3 py-1.5 rounded-lg transition-colors">Go to Shop</button><div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 font-bold text-xs border border-gray-200">{currentUser?.email === ADMIN_EMAIL ? 'S' : 'A'}</div></div>
             </header>
 
@@ -357,6 +422,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"><h3 className="text-lg font-bold mb-6 flex items-center gap-2"><BarChart3 size={20}/> {t('monthly_rev')}</h3><div className="h-64 flex items-end gap-2 md:gap-4 justify-between px-2 md:px-10 border-b border-gray-200 pb-2">{monthlyRevenue.map((amount, idx) => { const safeAmount = isNaN(amount) ? 0 : amount; const safeMax = Math.max(...monthlyRevenue.map(v => isNaN(v) ? 0 : v), 1); const heightPercent = (safeAmount / safeMax) * 100; return (<div key={idx} className="w-full flex flex-col items-center gap-2 group relative"><div className="w-full max-w-[40px] bg-blue-500 rounded-t-sm hover:bg-blue-600 transition-all relative" style={{ height: `${Math.max(heightPercent, 2)}%` }}><div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-10 font-bold">₩{safeAmount.toLocaleString()}</div></div><span className="text-[10px] md:text-xs text-gray-500 font-bold">{language === 'ko' ? MONTHS_KO[idx] : MONTHS_EN[idx]}</span></div>);})}</div></div>
                     </div>
                 )}
+                {/* ... (Existing Tabs: calendar, reservations, products, packages, groupbuys, users) ... */}
                 {activeTab === 'calendar' && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-bold">{t('admin_cal')}</h3><span className="text-xs text-blue-500 bg-blue-50 px-3 py-1 rounded-full font-bold">Tip: Drag & Drop reservations to reschedule!</span></div><div className="grid grid-cols-7 border-b border-gray-200 pb-2 mb-2 text-center text-sm font-bold text-gray-500">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}</div><div className="grid grid-cols-7 gap-2 min-h-[400px]">{Array.from({length: 31}, (_, i) => { const day = i + 1; const dateStr = `2026-02-${day.toString().padStart(2, '0')}`; const dayRes = reservations.filter(r => r.date === dateStr); return (<div key={day} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, dateStr)} className={`border border-gray-100 rounded p-1 h-32 overflow-hidden hover:bg-gray-50 transition-colors ${dayRes.length > 0 ? 'bg-blue-50/50' : ''}`}><span className="text-sm font-bold text-gray-700 ml-1">{day}</span><div className="mt-1 space-y-1 overflow-y-auto max-h-[100px] no-scrollbar">{dayRes.map((r: any) => (<div key={r.id} draggable onDragStart={(e) => handleDragStart(e, r.id)} className={`text-[10px] px-1 py-1 rounded truncate cursor-move shadow-sm active:opacity-50 ${r.status === 'confirmed' ? 'bg-blue-500 text-white' : 'bg-yellow-400 text-yellow-900'}`}>{r.productName}</div>))}</div></div>) })}</div></div>
                 )}
@@ -374,8 +440,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                                 <Plus size={16} /> Add New Package
                             </button>
                         </div>
-                        
-                        {/* Dynamic Grid: 1 col, 2 cols, or more depending on count */}
                         <div className={`grid grid-cols-1 ${mainPackages.length > 1 ? 'lg:grid-cols-2' : ''} gap-8`}>
                             {mainPackages.map(pkg => { 
                                 const isBasic = pkg.id.includes('basic'); 
@@ -388,25 +452,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                                         <div className="flex justify-between items-start mb-4">
                                             <h4 className={`text-xl font-black ${textClass}`}>{pkg.title}</h4>
                                             <div className="flex gap-2">
-                                                <button 
-                                                    onClick={() => openPackageEditor(pkg)}
-                                                    className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold shadow-sm hover:text-blue-600 flex items-center gap-1"
-                                                >
-                                                    <FileText size={14} /> Edit Detail
-                                                </button>
-                                                {!isBasic && !isPremium && (
-                                                    <button onClick={() => deletePackage(pkg.id)} className="bg-white p-1.5 rounded-lg border border-red-100 text-red-500 hover:bg-red-50">
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                )}
+                                                <button onClick={() => openPackageEditor(pkg)} className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-bold shadow-sm hover:text-blue-600 flex items-center gap-1"><FileText size={14} /> Edit Detail</button>
+                                                {!isBasic && !isPremium && (<button onClick={() => deletePackage(pkg.id)} className="bg-white p-1.5 rounded-lg border border-red-100 text-red-500 hover:bg-red-50"><Trash2 size={14} /></button>)}
                                             </div>
                                         </div>
                                         <div className="space-y-4">
                                             <div><label className="block text-xs font-bold text-gray-600 mb-1">Title</label><input className="w-full p-2 border rounded bg-white" value={pkg.title} onChange={e => updatePackage(pkg, 'title', e.target.value)} /></div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><label className="block text-xs font-bold text-gray-600 mb-1">Price</label><input type="number" className="w-full p-2 border rounded bg-white" value={pkg.price} onChange={e => updatePackage(pkg, 'price', Number(e.target.value))} /></div>
-                                                <div><label className="block text-xs font-bold text-gray-600 mb-1">Orig Price</label><input type="number" className="w-full p-2 border rounded bg-white" value={pkg.originalPrice} onChange={e => updatePackage(pkg, 'originalPrice', Number(e.target.value))} /></div>
-                                            </div>
+                                            <div className="grid grid-cols-2 gap-4"><div><label className="block text-xs font-bold text-gray-600 mb-1">Price</label><input type="number" className="w-full p-2 border rounded bg-white" value={pkg.price} onChange={e => updatePackage(pkg, 'price', Number(e.target.value))} /></div><div><label className="block text-xs font-bold text-gray-600 mb-1">Orig Price</label><input type="number" className="w-full p-2 border rounded bg-white" value={pkg.originalPrice} onChange={e => updatePackage(pkg, 'originalPrice', Number(e.target.value))} /></div></div>
                                             <div><label className="block text-xs font-bold text-gray-600 mb-1">Short Description</label><textarea className="w-full p-2 border rounded bg-white h-20" value={pkg.description} onChange={e => updatePackage(pkg, 'description', e.target.value)} /></div>
                                         </div>
                                     </div>
@@ -421,6 +473,109 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                 {activeTab === 'users' && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6"><h3 className="text-lg font-bold mb-4">{t('admin_users')}</h3><table className="w-full text-sm text-left"><thead className="bg-gray-50 text-gray-500"><tr><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Phone</th><th className="p-3">Role</th><th className="p-3">Joined</th><th className="p-3 text-right">Action</th></tr></thead><tbody>{users.map(u => (<tr key={u.id} className="border-b last:border-0 hover:bg-gray-50"><td className="p-3 font-bold">{u.name}</td><td className="p-3">{u.email}</td><td className="p-3">{u.phone}</td><td className="p-3">{u.email === ADMIN_EMAIL ? (<span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-black flex items-center gap-1 w-fit"><Shield size={12}/> SUPER</span>) : u.role === 'admin' ? (<span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 w-fit"><ShieldCheck size={12}/> ADMIN</span>) : (<span className="text-gray-400 text-xs">USER</span>)}</td><td className="p-3 text-gray-400">{u.createdAt?.seconds ? new Date(u.createdAt.seconds*1000).toLocaleDateString() : '-'}</td><td className="p-3 text-right">{u.email !== ADMIN_EMAIL && (<button onClick={() => toggleUserAdminRole(u.id, u.role, u.email)} className={`px-3 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1 ml-auto ${u.role === 'admin' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>{u.role === 'admin' ? <><UserX size={14}/> Revoke</> : <><UserCheck size={14}/> Make Admin</>}</button>)}</td></tr>))}</tbody></table></div>
                 )}
+
+                {/* --- NEW TABS --- */}
+                {activeTab === 'coupons' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold">{t('admin_coupon')}</h3>
+                            <div className="flex gap-2">
+                                <input type="text" placeholder={t('coupon_code')} value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} className="border rounded px-2 text-sm uppercase"/>
+                                <select value={couponForm.type} onChange={e => setCouponForm({...couponForm, type: e.target.value})} className="border rounded px-2 text-sm"><option value="percent">{t('percent')}</option><option value="fixed">{t('fixed_amount')}</option></select>
+                                <input type="number" placeholder={t('discount_value')} value={couponForm.value} onChange={e => setCouponForm({...couponForm, value: Number(e.target.value)})} className="border rounded px-2 text-sm w-20"/>
+                                <input type="date" value={couponForm.expiryDate} onChange={e => setCouponForm({...couponForm, expiryDate: e.target.value})} className="border rounded px-2 text-sm"/>
+                                <button onClick={handleCreateCoupon} className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-bold">{t('create_coupon')}</button>
+                            </div>
+                        </div>
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-500"><tr><th>{t('coupon_code')}</th><th>{t('discount_type')}</th><th>{t('discount_value')}</th><th>{t('expiry')}</th><th>{t('manage')}</th></tr></thead>
+                            <tbody>
+                                {coupons.map(c => (
+                                    <tr key={c.id} className="border-b">
+                                        <td className="p-3 font-bold">{c.code}</td>
+                                        <td className="p-3">{c.type === 'percent' ? '%' : 'KRW'}</td>
+                                        <td className="p-3">{c.value}</td>
+                                        <td className="p-3">{c.expiryDate}</td>
+                                        <td className="p-3"><button onClick={() => deleteCoupon(c.id)} className="text-red-500"><Trash2 size={16}/></button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {activeTab === 'magazine' && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+                            <h3 className="text-lg font-bold">{t('admin_magazine')}</h3>
+                            <button onClick={() => setIsMagModalOpen(true)} className="bg-black text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"><Plus size={16}/> {t('create_post')}</button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                            {magazinePosts.map(post => (
+                                <div key={post.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                                    <div className="flex gap-4 items-center">
+                                        {post.image && <img src={post.image} className="w-16 h-16 object-cover rounded-lg"/>}
+                                        <div><h4 className="font-bold">{post.title}</h4><span className="text-xs text-gray-500">{post.category}</span></div>
+                                    </div>
+                                    <button onClick={async () => { if(window.confirm("Delete?")) await deleteDoc(doc(db, "cms_magazine", post.id)); }} className="text-red-500 hover:bg-red-50 p-2 rounded"><Trash2 size={16}/></button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'inquiries' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <h3 className="text-lg font-bold mb-4">{t('admin_inquiry')}</h3>
+                        <div className="space-y-4">
+                            {inquiries.map(inq => (
+                                <div key={inq.id} className={`p-4 border rounded-xl ${inq.status === 'waiting' ? 'bg-red-50 border-red-100' : 'bg-white border-gray-200'}`}>
+                                    <div className="flex justify-between mb-2">
+                                        <div className="font-bold">{inq.userName} <span className="text-xs font-normal text-gray-500">({inq.createdAt?.seconds ? new Date(inq.createdAt.seconds*1000).toLocaleDateString() : ''})</span></div>
+                                        <span className={`text-xs px-2 py-1 rounded font-bold ${inq.status === 'waiting' ? 'bg-red-200 text-red-800' : 'bg-green-100 text-green-800'}`}>{inq.status}</span>
+                                    </div>
+                                    <h4 className="font-bold mb-1">{inq.title}</h4>
+                                    <p className="text-sm text-gray-600 mb-4">{inq.content}</p>
+                                    {inq.status === 'waiting' ? (
+                                        <button onClick={() => handleAnswerInquiry(inq.id)} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded font-bold">Answer</button>
+                                    ) : (
+                                        <div className="bg-gray-50 p-2 rounded text-sm"><span className="font-bold text-blue-600">Admin:</span> {inq.answer}</div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'affiliates' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold">{t('admin_affiliate')}</h3>
+                            <div className="flex gap-2">
+                                <input type="text" placeholder="Code" value={affiliateForm.code} onChange={e => setAffiliateForm({...affiliateForm, code: e.target.value})} className="border rounded px-2 text-sm"/>
+                                <input type="text" placeholder="Partner Name" value={affiliateForm.name} onChange={e => setAffiliateForm({...affiliateForm, name: e.target.value})} className="border rounded px-2 text-sm"/>
+                                <input type="number" placeholder="Comm %" value={affiliateForm.commission} onChange={e => setAffiliateForm({...affiliateForm, commission: Number(e.target.value)})} className="border rounded px-2 text-sm w-20"/>
+                                <button onClick={handleCreateAffiliate} className="bg-purple-600 text-white px-3 py-1 rounded text-sm font-bold">Add Partner</button>
+                            </div>
+                        </div>
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-500"><tr><th>Code</th><th>Name</th><th>Clicks</th><th>Sales</th><th>Manage</th></tr></thead>
+                            <tbody>
+                                {affiliates.map(af => (
+                                    <tr key={af.id} className="border-b">
+                                        <td className="p-3 font-bold text-blue-600">{af.code}</td>
+                                        <td className="p-3">{af.name}</td>
+                                        <td className="p-3">{af.clicks}</td>
+                                        <td className="p-3 font-bold">{af.sales}</td>
+                                        <td className="p-3"><button onClick={async () => { if(window.confirm("Delete?")) await deleteDoc(doc(db, "affiliates", af.id)); }} className="text-red-500"><Trash2 size={16}/></button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {/* Settings Tab (Existing) */}
                 {activeTab === 'settings' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Email Settings (Translated with Tips) */}
@@ -540,6 +695,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = () => {
                     </div>
                 </div>
              </div>
+        )}
+
+        {isMagModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                        <h3 className="font-bold text-lg">Create Magazine Post</h3>
+                        <button onClick={() => setIsMagModalOpen(false)}><X size={20}/></button>
+                    </div>
+                    <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+                        <input type="text" placeholder="Title" value={magForm.title} onChange={e => setMagForm({...magForm, title: e.target.value})} className="w-full border p-2 rounded"/>
+                        <div className="flex gap-4">
+                            <input type="text" placeholder="Category (e.g. Travel)" value={magForm.category} onChange={e => setMagForm({...magForm, category: e.target.value})} className="w-1/2 border p-2 rounded"/>
+                            <input type="text" placeholder="Cover Image URL" value={magForm.image} onChange={e => setMagForm({...magForm, image: e.target.value})} className="w-1/2 border p-2 rounded"/>
+                        </div>
+                        <RichTextEditor value={magForm.content} onChange={html => setMagForm({...magForm, content: html})} />
+                    </div>
+                    <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+                        <button onClick={handleMagSubmit} className="bg-black text-white px-6 py-2 rounded font-bold">Publish</button>
+                    </div>
+                </div>
+            </div>
         )}
     </div>
   );

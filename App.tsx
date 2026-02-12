@@ -16,14 +16,14 @@ import { GroupBuyingPage } from './pages/GroupBuyingPage';
 import { MyPage } from './pages/MyPage';
 import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { MagazinePage } from './pages/MagazinePage';
+import { collection, onSnapshot, query, orderBy, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
 import { db } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
 
-// Lazy Load Admin Dashboard for Security & Performance
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 
-export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist';
+export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine';
 
 interface ToastMsg {
   id: number;
@@ -36,12 +36,8 @@ const AppContent: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  
-  // Dynamic Packages State
   const [packages, setPackages] = useState<any[]>([]);
-  
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
-  
   const [socialProof, setSocialProof] = useState<{name: string, country: string, product: string} | null>(null);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -67,28 +63,41 @@ const AppContent: React.FC = () => {
 
   const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  // --- Secret Admin Route Check ---
+  // --- Affiliate & Admin Check ---
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // Admin Route
     if (params.get('mode') === 'admin') {
         setCurrentView('admin');
         window.history.replaceState({}, '', window.location.pathname);
     }
+
+    // Affiliate Tracking
+    const refCode = params.get('ref');
+    if (refCode) {
+        sessionStorage.setItem('k_exp_ref', refCode);
+        // Increment Click Count
+        // We do this silently
+        (async () => {
+            try {
+                const q = query(collection(db, "affiliates"), where("code", "==", refCode));
+                const snap = await getDocs(q);
+                if(!snap.empty) {
+                    await updateDoc(snap.docs[0].ref, { clicks: increment(1) });
+                }
+            } catch(e) { console.error("Ref track error", e); }
+        })();
+    }
   }, []);
 
-  // --- Real-time All Packages Data ---
   useEffect(() => {
-    // Listen to the entire 'cms_packages' collection
-    // We sort simply by ID or assume a created time if available, or just fetch all.
-    // For now, simple fetch.
     const q = collection(db, "cms_packages");
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const pkgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Sort: Basic first, Premium second, then others by creation or ID
         pkgs.sort((a,b) => a.id.localeCompare(b.id)); 
         setPackages(pkgs);
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -97,8 +106,15 @@ const AppContent: React.FC = () => {
           setSelectedProduct(e.detail);
           navigateTo('product_detail');
       };
+      const handleMagNav = () => navigateTo('magazine');
+      
       window.addEventListener('navigate-product-detail', handleProductNav);
-      return () => window.removeEventListener('navigate-product-detail', handleProductNav);
+      window.addEventListener('navigate-magazine', handleMagNav);
+      
+      return () => {
+          window.removeEventListener('navigate-product-detail', handleProductNav);
+          window.removeEventListener('navigate-magazine', handleMagNav);
+      };
   }, []);
 
   // Correctly Matched Social Proof Data
@@ -132,11 +148,9 @@ const AppContent: React.FC = () => {
   }, []);
 
   const handlePackageBookClick = (pkgId: string) => {
-      // Logic to route based on package ID
       if (pkgId.includes('premium')) {
           navigateTo('reservation_premium');
       } else {
-          // Default fallback for Basic and any new packages (unless we create new pages)
           navigateTo('reservation_basic');
       }
   };
@@ -144,7 +158,6 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight">
       
-      {/* TOASTS */}
       <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
         {toasts.map(toast => (
           <div key={toast.id} className={`pointer-events-auto flex items-center justify-between p-4 rounded-xl shadow-2xl backdrop-blur-md border animate-fade-in-down ${toast.type === 'success' ? 'bg-gray-900/95 text-white border-gray-800' : toast.type === 'error' ? 'bg-red-500/95 text-white border-red-600' : 'bg-blue-500/95 text-white border-blue-600'}`}>
@@ -159,7 +172,6 @@ const AppContent: React.FC = () => {
         ))}
       </div>
 
-      {/* SOCIAL PROOF POPUP */}
       {socialProof && currentView === 'home' && (
           <div className="fixed bottom-24 right-4 md:left-6 md:right-auto z-40 bg-white/90 backdrop-blur-md border border-gray-200 p-4 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3 animate-slide-up max-w-[300px]">
               <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
@@ -176,7 +188,6 @@ const AppContent: React.FC = () => {
           </div>
       )}
 
-      {/* Conditionally Render Navbar based on View */}
       {currentView !== 'admin' && (
           <Navbar 
             isMenuOpen={isMenuOpen} 
@@ -207,15 +218,14 @@ const AppContent: React.FC = () => {
         {currentView === 'product_detail' && selectedProduct && <ProductDetail language={language} product={selectedProduct} />}
         {currentView === 'group_buying' && <GroupBuyingPage language={language} />}
         {currentView === 'mypage' && <MyPage language={language} />}
+        {currentView === 'magazine' && <MagazinePage />}
+        {currentView === 'wishlist' && <WishlistPage language={language} />}
         
-        {/* Secured Admin Route */}
         {currentView === 'admin' && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>}>
             <AdminDashboard language={language} />
           </Suspense>
         )}
-        
-        {currentView === 'wishlist' && <WishlistPage language={language} />}
       </main>
 
       {currentView !== 'admin' && <Footer language={language} />}
