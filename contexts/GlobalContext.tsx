@@ -70,7 +70,7 @@ const TRANSLATIONS: any = {
     ongoing_public: '진행 중인 공개 공동구매',
     ongoing_public_desc: '누구나 참여 가능! 친구들과 함께 구매하면 추가 10% 할인 혜택을 받을 수 있습니다!',
     no_active: '진행중인 모집이 없습니다!',
-    be_leader: '첫 번째 리더가 되어 최대 50% 할인을 받아보세요!',
+    be_leader: '첫 번째 리더가 되어 최대 30% 할인을 받아보세요!',
     create_group: '공동구매 생성하기',
     join_group: '공동구매 참여하기',
     current: '현재 참여', discount: '현재 할인율', time_left: '남은 시간',
@@ -147,7 +147,7 @@ const TRANSLATIONS: any = {
     male_cnt: 'Male', female_cnt: 'Female',
     gb_title: 'Your BEST K-Experience',
     gb_sub: 'More People, Lower Price!',
-    gb_desc: 'Cheaper together! Up to 50% discount per person',
+    gb_desc: 'Cheaper together! Up to 30% discount per person',
     just_purchased: 'Just Purchased!',
     bought: 'bought',
     admin_dash: 'Dashboard', admin_cal: 'Calendar', admin_res: 'Reservations',
@@ -170,9 +170,9 @@ const TRANSLATIONS: any = {
     usage_limit_reached: 'This coupon has reached its usage limit.'
   },
   ja: {
-    magazine: 'K-マガジン', inquiry: '1:1 お問い合わせ', coupon: 'クーポン', affiliate: 'アフィリエイト',
+    magazine: 'K-マガジン', inquiry: '1:1 お問い合わせ', coupon: 'クーポン', affiliate: 'アフィ리에이트',
     coupon_code: 'プロモーションコード', apply: '適用', discount_applied: '割引適用', invalid_coupon: '無効なクーポンです。',
-    usage_limit_reached: 'このクーポンは使用上限に達しました。'
+    usage_limit_reached: 'このクーポンは使用上限에 達しました。'
   },
   zh: {
     magazine: 'K-杂志', inquiry: '1:1 咨询', coupon: '优惠券', affiliate: '联盟营销',
