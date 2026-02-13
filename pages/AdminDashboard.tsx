@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { 
     LayoutDashboard, ShoppingCart, Users, Package, Plus, Edit2, Trash2, Megaphone, X, Save, 
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
-    LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown
+    LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown, ListPlus
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -268,6 +268,23 @@ export const AdminDashboard: React.FC<any> = () => {
       }
   };
 
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+          setUploadingImg(true);
+          try {
+            const uploadedUrls = await Promise.all(
+                Array.from(files).map((file) => uploadImage(file as File, 'product_gallery'))
+            );
+            setGalleryImages(prev => [...prev, ...uploadedUrls]);
+          } catch(e) {
+              showToast("이미지 업로드 중 오류가 발생했습니다.", 'error');
+          } finally {
+              setUploadingImg(false);
+          }
+      }
+  };
+
   const handleGroupBuyProductSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedId = e.target.value;
       const product = allProducts.find(p => p.id === selectedId);
@@ -303,7 +320,7 @@ export const AdminDashboard: React.FC<any> = () => {
     <div className="flex min-h-screen bg-[#F5F7FB] font-sans text-[#333]">
         {toast && <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg text-white font-bold flex items-center gap-2 ${toast.type==='success'?'bg-black':'bg-red-500'}`}>{toast.type==='success'?<CheckCircle size={16}/>:<AlertCircle size={16}/>} {toast.msg}</div>}
 
-        {/* SIDEBAR (Unchanged) */}
+        {/* SIDEBAR */}
         <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col h-screen fixed">
             <div className="h-16 flex items-center px-6 font-black text-xl text-[#0070F0]">K-ADMIN</div>
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -406,7 +423,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
             
-            {/* Reuse existing tabs logic for Products */}
+            {/* PRODUCTS & PACKAGES */}
             {activeTab === 'products' && (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -471,7 +488,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
 
-            {/* Other tabs follow the same pattern... omitted for brevity if unchanged */}
+            {/* Other tabs... */}
 
         </main>
 
@@ -520,13 +537,152 @@ export const AdminDashboard: React.FC<any> = () => {
                             </div>
                         )}
 
-                        {/* PRODUCT EDITOR (Unchanged) */}
+                        {/* PRODUCT EDITOR (RESTORED & ENHANCED) */}
                         {modalType === 'product' && (
-                             <div className="grid grid-cols-2 gap-6">
-                                <div><label className="block text-xs font-bold text-gray-500 mb-2">이미지</label><input type="file" onChange={handleMainImageUpload}/></div>
-                                <div><label className="block text-xs font-bold mb-1">제목</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e=>setEditingItem({...editingItem, title:e.target.value})}/></div>
-                             </div>
+                            <div className="space-y-6">
+                                {/* Basic Info Row */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1">카테고리</label>
+                                        <select 
+                                            className="w-full border p-2 rounded" 
+                                            value={editingItem.category} 
+                                            onChange={e => setEditingItem({...editingItem, category: e.target.value})}
+                                        >
+                                            <option value="건강검진">건강검진</option>
+                                            <option value="뷰티시술">뷰티시술</option>
+                                            <option value="K-IDOL">K-IDOL</option>
+                                            <option value="뷰티컨설팅">뷰티컨설팅</option>
+                                            <option value="올인원패키지">올인원패키지</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1">상품명</label>
+                                        <input 
+                                            className="w-full border p-2 rounded" 
+                                            value={editingItem.title} 
+                                            onChange={e => setEditingItem({...editingItem, title: e.target.value})} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1">가격 (KRW)</label>
+                                        <input 
+                                            type="number" 
+                                            className="w-full border p-2 rounded" 
+                                            value={editingItem.price} 
+                                            onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} 
+                                        />
+                                    </div>
+                                    <div>
+                                       <label className="block text-xs font-bold mb-1">짧은 설명 (카드 표시용)</label>
+                                       <input 
+                                           className="w-full border p-2 rounded" 
+                                           value={editingItem.description} 
+                                           onChange={e => setEditingItem({...editingItem, description: e.target.value})} 
+                                       />
+                                    </div>
+                                </div>
+
+                                {/* Images */}
+                                <div className="grid grid-cols-2 gap-6">
+                                    {/* Main Image */}
+                                    <div className="border p-4 rounded-xl bg-gray-50">
+                                        <label className="block text-xs font-bold mb-2">대표 이미지</label>
+                                        <div className="flex items-center gap-4">
+                                            {editingItem.image ? (
+                                                <img src={editingItem.image} className="w-20 h-20 object-cover rounded-lg border" />
+                                            ) : (
+                                                <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">No Image</div>
+                                            )}
+                                            <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-50">
+                                                변경
+                                                <input type="file" className="hidden" onChange={handleMainImageUpload} />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Gallery Images */}
+                                    <div className="border p-4 rounded-xl bg-gray-50 relative">
+                                        {uploadingImg && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-xl"><RefreshCw className="animate-spin text-blue-500"/></div>}
+                                        <label className="block text-xs font-bold mb-2">추가 이미지 (갤러리)</label>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {galleryImages.map((img, idx) => (
+                                                <div key={idx} className="relative w-16 h-16 group">
+                                                    <img src={img} className="w-full h-full object-cover rounded-lg border" />
+                                                    <button 
+                                                        onClick={() => setGalleryImages(prev => prev.filter((_, i) => i !== idx))}
+                                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                                                <Plus size={20} className="text-gray-400"/>
+                                                <input type="file" className="hidden" multiple onChange={handleGalleryUpload} />
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Included Items (For Packages/Products) */}
+                                <div>
+                                    <label className="block text-xs font-bold mb-2">포함 내역 (옵션)</label>
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {(editingItem.items || []).map((item: string, idx: number) => (
+                                            <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
+                                                {item}
+                                                <button onClick={() => {
+                                                    const newItems = [...(editingItem.items || [])];
+                                                    newItems.splice(idx, 1);
+                                                    setEditingItem({...editingItem, items: newItems});
+                                                }}><X size={12}/></button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            id="newItemInput" 
+                                            className="border p-2 rounded text-sm flex-1" 
+                                            placeholder="예: 픽업 서비스, 통역 포함"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const val = e.currentTarget.value.trim();
+                                                    if (val) {
+                                                        setEditingItem({...editingItem, items: [...(editingItem.items||[]), val]});
+                                                        e.currentTarget.value = '';
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                const input = document.getElementById('newItemInput') as HTMLInputElement;
+                                                if(input.value.trim()) {
+                                                    setEditingItem({...editingItem, items: [...(editingItem.items||[]), input.value.trim()]});
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            className="bg-gray-200 px-4 py-2 rounded font-bold text-xs"
+                                        >
+                                            추가
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Rich Text Editor for Body */}
+                                <div>
+                                    <label className="block text-xs font-bold mb-2">상세 본문 (이미지/텍스트)</label>
+                                    <RichTextEditor 
+                                        value={editingItem.content || ''} 
+                                        onChange={(val) => setEditingItem({...editingItem, content: val})} 
+                                    />
+                                </div>
+                            </div>
                         )}
+
                         {/* COUPON EDITOR */}
                          {modalType === 'coupon' && (
                             <div className="grid grid-cols-2 gap-4">

@@ -85,9 +85,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
     const COLORS = ['#000000', '#E02424', '#0E9F6E', '#3F83F8', '#FF5A1F', '#6B7280', '#9061F9'];
 
     return (
-        <div className={`border rounded-xl overflow-hidden bg-white transition-all shadow-sm flex flex-col ${isFocused ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200'}`}>
+        <div className={`border rounded-xl bg-white transition-all shadow-sm flex flex-col ${isFocused ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200'}`}>
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 border-b border-gray-200 select-none sticky top-0 z-10">
+            <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 border-b border-gray-200 select-none sticky top-0 z-20 rounded-t-xl">
                 
                 {/* Text Formatting */}
                 <div className="flex bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm">
@@ -151,7 +151,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
                 prose-blockquote:border-l-4 prose-blockquote:border-[#0070F0] prose-blockquote:bg-blue-50 prose-blockquote:py-3 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-blockquote:text-gray-700
                 prose-a:text-blue-600 prose-a:underline prose-a:font-bold hover:prose-a:text-blue-800
                 prose-li:marker:text-gray-400 prose-li:mb-1
-                bg-white cursor-text"
+                bg-white cursor-text rounded-b-xl"
                 contentEditable
                 onInput={handleInput}
                 onDrop={handleDrop}
@@ -161,7 +161,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
                 dangerouslySetInnerHTML={{ __html: value }}
                 placeholder="내용을 입력하세요... (이미지는 드래그 앤 드롭 가능)"
             />
-            <div className="bg-gray-50 text-right px-4 py-2 text-[10px] text-gray-400 font-mono border-t border-gray-100">
+            <div className="bg-gray-50 text-right px-4 py-2 text-[10px] text-gray-400 font-mono border-t border-gray-100 rounded-b-xl">
                 HTML Mode Supported
             </div>
         </div>
