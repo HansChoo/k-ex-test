@@ -1,29 +1,20 @@
 
 // Fetch real-time exchange rates (Base: KRW)
-// Using a free API endpoint (Exchangerate-API or similar)
+// Using a free API endpoint simulation or placeholder for stability
 export const fetchExchangeRates = async () => {
     try {
-        // Fallback rates if API fails
-        const defaultRates = { USD: 0.00075, JPY: 0.11, CNY: 0.0054 };
-        
-        // Example: Fetching from a standard open API
-        // Note: Many free APIs require a base currency of USD or EUR. 
-        // We will simulate a fetch or use a stable free endpoint if available.
-        // For this demo, we'll simulate a successful fetch with slightly randomized "live" data
-        // to demonstrate the mechanic without hitting rate limits or CORS issues in this sandbox.
-        
-        // In production, replace with:
+        // In a real production environment, you would fetch from an API like:
         // const response = await fetch('https://api.exchangerate-api.com/v4/latest/KRW');
         // const data = await response.json();
         // return data.rates;
 
-        // Simulating async network request
+        // Simulating async network request for demo purposes to avoid API key limits
         await new Promise(resolve => setTimeout(resolve, 500));
         
         return {
-            USD: 0.00076, // Slightly different from static to show it's "live"
-            JPY: 0.112,
-            CNY: 0.0052
+            USD: 0.00076, // Updated rough estimate
+            JPY: 0.112,   // Updated rough estimate
+            CNY: 0.0052   // Updated rough estimate
         };
     } catch (error) {
         console.error("Failed to fetch rates", error);

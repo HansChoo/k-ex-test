@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Bold, Italic, Underline, Heading1, Heading2, List, ListOrdered, Image as ImageIcon, Link as LinkIcon, AlignLeft, AlignCenter, AlignRight, CheckSquare, Quote } from 'lucide-react';
 import { uploadImage } from '../services/imageService';
@@ -13,7 +14,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
 
     useEffect(() => {
         if (editorRef.current && value !== editorRef.current.innerHTML) {
-            // Prevent cursor jumping by only updating if empty or drastically different
             if (editorRef.current.innerHTML === '' || !editorRef.current.innerHTML) {
                  editorRef.current.innerHTML = value;
             }
@@ -31,7 +31,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
 
     const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
-        // Explicitly cast to File[] to avoid unknown type issues with FileList iteration
+        // Fix: Explicitly cast to File[]
         const files = Array.from(e.dataTransfer.files) as File[];
         if (files.length > 0 && files[0].type.startsWith('image/')) {
             try {
