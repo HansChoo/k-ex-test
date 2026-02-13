@@ -56,30 +56,15 @@ const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Initial Entry Handling: Always start at Home unless specific modes
+  // Listen to browser Back/Forward buttons
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    const page = params.get('page');
-
-    if (mode === 'admin') {
-        setCurrentView('admin');
-    } else if (page === 'survey') {
-        setCurrentView('survey');
-    } else {
-        // Force reset hash and view to home on every initial load/refresh
-        if (window.location.hash !== '' && window.location.hash !== '#home') {
-            window.location.hash = ''; 
-        }
-        setCurrentView('home');
-    }
-
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '') as PageView || 'home';
       if (hash !== currentView) {
+          // If it's a product detail, we might need to recover the product object from the products list
           if (hash === 'product_detail' && !selectedProduct) {
+              // Fallback: If product object is lost on refresh/back, just go home
               setCurrentView('home');
-              window.location.hash = '';
           } else {
               setCurrentView(hash);
           }
@@ -87,8 +72,11 @@ const AppContent: React.FC = () => {
     };
 
     window.addEventListener('hashchange', handleHashChange);
+    // Initial check on mount
+    handleHashChange();
+    
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []); // Only on mount
+  }, [selectedProduct, currentView]);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
@@ -101,8 +89,7 @@ const AppContent: React.FC = () => {
       if (page === 'product_list') {
           navigateTo('home');
           setTimeout(() => {
-              const el = document.getElementById('products');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
           }, 150);
           return;
       }
@@ -125,21 +112,6 @@ const AppContent: React.FC = () => {
   const handleLogoClick = () => {
       setSelectedCategory(null);
       navigateTo('home');
-  };
-
-  // Fix: Added missing handlePackageBookClick function to resolve undefined error
-  const handlePackageBookClick = (pkgId: string) => {
-    if (pkgId === 'package_basic') {
-      navigateTo('reservation_basic');
-    } else if (pkgId === 'package_premium') {
-      navigateTo('reservation_premium');
-    } else {
-      const pkg = packages.find(p => p.id === pkgId);
-      if (pkg) {
-        setSelectedProduct(pkg);
-        navigateTo('product_detail');
-      }
-    }
   };
 
   useEffect(() => {
@@ -166,6 +138,17 @@ const AppContent: React.FC = () => {
   const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'admin') {
+        navigateTo('admin');
+        window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+    }
+    if (params.get('page') === 'survey' && params.get('id')) {
+        navigateTo('survey');
+    }
+  }, []);
+
+  useEffect(() => {
       const handleProductNav = (e: any) => {
           setSelectedProduct(e.detail);
           navigateTo('product_detail');
@@ -180,6 +163,24 @@ const AppContent: React.FC = () => {
           window.removeEventListener('navigate-magazine', handleMagNav);
       };
   }, []);
+
+  useEffect(() => {
+      const timer = setTimeout(() => {
+          setSocialProof({ name: "Emma", country: "🇺🇸 USA", product: "K-IDOL Basic" });
+          setTimeout(() => setSocialProof(null), 5000);
+      }, 10000);
+      return () => clearTimeout(timer);
+  }, []);
+
+  const handlePackageBookClick = (pkgId: string) => {
+      const pkg = packages.find(p => p.id === pkgId);
+      if (pkg) {
+          setSelectedProduct(pkg);
+          navigateTo('product_detail');
+      } else {
+          navigateTo('reservation_basic');
+      }
+  };
 
   return (
     <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight text-[#111]">
@@ -198,6 +199,22 @@ const AppContent: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {socialProof && currentView === 'home' && (
+          <div className="fixed bottom-24 right-4 z-40 bg-white/95 backdrop-blur-md border border-gray-100 p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-up max-w-[90%] md:max-w-[320px]">
+              <div className="w-10 h-10 bg-gradient-to-tr from-green-400 to-green-600 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg">
+                  <ShoppingBag size={18} />
+              </div>
+              <div className="min-w-0">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">{t('just_purchased')}</p>
+                  <p className="text-xs font-bold text-[#111] leading-tight truncate">
+                      {socialProof.country} <span className="text-blue-600">{socialProof.name}</span>
+                  </p>
+                  <p className="text-xs font-black text-[#111] truncate">"{socialProof.product}"</p>
+              </div>
+              <button onClick={() => setSocialProof(null)} className="absolute top-2 right-2 text-gray-300 hover:text-gray-500"><X size={12}/></button>
+          </div>
+      )}
 
       {currentView !== 'admin' && currentView !== 'survey' && (
           <Navbar 
