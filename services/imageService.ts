@@ -1,24 +1,97 @@
-
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "./firebaseConfig";
 
+// --- Helper: Compress Image using Canvas ---
+const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // Resize logic: Max width 1000px, maintain aspect ratio
+                const MAX_WIDTH = 1000;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > MAX_WIDTH) {
+                    height = height * (MAX_WIDTH / width);
+                    width = MAX_WIDTH;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(img, 0, 0, width, height);
+                    // Compress to JPEG with 0.8 quality
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    resolve(dataUrl);
+                } else {
+                    reject(new Error("Canvas context error"));
+                }
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+};
+
+// --- Helper: Convert DataURL to Blob ---
+const dataURLtoBlob = (dataurl: string) => {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], {type:mime});
+};
+
 /**
- * Uploads a file to Firebase Storage and returns the download URL.
- * @param file The file object to upload
- * @param pathPrefix Optional folder path (default: 'uploads')
+ * Uploads a file with Fallback mechanism.
+ * 1. Compresses image.
+ * 2. Tries to upload to Firebase Storage (with 5s timeout).
+ * 3. If fails (CORS, permission, timeout), returns Base64 string directly.
  */
 export const uploadImage = async (file: File, pathPrefix: string = 'uploads'): Promise<string> => {
   try {
-    // Create a unique filename: timestamp_random_originalName
-    const uniqueName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${file.name}`;
-    const storageRef = ref(storage, `${pathPrefix}/${uniqueName}`);
-    
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    
-    return downloadURL;
+    // 1. Compress first
+    const compressedDataUrl = await compressImage(file);
+    const compressedBlob = dataURLtoBlob(compressedDataUrl);
+
+    // 2. Try Storage Upload
+    try {
+        const uniqueName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
+        const storageRef = ref(storage, `${pathPrefix}/${uniqueName}`);
+        
+        // Create a promise that rejects after 5 seconds
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Upload Timeout")), 5000)
+        );
+
+        const uploadTask = uploadBytes(storageRef, compressedBlob);
+        
+        // Race between upload and timeout
+        await Promise.race([uploadTask, timeoutPromise]);
+        
+        const downloadURL = await getDownloadURL(storageRef);
+        return downloadURL;
+
+    } catch (storageError) {
+        console.warn("Firebase Storage Upload Failed/Timed out. Using Base64 Fallback.", storageError);
+        // 3. Fallback: Return Base64 string directly
+        // Since we compressed it, it should be small enough (<1MB) for Firestore in most cases.
+        return compressedDataUrl;
+    }
+
   } catch (error) {
-    console.error("Error uploading image:", error);
-    throw new Error("이미지 업로드에 실패했습니다.");
+    console.error("Critical Error processing image:", error);
+    throw new Error("이미지 처리 중 오류가 발생했습니다.");
   }
 };
