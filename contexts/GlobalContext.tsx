@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS_DATA } from '../constants';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -192,7 +191,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Fetch Products from Firestore Real-time
   useEffect(() => {
-    const q = query(collection(db, "products"), orderBy("order", "asc"));
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc")); // Changed sort to createdAt for better default
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setRealtimeProducts(products);
@@ -249,7 +248,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return data[localizedField] || data[field] || ''; // Fallback to default (KO) if specific lang missing
   };
 
-  const displayProducts = realtimeProducts.length > 0 ? realtimeProducts : PRODUCTS_DATA[language];
+  // !!! CHANGED: Strictly use Firebase data. Do not fallback to constants if empty.
+  const displayProducts = realtimeProducts; 
 
   return (
     <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: displayProducts, getLocalizedValue }}>
