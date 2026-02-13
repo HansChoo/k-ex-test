@@ -29,6 +29,13 @@ interface GroupBuyItem {
     [key: string]: any; 
 }
 
+const CARD_THEMES = [
+    { bg: 'bg-gradient-to-r from-blue-500 to-cyan-400', text: 'text-blue-600' },
+    { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', text: 'text-purple-600' },
+    { bg: 'bg-gradient-to-r from-orange-400 to-red-500', text: 'text-orange-600' },
+    { bg: 'bg-gradient-to-r from-emerald-400 to-teal-500', text: 'text-emerald-600' }
+];
+
 export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const { t, convertPrice, language, products } = useGlobal();
   const isEn = language !== 'ko';
@@ -315,16 +322,16 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
       {/* Group List */}
       <div className="max-w-[600px] mx-auto px-4 space-y-6">
-        {filteredGroups.length > 0 ? filteredGroups.map((group) => {
+        {filteredGroups.length > 0 ? filteredGroups.map((group, index) => {
             const safeName = group.productName || 'Unknown Product';
-            const isBasic = safeName.includes('Basic');
             const safeMax = group.maxCount || 10;
             const safeCurrent = group.currentCount || 0;
             const safeOriginalPrice = group.originalPrice || 0;
             const progress = Math.min(100, (safeCurrent / safeMax) * 100);
             const nextTarget = Math.min(10, safeCurrent + 1);
-            const themeColor = isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700] text-black';
-            const themeText = isBasic ? 'text-[#00C7AE]' : 'text-[#D4AF37]';
+            
+            // Varied Themes Logic
+            const theme = CARD_THEMES[index % CARD_THEMES.length];
             const depositPrice = (safeOriginalPrice * (1 - (safeCurrent * 0.05))) * 0.2;
 
             return (
@@ -335,8 +342,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                         </div>
                     )}
                     
-                    <div className={`h-14 ${themeColor} px-6 flex items-center justify-between text-white`}>
-                        <span className="font-black tracking-wider text-sm uppercase">{isBasic ? 'BASIC' : 'PREMIUM'}</span>
+                    <div className={`h-14 ${theme.bg} px-6 flex items-center justify-between text-white`}>
+                        <span className="font-black tracking-wider text-sm uppercase">GROUP #{index+1}</span>
                         <div className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded-lg text-xs font-bold">
                             <Timer size={12}/> <span>D-7</span>
                         </div>
@@ -349,7 +356,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                             <div className="flex flex-wrap gap-2 mb-4">
                                 {(group.items || ['건강검진','뷰티시술','K-IDOL']).map((item, i) => (
                                     <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[11px] rounded font-bold border border-gray-100 flex items-center gap-1">
-                                        <CheckCircle2 size={10} className={themeText}/> {item}
+                                        <CheckCircle2 size={10} className={theme.text}/> {item}
                                     </span>
                                 ))}
                             </div>
@@ -359,12 +366,12 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                             <div className="flex justify-between items-end mb-2">
                                 <span className="text-sm font-bold text-gray-700">공동구매 진행 현황</span>
                                 <div className="flex items-center gap-1">
-                                    <span className={`text-sm font-black ${themeText}`}>{safeCurrent}명</span>
+                                    <span className={`text-sm font-black ${theme.text}`}>{safeCurrent}명</span>
                                     <span className="text-xs text-gray-400">/ {safeMax}명</span>
                                 </div>
                             </div>
                             <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
-                                <div className={`h-full ${isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700]'} transition-all duration-1000`} style={{ width: `${progress}%` }}></div>
+                                <div className={`h-full ${theme.bg} transition-all duration-1000`} style={{ width: `${progress}%` }}></div>
                             </div>
                             <p className="text-center text-xs font-bold text-gray-500">
                                 {safeCurrent < 10 ? <><span className="text-red-500">{nextTarget - safeCurrent}명</span>만 더 참여하면 {nextTarget * 5}% 할인! 🎉</> : <span className="text-green-600">최대 할인율(50%) 달성 완료! 🎁</span>}
@@ -394,7 +401,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
                         <div className="flex gap-3">
                             <button className="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-xl text-gray-400 hover:text-black hover:border-black transition-colors"><Info size={20}/></button>
-                            <button onClick={() => handleJoin(group)} className={`flex-1 ${isBasic ? 'bg-[#00C7AE] hover:bg-[#00B59E]' : 'bg-[#111] hover:bg-black'} text-white font-bold rounded-xl flex items-center justify-center gap-2 py-4 shadow-lg transition-all active:scale-95`}>
+                            <button onClick={() => handleJoin(group)} className={`flex-1 bg-black hover:bg-gray-800 text-white font-bold rounded-xl flex items-center justify-center gap-2 py-4 shadow-lg transition-all active:scale-95`}>
                                 <Users size={18} className="fill-white"/> {t('join_group')}
                             </button>
                         </div>
@@ -417,7 +424,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
         )}
       </div>
 
-      {/* CREATE GROUP MODAL */}
+      {/* CREATE GROUP MODAL... (Content Unchanged) */}
       {isCreateModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
               <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">

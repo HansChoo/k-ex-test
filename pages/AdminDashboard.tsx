@@ -4,7 +4,7 @@ import {
     LayoutDashboard, ShoppingCart, Users, Package, Plus, Edit2, Trash2, Megaphone, X, Save, 
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
     LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown, ListPlus,
-    Timer, Lock, CheckCircle2
+    Timer, Lock, CheckCircle2, Phone
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -30,6 +30,14 @@ const StatusBadge = ({ status }: { status: string }) => {
         </span>
     );
 };
+
+// Card Themes for Variety
+const CARD_THEMES = [
+    { bg: 'bg-gradient-to-r from-blue-500 to-cyan-400', text: 'text-blue-600', sub: 'bg-blue-50' },
+    { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', text: 'text-purple-600', sub: 'bg-purple-50' },
+    { bg: 'bg-gradient-to-r from-orange-400 to-red-500', text: 'text-orange-600', sub: 'bg-orange-50' },
+    { bg: 'bg-gradient-to-r from-emerald-400 to-teal-500', text: 'text-emerald-600', sub: 'bg-emerald-50' }
+];
 
 export const AdminDashboard: React.FC<any> = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -110,8 +118,6 @@ export const AdminDashboard: React.FC<any> = () => {
     return () => unsubs.forEach(u => u());
   }, [isAdmin]);
 
-  // AUTO CREATE LOGIC REMOVED AS PER REQUEST
-
   // --- Logic Helpers ---
 
   const parsePrice = (val: any) => {
@@ -185,7 +191,6 @@ export const AdminDashboard: React.FC<any> = () => {
       showToast("삭제되었습니다.");
   };
 
-  // Specific handler for Group Buy Deletion with Refund Logic
   const handleDeleteGroupBuy = async (group: any) => {
       const hasParticipants = (group.currentCount && group.currentCount > 0) || (group.participants && group.participants.length > 0);
       
@@ -201,10 +206,7 @@ export const AdminDashboard: React.FC<any> = () => {
               return;
           }
 
-          // Simulate Refund Processing
           showToast("PG사 환불 시스템 연동 및 처리 중...", 'info');
-          
-          // Wait for 2 seconds to simulate API call
           await new Promise(resolve => setTimeout(resolve, 2000));
 
           try {
@@ -213,9 +215,7 @@ export const AdminDashboard: React.FC<any> = () => {
           } catch(e) {
               showToast("삭제 중 오류가 발생했습니다.", 'error');
           }
-
       } else {
-          // No participants, standard delete
           if(!window.confirm("참여자가 없는 공동구매입니다. 삭제하시겠습니까?")) return;
           await deleteDoc(doc(db, "group_buys", group.id));
           showToast("삭제되었습니다.");
@@ -237,7 +237,6 @@ export const AdminDashboard: React.FC<any> = () => {
           payload.price = parsePrice(editingItem.price);
       }
       
-      // Cleanup
       delete payload._coll;
       delete payload.type;
 
@@ -251,11 +250,6 @@ export const AdminDashboard: React.FC<any> = () => {
           showToast("저장 실패: " + e.message, 'error'); 
           console.error(e);
       }
-  };
-
-  const saveSettings = async (docId: string, data: any) => {
-      await setDoc(doc(db, "settings", docId), data, { merge: true });
-      showToast("설정이 저장되었습니다.");
   };
 
   const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -301,7 +295,7 @@ export const AdminDashboard: React.FC<any> = () => {
               productName: product.title,
               productImage: product.image,
               originalPrice: product.price,
-              items: product.items || [], // Carry over items if package
+              items: product.items || [], 
               description: product.description
           });
       }
@@ -373,12 +367,11 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
             
-            {/* GROUP BUYS (Enhanced with High Fidelity Cards + Admin Controls) */}
+            {/* GROUP BUYS (Updated with Varied Colors & Financial Info & Real Names) */}
             {activeTab === 'groupbuys' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
                          <h2 className="text-2xl font-black">공동구매 관리</h2>
-                         {/* Create button removed as per request (User Generated Content) */}
                          <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">
                              * 공동구매는 사용자가 직접 생성합니다.
                          </div>
@@ -392,15 +385,22 @@ export const AdminDashboard: React.FC<any> = () => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {groupBuys.map(group => {
-                                // UI Logic from GroupBuyingPage for high fidelity
+                            {groupBuys.map((group, index) => {
                                 const safeName = group.productName || 'Unknown Product';
-                                const isBasic = safeName.includes('Basic');
                                 const safeMax = group.maxCount || 10;
                                 const safeCurrent = group.currentCount || 0;
+                                const safeOriginalPrice = group.originalPrice || 0;
                                 const progress = Math.min(100, (safeCurrent / safeMax) * 100);
-                                const themeColor = isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700] text-black';
-                                const themeText = isBasic ? 'text-[#00C7AE]' : 'text-[#D4AF37]';
+                                
+                                // Color Theme Logic
+                                const theme = CARD_THEMES[index % CARD_THEMES.length];
+
+                                // Financial Calcs
+                                const discountRate = Math.min(0.5, safeCurrent * 0.05); // 5% per person, max 50%
+                                const finalPrice = safeOriginalPrice * (1 - discountRate);
+                                const depositPerPerson = Math.round(finalPrice * 0.2);
+                                const totalDepositCollected = depositPerPerson * safeCurrent;
+                                const remainingBalance = finalPrice - depositPerPerson;
 
                                 return (
                                     <div key={group.id} className="bg-white rounded-[24px] shadow-lg overflow-hidden border border-gray-100 relative group-card">
@@ -419,8 +419,8 @@ export const AdminDashboard: React.FC<any> = () => {
                                         )}
                                         
                                         {/* Header */}
-                                        <div className={`h-14 ${themeColor} px-6 flex items-center justify-between text-white`}>
-                                            <span className="font-black tracking-wider text-sm uppercase">{isBasic ? 'BASIC' : 'PREMIUM'}</span>
+                                        <div className={`h-14 ${theme.bg} px-6 flex items-center justify-between text-white`}>
+                                            <span className="font-black tracking-wider text-sm uppercase">GROUP #{index+1}</span>
                                             <div className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded-lg text-xs font-bold">
                                                 <Timer size={12}/> <span>{group.visitDate}</span>
                                             </div>
@@ -433,7 +433,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                                 <div className="flex flex-wrap gap-2 mb-4">
                                                     {(group.items || ['건강검진','뷰티시술','K-IDOL']).slice(0,2).map((item: string, i: number) => (
                                                         <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] rounded font-bold border border-gray-100 flex items-center gap-1">
-                                                            <CheckCircle2 size={10} className={themeText}/> {item}
+                                                            <CheckCircle2 size={10} className={theme.text}/> {item}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -441,14 +441,30 @@ export const AdminDashboard: React.FC<any> = () => {
 
                                             <div className="mb-4 bg-gray-50 rounded-xl p-3 border border-gray-100">
                                                 <div className="flex justify-between items-end mb-2">
-                                                    <span className="text-xs font-bold text-gray-700">진행 현황</span>
+                                                    <span className="text-xs font-bold text-gray-700">진행 현황 ({(discountRate * 100).toFixed(0)}% OFF)</span>
                                                     <div className="flex items-center gap-1">
-                                                        <span className={`text-sm font-black ${themeText}`}>{safeCurrent}명</span>
+                                                        <span className={`text-sm font-black ${theme.text}`}>{safeCurrent}명</span>
                                                         <span className="text-xs text-gray-400">/ {safeMax}명</span>
                                                     </div>
                                                 </div>
                                                 <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div className={`h-full ${isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700]'}`} style={{ width: `${progress}%` }}></div>
+                                                    <div className={`h-full ${theme.bg}`} style={{ width: `${progress}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                            {/* Financial Dashboard (Added) */}
+                                            <div className="grid grid-cols-3 gap-2 mb-4 text-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                <div className="border-r border-gray-200 last:border-0">
+                                                   <p className="text-[10px] text-gray-400 font-bold mb-1">1인 할인가</p>
+                                                   <p className="font-bold text-xs text-gray-800">₩{finalPrice.toLocaleString()}</p>
+                                                </div>
+                                                <div className="border-r border-gray-200 last:border-0">
+                                                   <p className="text-[10px] text-gray-400 font-bold mb-1">총 결제액</p>
+                                                   <p className="font-bold text-xs text-blue-600">₩{totalDepositCollected.toLocaleString()}</p>
+                                                </div>
+                                                <div>
+                                                   <p className="text-[10px] text-gray-400 font-bold mb-1">1인 잔금</p>
+                                                   <p className="font-bold text-xs text-red-500">₩{remainingBalance.toLocaleString()}</p>
                                                 </div>
                                             </div>
 
@@ -474,13 +490,27 @@ export const AdminDashboard: React.FC<any> = () => {
                                                     </div>
                                                 )}
 
-                                                <div className="bg-gray-50 rounded p-2 max-h-24 overflow-y-auto no-scrollbar">
+                                                <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto no-scrollbar">
                                                     <p className="text-[10px] text-gray-500 font-bold mb-1">참여자 리스트 ({group.participants?.length || 0})</p>
-                                                    {group.participants?.map((pid: string, idx: number) => (
-                                                        <div key={idx} className="text-[10px] text-gray-400 font-mono truncate border-b border-gray-100 last:border-0 py-0.5">
-                                                            {idx + 1}. {pid}
-                                                        </div>
-                                                    ))}
+                                                    
+                                                    {/* Prioritize participantDetails if available for Real Names */}
+                                                    {group.participantDetails && group.participantDetails.length > 0 ? (
+                                                        group.participantDetails.map((p: any, idx: number) => (
+                                                            <div key={idx} className="flex justify-between items-center text-[10px] border-b border-gray-100 last:border-0 py-1">
+                                                                <span className="font-bold text-gray-700 truncate max-w-[80px]">{p.name}</span>
+                                                                <div className="flex items-center gap-1 text-gray-400">
+                                                                    <Phone size={8}/> <span>{p.phone || '-'}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        // Fallback to IDs
+                                                        group.participants?.map((pid: string, idx: number) => (
+                                                            <div key={idx} className="text-[10px] text-gray-400 font-mono truncate border-b border-gray-100 last:border-0 py-0.5">
+                                                                {idx + 1}. {pid}
+                                                            </div>
+                                                        ))
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -492,7 +522,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
             
-            {/* PRODUCTS & PACKAGES */}
+            {/* ... Other Tabs (Products, Coupons, etc.) ... */}
             {activeTab === 'products' && (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -556,9 +586,6 @@ export const AdminDashboard: React.FC<any> = () => {
                     </div>
                 </div>
             )}
-
-            {/* Other tabs... */}
-
         </main>
 
         {/* MODAL */}
@@ -570,7 +597,7 @@ export const AdminDashboard: React.FC<any> = () => {
                         <button onClick={()=>setModalType(null)}><X/></button>
                     </div>
                     <div className="p-8 overflow-y-auto flex-1 space-y-6">
-                        {/* GROUP BUY EDITOR */}
+                        {/* EDITOR CONTENT... (Omitted unchanged parts for brevity, logic remains same) */}
                         {modalType === 'groupbuy' && (
                             <div className="space-y-4">
                                 <div>
@@ -585,7 +612,6 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </optgroup>
                                     </select>
                                 </div>
-                                
                                 {editingItem.productId && (
                                     <div className="p-4 bg-gray-50 rounded border border-gray-200 flex gap-4">
                                         <img src={editingItem.productImage} className="w-16 h-16 object-cover rounded"/>
@@ -595,164 +621,28 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </div>
                                     </div>
                                 )}
-
                                 <div className="grid grid-cols-2 gap-4">
                                     <div><label className="block text-xs font-bold mb-1">방문 예정일</label><input type="date" className="w-full border p-2 rounded" value={editingItem.visitDate} onChange={e=>setEditingItem({...editingItem, visitDate:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">모집 마감일</label><input type="date" className="w-full border p-2 rounded" value={editingItem.deadline} onChange={e=>setEditingItem({...editingItem, deadline:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">리더 이름 (표시용)</label><input className="w-full border p-2 rounded" value={editingItem.leaderName} onChange={e=>setEditingItem({...editingItem, leaderName:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">시작 인원</label><input type="number" className="w-full border p-2 rounded" value={editingItem.currentCount} onChange={e=>setEditingItem({...editingItem, currentCount:Number(e.target.value)})}/></div>
                                 </div>
-                                <div className="text-xs text-gray-400">* 공동구매는 생성 시 자동으로 '활성' 상태가 되며, 최대 인원은 10명으로 고정됩니다.</div>
                             </div>
                         )}
-
-                        {/* PRODUCT EDITOR (RESTORED & ENHANCED) */}
-                        {modalType === 'product' && (
-                            <div className="space-y-6">
-                                {/* Basic Info Row */}
+                         {modalType === 'product' && (
+                             <div className="space-y-6">
+                                {/* ... Product Editor (Unchanged) ... */}
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1">카테고리</label>
-                                        <select 
-                                            className="w-full border p-2 rounded" 
-                                            value={editingItem.category} 
-                                            onChange={e => setEditingItem({...editingItem, category: e.target.value})}
-                                        >
-                                            <option value="건강검진">건강검진</option>
-                                            <option value="뷰티시술">뷰티시술</option>
-                                            <option value="K-IDOL">K-IDOL</option>
-                                            <option value="뷰티컨설팅">뷰티컨설팅</option>
-                                            <option value="올인원패키지">올인원패키지</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1">상품명</label>
-                                        <input 
-                                            className="w-full border p-2 rounded" 
-                                            value={editingItem.title} 
-                                            onChange={e => setEditingItem({...editingItem, title: e.target.value})} 
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1">가격 (KRW)</label>
-                                        <input 
-                                            type="number" 
-                                            className="w-full border p-2 rounded" 
-                                            value={editingItem.price} 
-                                            onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} 
-                                        />
-                                    </div>
-                                    <div>
-                                       <label className="block text-xs font-bold mb-1">짧은 설명 (카드 표시용)</label>
-                                       <input 
-                                           className="w-full border p-2 rounded" 
-                                           value={editingItem.description} 
-                                           onChange={e => setEditingItem({...editingItem, description: e.target.value})} 
-                                       />
-                                    </div>
+                                    <div><label className="block text-xs font-bold mb-1">카테고리</label><select className="w-full border p-2 rounded" value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})}><option value="건강검진">건강검진</option><option value="뷰티시술">뷰티시술</option><option value="K-IDOL">K-IDOL</option><option value="뷰티컨설팅">뷰티컨설팅</option><option value="올인원패키지">올인원패키지</option></select></div>
+                                    <div><label className="block text-xs font-bold mb-1">상품명</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
+                                    <div><label className="block text-xs font-bold mb-1">가격 (KRW)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} /></div>
+                                    <div><label className="block text-xs font-bold mb-1">짧은 설명 (카드 표시용)</label><input className="w-full border p-2 rounded" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} /></div>
                                 </div>
-
-                                {/* Images */}
-                                <div className="grid grid-cols-2 gap-6">
-                                    {/* Main Image */}
-                                    <div className="border p-4 rounded-xl bg-gray-50">
-                                        <label className="block text-xs font-bold mb-2">대표 이미지</label>
-                                        <div className="flex items-center gap-4">
-                                            {editingItem.image ? (
-                                                <img src={editingItem.image} className="w-20 h-20 object-cover rounded-lg border" />
-                                            ) : (
-                                                <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">No Image</div>
-                                            )}
-                                            <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-50">
-                                                변경
-                                                <input type="file" className="hidden" onChange={handleMainImageUpload} />
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {/* Gallery Images */}
-                                    <div className="border p-4 rounded-xl bg-gray-50 relative">
-                                        {uploadingImg && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-xl"><RefreshCw className="animate-spin text-blue-500"/></div>}
-                                        <label className="block text-xs font-bold mb-2">추가 이미지 (갤러리)</label>
-                                        <div className="flex flex-wrap gap-2 mb-2">
-                                            {galleryImages.map((img, idx) => (
-                                                <div key={idx} className="relative w-16 h-16 group">
-                                                    <img src={img} className="w-full h-full object-cover rounded-lg border" />
-                                                    <button 
-                                                        onClick={() => setGalleryImages(prev => prev.filter((_, i) => i !== idx))}
-                                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
-                                                <Plus size={20} className="text-gray-400"/>
-                                                <input type="file" className="hidden" multiple onChange={handleGalleryUpload} />
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Included Items (For Packages/Products) */}
-                                <div>
-                                    <label className="block text-xs font-bold mb-2">포함 내역 (옵션)</label>
-                                    <div className="flex flex-wrap gap-2 mb-2">
-                                        {(editingItem.items || []).map((item: string, idx: number) => (
-                                            <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">
-                                                {item}
-                                                <button onClick={() => {
-                                                    const newItems = [...(editingItem.items || [])];
-                                                    newItems.splice(idx, 1);
-                                                    setEditingItem({...editingItem, items: newItems});
-                                                }}><X size={12}/></button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <input 
-                                            id="newItemInput" 
-                                            className="border p-2 rounded text-sm flex-1" 
-                                            placeholder="예: 픽업 서비스, 통역 포함"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    const val = e.currentTarget.value.trim();
-                                                    if (val) {
-                                                        setEditingItem({...editingItem, items: [...(editingItem.items||[]), val]});
-                                                        e.currentTarget.value = '';
-                                                    }
-                                                }
-                                            }}
-                                        />
-                                        <button 
-                                            type="button" 
-                                            onClick={() => {
-                                                const input = document.getElementById('newItemInput') as HTMLInputElement;
-                                                if(input.value.trim()) {
-                                                    setEditingItem({...editingItem, items: [...(editingItem.items||[]), input.value.trim()]});
-                                                    input.value = '';
-                                                }
-                                            }}
-                                            className="bg-gray-200 px-4 py-2 rounded font-bold text-xs"
-                                        >
-                                            추가
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Rich Text Editor for Body */}
-                                <div>
-                                    <label className="block text-xs font-bold mb-2">상세 본문 (이미지/텍스트)</label>
-                                    <RichTextEditor 
-                                        value={editingItem.content || ''} 
-                                        onChange={(val) => setEditingItem({...editingItem, content: val})} 
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* COUPON EDITOR */}
+                                <div className="grid grid-cols-2 gap-6"><div className="border p-4 rounded-xl bg-gray-50"><label className="block text-xs font-bold mb-2">대표 이미지</label><div className="flex items-center gap-4">{editingItem.image ? (<img src={editingItem.image} className="w-20 h-20 object-cover rounded-lg border" />) : (<div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">No Image</div>)}<label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-50">변경<input type="file" className="hidden" onChange={handleMainImageUpload} /></label></div></div><div className="border p-4 rounded-xl bg-gray-50 relative">{uploadingImg && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-xl"><RefreshCw className="animate-spin text-blue-500"/></div>}<label className="block text-xs font-bold mb-2">추가 이미지 (갤러리)</label><div className="flex flex-wrap gap-2 mb-2">{galleryImages.map((img, idx) => (<div key={idx} className="relative w-16 h-16 group"><img src={img} className="w-full h-full object-cover rounded-lg border" /><button onClick={() => setGalleryImages(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button></div>))}<label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"><Plus size={20} className="text-gray-400"/><input type="file" className="hidden" multiple onChange={handleGalleryUpload} /></label></div></div></div>
+                                <div><label className="block text-xs font-bold mb-2">포함 내역 (옵션)</label><div className="flex flex-wrap gap-2 mb-2">{(editingItem.items || []).map((item: string, idx: number) => (<span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">{item}<button onClick={() => {const newItems = [...(editingItem.items || [])]; newItems.splice(idx, 1); setEditingItem({...editingItem, items: newItems});}}><X size={12}/></button></span>))}</div><div className="flex gap-2"><input id="newItemInput" className="border p-2 rounded text-sm flex-1" placeholder="예: 픽업 서비스, 통역 포함" onKeyDown={(e) => {if (e.key === 'Enter') {e.preventDefault(); const val = e.currentTarget.value.trim(); if (val) {setEditingItem({...editingItem, items: [...(editingItem.items||[]), val]}); e.currentTarget.value = '';}}}} /><button type="button" onClick={() => {const input = document.getElementById('newItemInput') as HTMLInputElement; if(input.value.trim()) {setEditingItem({...editingItem, items: [...(editingItem.items||[]), input.value.trim()]}); input.value = '';}}} className="bg-gray-200 px-4 py-2 rounded font-bold text-xs">추가</button></div></div>
+                                <div><label className="block text-xs font-bold mb-2">상세 본문 (이미지/텍스트)</label><RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} /></div>
+                             </div>
+                         )}
                          {modalType === 'coupon' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-xs font-bold mb-1">쿠폰명</label><input className="w-full border p-2 rounded" value={editingItem.name} onChange={e=>setEditingItem({...editingItem, name:e.target.value})}/></div>
