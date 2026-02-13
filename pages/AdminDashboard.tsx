@@ -108,14 +108,61 @@ export const AdminDashboard: React.FC<any> = () => {
     return () => unsubs.forEach(u => u());
   }, [isAdmin]);
 
+  // --- AUTO CLEANUP EFFECT ---
+  // Automatically detects and deletes duplicate products/packages from DB
+  useEffect(() => {
+      if (!isAdmin || loading) return;
+      if (products.length === 0 && packages.length === 0) return;
+
+      const performAutoCleanup = async () => {
+          const batch = writeBatch(db);
+          let deleteCount = 0;
+          const seenTitles = new Set<string>();
+
+          // Helper to check duplicates
+          const checkAndMark = (list: any[], colName: string) => {
+              list.forEach((item) => {
+                  const titleKey = item.title?.trim().toLowerCase();
+                  if (!titleKey) return;
+
+                  if (seenTitles.has(titleKey)) {
+                      // Duplicate found: Mark for deletion
+                      batch.delete(doc(db, colName, item.id));
+                      deleteCount++;
+                  } else {
+                      seenTitles.add(titleKey);
+                  }
+              });
+          };
+
+          // 1. Check Products
+          checkAndMark(products, 'products');
+          // 2. Check Packages (Global Uniqueness across products & packages)
+          checkAndMark(packages, 'cms_packages');
+
+          if (deleteCount > 0) {
+              try {
+                  await batch.commit();
+                  showToast(`${deleteCount}개의 중복 상품을 DB에서 자동 정리했습니다.`);
+              } catch (e) {
+                  console.error("Cleanup failed", e);
+              }
+          }
+      };
+
+      // Debounce execution to avoid running during initial rapid state updates
+      const timer = setTimeout(performAutoCleanup, 1500);
+      return () => clearTimeout(timer);
+  }, [products, packages, isAdmin, loading]);
+
+
   // --- Logic Helpers ---
 
-  // Enhanced Price Parser to prevent NaN
+  // Enhanced Price Parser
   const parsePrice = (val: any) => {
       if (val === undefined || val === null) return 0;
       if (typeof val === 'number') return isNaN(val) ? 0 : val;
       if (typeof val === 'string') {
-          // Remove commas, currency symbols, spaces
           const num = Number(val.replace(/[^0-9.]/g, ''));
           return isNaN(num) ? 0 : num;
       }
@@ -123,33 +170,38 @@ export const AdminDashboard: React.FC<any> = () => {
   };
 
   const allProducts = useMemo(() => {
-      // Normalize Products
-      const p = products.map(item => ({ 
+      const rawProducts = products.map(item => ({ 
           ...item, 
           type: 'product', 
           _coll: 'products', 
           price: parsePrice(item.price || item.priceVal),
-          category: item.category || '미지정' // Ensure category string
+          category: item.category || '미지정'
       }));
-      // Normalize Packages (Force category)
-      const pkg = packages.map(item => ({ 
+      const rawPackages = packages.map(item => ({ 
           ...item, 
           type: 'package', 
           category: '올인원패키지', 
           _coll: 'cms_packages', 
           price: parsePrice(item.price) 
       }));
-      return [...p, ...pkg];
+      return [...rawProducts, ...rawPackages];
   }, [products, packages]);
 
   const filteredProducts = useMemo(() => {
       let data = allProducts;
-      // Filter by Category
+      // Smart Filter by Category
       if (productCategoryFilter !== 'all') {
           data = data.filter(p => {
-              if (!p.category) return false;
-              // Strict string check
-              return String(p.category).includes(productCategoryFilter);
+              const cat = String(p.category || '').toLowerCase();
+              const target = productCategoryFilter.toLowerCase();
+              
+              if (target === '건강검진') return cat.includes('건강') || cat.includes('health') || cat.includes('check');
+              if (target === '뷰티시술') return cat.includes('뷰티') || cat.includes('beauty') || cat.includes('skin') || cat.includes('lift');
+              if (target === 'k-idol') return cat.includes('idol') || cat.includes('아이돌') || cat.includes('pop');
+              if (target === '뷰티컨설팅') return cat.includes('컨설팅') || cat.includes('consult');
+              if (target === '올인원패키지') return cat.includes('패키지') || cat.includes('package') || cat.includes('all');
+              
+              return cat.includes(target);
           });
       }
       return data;
@@ -176,41 +228,6 @@ export const AdminDashboard: React.FC<any> = () => {
       catch (e) { alert("로그인 실패"); }
   };
 
-  const cleanupDuplicates = async () => {
-      if (!window.confirm("중복된 상품을 정리하시겠습니까? (이름이 같은 상품은 하나만 남기고 삭제됩니다)")) return;
-      
-      const batch = writeBatch(db);
-      const seenTitles = new Set();
-      let deleteCount = 0;
-
-      // Process Products
-      products.forEach(p => {
-          if (seenTitles.has(p.title)) {
-              batch.delete(doc(db, "products", p.id));
-              deleteCount++;
-          } else {
-              seenTitles.add(p.title);
-          }
-      });
-      // Process Packages
-      const seenPkg = new Set();
-      packages.forEach(p => {
-          if (seenPkg.has(p.title)) {
-              batch.delete(doc(db, "cms_packages", p.id));
-              deleteCount++;
-          } else {
-              seenPkg.add(p.title);
-          }
-      });
-
-      if (deleteCount > 0) {
-          await batch.commit();
-          showToast(`${deleteCount}개의 중복 상품을 삭제했습니다.`);
-      } else {
-          showToast("중복된 상품이 없습니다.");
-      }
-  };
-
   const deleteItem = async (col: string, id: string) => {
       if(!window.confirm("삭제하시겠습니까?")) return;
       await deleteDoc(doc(db, col, id));
@@ -228,7 +245,7 @@ export const AdminDashboard: React.FC<any> = () => {
       const payload = { ...editingItem };
       if (modalType === 'product' || modalType === 'magazine') {
           payload.images = galleryImages;
-          payload.price = parsePrice(editingItem.price); // Ensure saved price is number
+          payload.price = parsePrice(editingItem.price);
       }
       
       // Remove internal fields
@@ -383,14 +400,13 @@ export const AdminDashboard: React.FC<any> = () => {
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-black">상품/패키지 관리</h2>
                         <div className="flex gap-2">
-                             <button onClick={cleanupDuplicates} className="bg-red-50 text-red-600 px-4 py-2 rounded font-bold text-xs flex items-center gap-2"><Trash2 size={14}/> 중복 제거</button>
                              <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
                         </div>
                     </div>
                     {/* Category Filter */}
                     <div className="flex gap-2 mb-4">
                         {['all', '건강검진', '뷰티시술', 'K-IDOL', '뷰티컨설팅', '올인원패키지'].map(cat => (
-                            <button key={cat} onClick={()=>setProductCategoryFilter(cat)} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter===cat?'bg-black text-white':'bg-white text-gray-600'}`}>
+                            <button key={cat} onClick={()=>setProductCategoryFilter(cat)} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter===cat?'bg-black text-white':'bg-white text-gray-600 hover:bg-gray-50'}`}>
                                 {cat}
                             </button>
                         ))}
