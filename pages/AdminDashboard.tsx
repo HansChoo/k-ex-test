@@ -486,7 +486,7 @@ export const AdminDashboard: React.FC<any> = () => {
                             <div className="flex justify-between items-center">
                                 <div>
                                     <h2 className="text-xl font-black">카테고리 구성</h2>
-                                    <p className="text-xs text-gray-500 mt-1">이곳에서 카테고리를 먼저 설정해야 상품 등록 시 선택할 수 있습니다. <br/>순서: 카테고리 생성 -> 상품 등록</p>
+                                    <p className="text-xs text-gray-500 mt-1">이곳에서 카테고리를 먼저 설정해야 상품 등록 시 선택할 수 있습니다. <br/>순서: 카테고리 생성 &rarr; 상품 등록</p>
                                 </div>
                                 <button onClick={() => { setEditingItem({ label: '', labelEn: '', keywords: '' }); setModalType('category'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
                                     <Plus size={16}/> 카테고리 추가
