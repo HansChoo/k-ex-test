@@ -409,16 +409,46 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                 </div>
             );
         }) : (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6 relative">
-                    <Info size={32} className="text-gray-400"/>
+            <div className="flex flex-col items-center justify-center py-24 px-4">
+                <div className="relative group cursor-default">
+                    {/* Glow effect */}
+                    <div className={`absolute -inset-4 bg-gradient-to-r ${activeTab === 'public' ? 'from-blue-200 to-cyan-200' : 'from-purple-200 to-pink-200'} rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500`}></div>
+                    
+                    {/* Icon Container */}
+                    <div className={`relative w-24 h-24 bg-white rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex items-center justify-center mb-8 border border-white`}>
+                        {activeTab === 'public' ? (
+                            <Users size={36} className="text-[#0070F0]" />
+                        ) : (
+                            <Lock size={36} className="text-purple-600" />
+                        )}
+                        
+                        {/* Floating decoration */}
+                        <div className="absolute -top-2 -right-2 w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-lg shadow-md animate-bounce">
+                            {activeTab === 'public' ? '🔥' : '🤫'}
+                        </div>
+                    </div>
                 </div>
-                <h3 className="text-xl font-bold text-[#111] mb-2">{activeTab === 'public' ? 'No Public Groups' : 'No Secret Groups'}</h3>
-                <p className="text-gray-500 text-sm max-w-xs mb-8">
-                    {activeTab === 'public' ? "Be the first leader and start a group buy!" : "Create a secret group and invite your friends."}
+
+                <h3 className="text-2xl font-black text-[#111] mb-3 leading-snug text-center">
+                    {activeTab === 'public' ? (isEn ? "No Public Groups Active" : "진행 중인 모집이 없습니다") : (isEn ? "No Secret Groups Active" : "진행 중인 비밀 모집이 없습니다")}
+                </h3>
+                
+                <p className="text-gray-500 text-sm md:text-base max-w-sm text-center mb-10 leading-relaxed font-medium">
+                    {activeTab === 'public' 
+                        ? (isEn ? "Be the first leader! Start a group and invite others to unlock up to 50% discount." : "첫 번째 리더가 되어주세요! 그룹을 만들고 사람들을 모으면 최대 50%까지 할인이 커집니다.")
+                        : (isEn ? "Create a private room for you and your friends. Only people with the code can join." : "친구들과 함께하는 프라이빗한 여행! 시크릿 코드로 우리끼리만 뭉치고 할인받으세요.")
+                    }
                 </p>
-                <button onClick={() => handleOpenCreateModal(activeTab)} className="bg-black text-white px-6 py-3 rounded-xl font-bold shadow-lg">
-                    Create Now
+
+                <button 
+                    onClick={() => handleOpenCreateModal(activeTab)} 
+                    className={`group relative px-8 py-4 rounded-2xl font-bold text-white shadow-xl shadow-blue-100 transition-all hover:-translate-y-1 active:scale-95 overflow-hidden`}
+                >
+                    <div className={`absolute inset-0 bg-gradient-to-r ${activeTab === 'public' ? 'from-[#0070F0] to-[#00C7AE]' : 'from-[#333] to-[#555]'} transition-all`}></div>
+                    <div className="relative flex items-center gap-3">
+                        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300"/>
+                        <span>{activeTab === 'public' ? (isEn ? "Start New Group" : "새로운 공동구매 시작하기") : (isEn ? "Create Secret Group" : "비밀 공동구매 시작하기")}</span>
+                    </div>
                 </button>
             </div>
         )}
