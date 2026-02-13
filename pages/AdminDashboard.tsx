@@ -4,7 +4,7 @@ import {
     LayoutDashboard, ShoppingCart, Users, Package, Plus, Edit2, Trash2, Megaphone, X, Save, 
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
     LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown, ListPlus,
-    Timer, Lock, CheckCircle2, Phone, Archive, Grid
+    Timer, Lock, CheckCircle2, Phone, Archive, Grid, Layers, FolderTree
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -43,7 +43,7 @@ const CARD_THEMES = [
 export const AdminDashboard: React.FC<any> = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservations' | 'products' | 'groupbuys' | 'coupons' | 'magazine' | 'inquiries' | 'affiliates' | 'users' | 'settings' | 'categories'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservations' | 'products' | 'groupbuys' | 'coupons' | 'magazine' | 'inquiries' | 'affiliates' | 'users' | 'settings'>('dashboard');
   
   // Data States
   const [reservations, setReservations] = useState<any[]>([]);
@@ -55,7 +55,7 @@ export const AdminDashboard: React.FC<any> = () => {
   const [magazinePosts, setMagazinePosts] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]); // New Categories State
+  const [categories, setCategories] = useState<any[]>([]); 
   const [settings, setSettings] = useState<any>({});
   
   const [loading, setLoading] = useState(true);
@@ -65,7 +65,8 @@ export const AdminDashboard: React.FC<any> = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>('all');
   
-  // Settings Sub-tabs
+  // Sub-tabs
+  const [productSubTab, setProductSubTab] = useState<'categories' | 'items'>('categories'); // Default to categories for logical flow
   const [settingsTab, setSettingsTab] = useState<'basic'|'payment'|'email'|'receipt'|'survey'>('basic');
 
   // Auth Inputs
@@ -111,7 +112,7 @@ export const AdminDashboard: React.FC<any> = () => {
         onSnapshot(query(collection(db, "cms_magazine"), orderBy("createdAt", "desc")), (s) => setMagazinePosts(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(query(collection(db, "inquiries"), orderBy("createdAt", "desc")), (s) => setInquiries(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(collection(db, "users"), (s) => setUsers(s.docs.map(d => ({id:d.id, ...d.data()})))),
-        onSnapshot(query(collection(db, "cms_categories"), orderBy("createdAt", "asc")), (s) => setCategories(s.docs.map(d => ({id:d.id, ...d.data()})))), // Categories Listener
+        onSnapshot(query(collection(db, "cms_categories"), orderBy("createdAt", "asc")), (s) => setCategories(s.docs.map(d => ({id:d.id, ...d.data()})))), 
         onSnapshot(collection(db, "settings"), (s) => {
             const temp: any = {};
             s.docs.forEach(d => temp[d.id] = d.data());
@@ -209,9 +210,27 @@ export const AdminDashboard: React.FC<any> = () => {
   };
 
   const deleteItem = async (col: string, id: string) => {
-      if(!window.confirm("삭제하시겠습니까?")) return;
+      if(!window.confirm("정말 삭제하시겠습니까?")) return;
       await deleteDoc(doc(db, col, id));
       showToast("삭제되었습니다.");
+  };
+
+  // Safe Delete for Categories
+  const handleDeleteCategory = async (cat: any) => {
+      // Logic: If any product is using this category (by exact label matching), block deletion.
+      const linkedProducts = allProducts.filter(p => p.category === cat.label);
+      
+      if (linkedProducts.length > 0) {
+          alert(
+              `[삭제 불가] 이 카테고리에 연결된 상품이 ${linkedProducts.length}개 있습니다.\n\n` +
+              `1. '상품 목록' 탭으로 이동하세요.\n` +
+              `2. 해당 상품들의 카테고리를 변경하거나 상품을 먼저 삭제하세요.\n` +
+              `3. 그 후 카테고리를 삭제할 수 있습니다.`
+          );
+          return;
+      }
+
+      await deleteItem('cms_categories', cat.id);
   };
 
   const handleDeleteGroupBuy = async (group: any) => {
@@ -355,8 +374,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 {[
                     {id:'dashboard', label:'대시보드', icon:LayoutDashboard},
                     {id:'reservations', label:'예약 관리', icon:ShoppingCart},
-                    {id:'products', label:'상품/패키지', icon:Package},
-                    {id:'categories', label:'카테고리 관리', icon:Grid}, // ADDED CATEGORIES TAB
+                    {id:'products', label:'상품/카테고리 관리', icon:Package}, // Integrated Menu
                     {id:'groupbuys', label:'공동구매', icon:Megaphone},
                     {id:'coupons', label:'쿠폰 관리', icon:Ticket},
                     {id:'magazine', label:'매거진', icon:BookOpen},
@@ -396,46 +414,120 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
             
-            {/* CATEGORIES TAB - NEW ADDITION */}
-            {activeTab === 'categories' && (
+            {/* INTEGRATED PRODUCTS & CATEGORIES TAB */}
+            {activeTab === 'products' && (
                 <div className="space-y-6">
-                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-black">카테고리 관리</h2>
-                        <button onClick={() => { setEditingItem({ label: '', labelEn: '', keywords: '' }); setModalType('category'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
-                            <Plus size={16}/> 카테고리 추가
+                    {/* Sub-tab Navigation */}
+                    <div className="flex gap-4 border-b border-gray-200 pb-1">
+                        <button 
+                            onClick={() => setProductSubTab('categories')} 
+                            className={`px-4 py-2 font-bold text-sm flex items-center gap-2 transition-colors ${productSubTab === 'categories' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <FolderTree size={18}/> 카테고리 관리
+                        </button>
+                        <button 
+                            onClick={() => setProductSubTab('items')} 
+                            className={`px-4 py-2 font-bold text-sm flex items-center gap-2 transition-colors ${productSubTab === 'items' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <Grid size={18}/> 상품 목록
                         </button>
                     </div>
-                    <div className="grid grid-cols-4 gap-6">
-                        {categories.map((cat) => (
-                            <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group">
-                                <div className="h-40 bg-gray-100 relative">
-                                    {cat.image ? (
-                                        <img src={cat.image} className="w-full h-full object-cover"/>
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <button onClick={() => { setEditingItem({ ...cat, keywords: Array.isArray(cat.keywords) ? cat.keywords.join(', ') : '' }); setModalType('category'); }} className="bg-white text-black p-2 rounded-full hover:bg-gray-200"><Edit2 size={16}/></button>
-                                        <button onClick={() => deleteItem('cms_categories', cat.id)} className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"><Trash2 size={16}/></button>
-                                    </div>
+
+                    {/* SUB-TAB: CATEGORIES */}
+                    {productSubTab === 'categories' && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-xl font-black">카테고리 구성</h2>
+                                    <p className="text-xs text-gray-500 mt-1">이곳에서 카테고리를 먼저 설정해야 상품 등록 시 선택할 수 있습니다. <br/>순서: 카테고리 생성 -> 상품 등록</p>
                                 </div>
-                                <div className="p-4">
-                                    <h3 className="font-bold text-lg mb-1">{cat.label}</h3>
-                                    <p className="text-sm text-gray-500 mb-2">{cat.labelEn}</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {(cat.keywords || []).map((k: string, i: number) => (
-                                            <span key={i} className="bg-gray-100 px-2 py-0.5 rounded text-[10px] text-gray-600">{k}</span>
-                                        ))}
+                                <button onClick={() => { setEditingItem({ label: '', labelEn: '', keywords: '' }); setModalType('category'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
+                                    <Plus size={16}/> 카테고리 추가
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-6">
+                                {categories.map((cat) => {
+                                    // Count products linked to this category for display
+                                    const linkedCount = allProducts.filter(p => p.category === cat.label).length;
+                                    
+                                    return (
+                                        <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group relative">
+                                            <div className="h-40 bg-gray-100 relative">
+                                                {cat.image ? (
+                                                    <img src={cat.image} className="w-full h-full object-cover"/>
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <button onClick={() => { setEditingItem({ ...cat, keywords: Array.isArray(cat.keywords) ? cat.keywords.join(', ') : '' }); setModalType('category'); }} className="bg-white text-black p-2 rounded-full hover:bg-gray-200"><Edit2 size={16}/></button>
+                                                    <button onClick={() => handleDeleteCategory(cat)} className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"><Trash2 size={16}/></button>
+                                                </div>
+                                            </div>
+                                            <div className="p-4">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <h3 className="font-bold text-lg">{cat.label}</h3>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${linkedCount > 0 ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                        {linkedCount}개 상품
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-500 mb-2">{cat.labelEn}</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(cat.keywords || []).map((k: string, i: number) => (
+                                                        <span key={i} className="bg-gray-100 px-2 py-0.5 rounded text-[10px] text-gray-600">{k}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {categories.length === 0 && (
+                                    <div className="col-span-4 text-center py-20 bg-white border border-dashed rounded-xl text-gray-400">
+                                        등록된 카테고리가 없습니다. 먼저 카테고리를 추가해주세요.
                                     </div>
-                                </div>
+                                )}
                             </div>
-                        ))}
-                        {categories.length === 0 && (
-                            <div className="col-span-4 text-center py-20 bg-white border border-dashed rounded-xl text-gray-400">
-                                등록된 카테고리가 없습니다.
+                        </div>
+                    )}
+
+                    {/* SUB-TAB: ITEMS (PRODUCTS) */}
+                    {productSubTab === 'items' && (
+                        <div className="space-y-4 animate-fade-in">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-black">상품 목록</h2>
+                                <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
                             </div>
-                        )}
-                    </div>
+                            {/* Category Filter */}
+                            <div className="flex gap-2 mb-4 bg-gray-100 p-2 rounded-lg inline-flex">
+                                <button onClick={()=>setProductCategoryFilter('all')} className={`px-3 py-1 rounded text-xs font-bold transition-all ${productCategoryFilter==='all'?'bg-white shadow-sm text-black':'text-gray-500 hover:text-black'}`}>전체 보기</button>
+                                {categories.map((cat) => (
+                                    <button key={cat.id} onClick={()=>setProductCategoryFilter(cat.label)} className={`px-3 py-1 rounded text-xs font-bold transition-all ${productCategoryFilter===cat.label?'bg-white shadow-sm text-black':'text-gray-500 hover:text-black'}`}>
+                                        {cat.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-4 gap-4">
+                                {filteredProducts.map(p => (
+                                    <div key={p.id} className="bg-white border rounded-xl overflow-hidden shadow-sm group">
+                                        <div className="h-40 bg-gray-100 relative">
+                                            <img src={p.image} className="w-full h-full object-cover"/>
+                                            <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded font-bold">{p.category}</span>
+                                        </div>
+                                        <div className="p-4">
+                                            <h4 className="font-bold truncate mb-1">{p.title}</h4>
+                                            <p className="text-gray-500 text-xs mb-3 truncate">{p.description}</p>
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-bold">₩ {p.price.toLocaleString()}</span>
+                                                <div className="flex gap-2">
+                                                    <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
+                                                    <button onClick={()=>deleteItem(p._coll, p.id)} className="text-red-500"><Trash2 size={16}/></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -576,46 +668,6 @@ export const AdminDashboard: React.FC<any> = () => {
                     )}
                 </div>
             )}
-            
-            {/* Products, Coupons, etc. Tabs (Mostly unchanged) */}
-            {activeTab === 'products' && (
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-black">상품/패키지 관리</h2>
-                        <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
-                    </div>
-                    {/* Category Filter */}
-                    <div className="flex gap-2 mb-4">
-                        <button onClick={()=>setProductCategoryFilter('all')} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter==='all'?'bg-black text-white':'bg-white text-gray-600 hover:bg-gray-50'}`}>전체</button>
-                        {categories.map((cat) => (
-                            <button key={cat.id} onClick={()=>setProductCategoryFilter(cat.label)} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter===cat.label?'bg-black text-white':'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                                {cat.label}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-4 gap-4">
-                        {filteredProducts.map(p => (
-                            <div key={p.id} className="bg-white border rounded-xl overflow-hidden shadow-sm group">
-                                <div className="h-40 bg-gray-100 relative">
-                                    <img src={p.image} className="w-full h-full object-cover"/>
-                                    <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded font-bold">{p.category}</span>
-                                </div>
-                                <div className="p-4">
-                                    <h4 className="font-bold truncate mb-1">{p.title}</h4>
-                                    <p className="text-gray-500 text-xs mb-3 truncate">{p.description}</p>
-                                    <div className="flex justify-between items-center">
-                                        <span className="font-bold">₩ {p.price.toLocaleString()}</span>
-                                        <div className="flex gap-2">
-                                            <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
-                                            <button onClick={()=>deleteItem(p._coll, p.id)} className="text-red-500"><Trash2 size={16}/></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Coupons */}
              {activeTab === 'coupons' && (
@@ -732,6 +784,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                             {categories.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
                                             {/* Fallback hardcoded options if needed, but dynamic is better */}
                                         </select>
+                                        <p className="text-[10px] text-gray-400 mt-1">* 카테고리 관리에서 생성한 항목만 선택 가능합니다.</p>
                                     </div>
                                     <div><label className="block text-xs font-bold mb-1">상품명</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
                                     <div><label className="block text-xs font-bold mb-1">가격 (KRW)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} /></div>

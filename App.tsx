@@ -54,7 +54,7 @@ const AppContent: React.FC = () => {
 
   const navigateTo = (page: PageView) => {
     setCurrentView(page);
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Smooth scroll to top
   };
 
   // Scroll to top on initial load
@@ -79,7 +79,7 @@ const AppContent: React.FC = () => {
       }
       // Handle 'product_list' nav click (from bottom nav) -> Go Home and Scroll
       if (page === 'product_list') {
-          navigateTo('home');
+          setCurrentView('home');
           setTimeout(() => {
               document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
           }, 100);
@@ -98,6 +98,11 @@ const AppContent: React.FC = () => {
           // 3. If already on home, manually scroll
           document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
       }
+  };
+
+  const handleLogoClick = () => {
+      setSelectedCategory(null); // Reset category filter so it doesn't auto-scroll down
+      navigateTo('home');
   };
 
   useEffect(() => {
@@ -236,7 +241,7 @@ const AppContent: React.FC = () => {
           <Navbar 
             isMenuOpen={isMenuOpen} 
             toggleMenu={toggleMenu} 
-            onLogoClick={() => navigateTo('home')}
+            onLogoClick={handleLogoClick}
             onMyPageClick={() => handleProtectedNav('mypage')}
             onAdminClick={() => navigateTo('admin')}
             onWishlistClick={() => handleProtectedNav('wishlist')}
