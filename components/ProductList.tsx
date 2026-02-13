@@ -45,10 +45,20 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory }) => 
         const activeCat = categories.find(c => c.id === activeFilter);
         if (!activeCat) return false;
         
-        const keywords = activeCat.keywords || [activeCat.label];
-        const productCat = (p.category || '').toLowerCase();
-        
-        // Simple keyword matching
+        // Normalize strings for comparison
+        const productCat = (p.category || '').trim().toLowerCase();
+        const categoryLabel = (activeCat.label || '').trim().toLowerCase();
+
+        // 1. Direct Match: Check if product category matches the category label exactly
+        if (productCat === categoryLabel) return true;
+
+        // 2. Keyword Match: Check configured keywords
+        // Ensure we don't fail on empty array by defaulting to an array containing the label if keywords is empty
+        let keywords = activeCat.keywords;
+        if (!keywords || keywords.length === 0) {
+            keywords = [activeCat.label];
+        }
+
         return keywords.some(k => productCat.includes(k.toLowerCase()));
     });
 

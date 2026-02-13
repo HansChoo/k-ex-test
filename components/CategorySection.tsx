@@ -8,16 +8,7 @@ interface CategorySectionProps {
 }
 
 export const CategorySection: React.FC<CategorySectionProps> = ({ onCategoryClick }) => {
-  const { t, products, categories, language } = useGlobal();
-
-  // Helper to calculate active products count per category
-  const getCount = (keywords: string[]) => {
-      if (!keywords || keywords.length === 0) return 0;
-      return products.filter(p => {
-          const cat = (p.category || '').toLowerCase();
-          return keywords.some(k => cat.includes(k.toLowerCase()));
-      }).length;
-  };
+  const { t, categories, language } = useGlobal();
 
   return (
     <section className="w-full max-w-[1280px] mx-auto px-4 py-8 font-sans tracking-tight bg-white">
@@ -49,9 +40,6 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ onCategoryClic
                     <h3 className="text-white font-bold text-[14px] md:text-[16px] leading-tight mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
                         {language === 'ko' ? cat.label : cat.labelEn}
                     </h3>
-                    <p className="text-white/80 text-[11px] md:text-[12px] font-medium bg-white/20 backdrop-blur-sm inline-block px-2 py-0.5 rounded-full">
-                        {getCount(cat.keywords || [])}개 체험
-                    </p>
                 </div>
                 </div>
             ))}
