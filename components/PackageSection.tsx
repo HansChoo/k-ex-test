@@ -1,10 +1,8 @@
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
-import { Check, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { Check, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface PackageSectionProps {
   language: 'ko' | 'en';
@@ -12,24 +10,10 @@ interface PackageSectionProps {
 }
 
 export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, language }) => {
-  const { convertPrice, t } = useGlobal();
+  const { convertPrice, t, packages } = useGlobal();
   const isEn = language !== 'ko';
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
-  const [packages, setPackages] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Sync with Firestore (cms_packages) - NO FALLBACK to constants
-  useEffect(() => {
-    const q = query(collection(db, "cms_packages"), orderBy("createdAt", "asc")); 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setPackages(fetched);
-        setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const scroll = (direction: 'left' | 'right') => {
       if (scrollContainerRef.current) {
           const scrollAmount = 300;
@@ -45,8 +29,6 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
     yellow: { bg: 'bg-[#FFD700]', badge: 'PREMIUM', icon: '🎤' },
     orange: { bg: 'bg-[#FFB800]', badge: 'PREMIUM', icon: '✨' }
   };
-
-  if (loading) return null; // Don't show anything while initial loading
 
   return (
     <section className="w-full max-w-[1280px] mx-auto px-6 pb-6 pt-10 font-sans tracking-tight relative">

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus, Box } from 'lucide-react';
 import { auth } from '../services/firebaseConfig';
 import { createReservation, checkAvailability, validateCoupon } from '../services/reservationService';
 import { initializePayment, requestPayment } from '../services/paymentService';
@@ -14,7 +14,7 @@ interface ProductDetailProps {
 }
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
-  const { language, t, convertPrice, wishlist, toggleWishlist, getLocalizedValue } = useGlobal();
+  const { language, t, convertPrice, wishlist, toggleWishlist, getLocalizedValue, products } = useGlobal();
   const isEn = language !== 'ko';
   
   const [activeTab, setActiveTab] = useState<'detail' | 'info' | 'faq' | 'reviews'>('detail');
@@ -34,9 +34,48 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
 
   const title = getLocalizedValue(product, 'title');
   const description = getLocalizedValue(product, 'description');
-  const content = getLocalizedValue(product, 'content');
+  const introContent = getLocalizedValue(product, 'content');
   const infoText = getLocalizedValue(product, 'infoText');
   const faqText = getLocalizedValue(product, 'faqText');
+
+  // Logic to merge content for Packages
+  const isPackage = product.type === 'package' || (product.selectedProductIds && product.selectedProductIds.length > 0);
+  
+  const renderCombinedContent = () => {
+      // 1. Package Intro
+      let html = introContent ? `<div class="mb-10 text-lg leading-relaxed">${introContent}</div>` : '';
+      
+      // 2. Append Child Products
+      if (isPackage && product.selectedProductIds) {
+          html += `<div class="package-break mb-8 text-center"><span class="bg-gray-100 px-4 py-1 rounded-full text-xs font-bold text-gray-500 uppercase tracking-widest">Included Items</span></div>`;
+          
+          product.selectedProductIds.forEach((pid: string) => {
+              const childProd = products.find(p => p.id === pid);
+              if (childProd) {
+                  const childTitle = getLocalizedValue(childProd, 'title');
+                  const childContent = getLocalizedValue(childProd, 'content');
+                  const childImg = childProd.image;
+                  
+                  html += `
+                    <div class="mb-12 border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+                        <div class="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-2">
+                            <span class="text-xl">📦</span>
+                            <h3 class="font-bold text-lg">${childTitle}</h3>
+                        </div>
+                        <div class="p-6 bg-white">
+                            ${childContent ? childContent : `<img src="${childImg}" class="w-full rounded-lg" />`}
+                        </div>
+                    </div>
+                  `;
+              }
+          });
+      } else if (!introContent) {
+          // Fallback for normal products if no content
+          return <img src={product.detailTopImage || product.image} className="w-full rounded-xl" />;
+      }
+
+      return <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: html }} />;
+  };
 
   useEffect(() => {
     initializePayment('imp19424728');
@@ -149,15 +188,21 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             {/* Same Left Column as before */}
             <div className="px-4 lg:px-0 mb-8">
                 <button onClick={() => window.location.href='/'} className="text-gray-400 mb-2 flex items-center gap-1 text-sm hover:text-black transition-colors"><ChevronLeft size={14}/> Back to list</button>
-                <div className="text-sm font-bold text-blue-600 mb-1">{product.category}</div>
+                <div className="text-sm font-bold text-blue-600 mb-1 flex items-center gap-1">
+                    {isPackage ? <Box size={14}/> : null}
+                    {isPackage ? 'All-in-One Package' : product.category}
+                </div>
                 <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug">{title}</h1>
                 <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{description}</p>
                 <div className="flex items-center justify-between"><div className="flex items-baseline gap-2"><span className="text-[32px] font-black text-[#111]">{convertPrice(getPrice() / (selectedPayment === 'deposit' ? 0.2 : 1))}</span></div><div className="flex gap-4"><button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group"><Heart size={20} className={`transition-all duration-300 ${wishlist.includes(product.id || 999) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"}`} /><span>Wishlist</span></button><button className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95"><Share2 size={20} /><span>{t('share')}</span></button></div></div>
             </div>
+            {/* Package uses default image or specific hero image */}
             <div className="mb-12 overflow-x-auto no-scrollbar flex gap-4 px-4 lg:px-0 snap-x"><div className="relative w-[80vw] lg:w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg shrink-0 snap-center"><img src={product.image} className="w-full h-full object-cover" alt={title} /></div></div>
+            
             <div className="sticky top-[50px] lg:top-[90px] bg-white z-30 border-b border-gray-200 mb-8"><div className="flex text-center">{['detail', 'reviews', 'info', 'faq', 'map'].map((tab) => (<button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 font-bold relative transition-colors ${activeTab === tab ? 'text-[#111]' : 'text-[#888] hover:text-[#555]'}`}>{tab.toUpperCase()}{activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#111]"></div>}</button>))}</div></div>
+            
             <div className="px-4 lg:px-0 min-h-[400px] pb-20 animate-fade-in">
-                {activeTab === 'detail' && (content ? <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: content }} /> : <img src={product.detailTopImage || product.image} className="w-full rounded-xl" />)}
+                {activeTab === 'detail' && renderCombinedContent()}
                 {activeTab === 'reviews' && (<div className="space-y-6">{reviews.map((rev, i) => (<div key={i} className="border-b border-gray-100 pb-6"><div className="flex justify-between items-start mb-2"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs">{rev.user.charAt(0)}</div><div><div className="font-bold text-sm">{rev.user}</div><div className="text-yellow-400 text-xs">★★★★★</div></div></div><span className="text-xs text-gray-400">{rev.date}</span></div><p className="text-sm text-gray-600">{rev.text}</p></div>))}</div>)}
                 {activeTab === 'info' && <div className="bg-gray-50 p-6 rounded-xl text-sm leading-7">{infoText}</div>}
                 {activeTab === 'faq' && <div className="bg-gray-50 p-6 rounded-xl text-sm leading-7">{faqText}</div>}

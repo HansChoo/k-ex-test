@@ -24,6 +24,7 @@ interface GlobalContextType {
   toggleWishlist: (id: number) => void;
   t: (key: string) => string;
   products: any[];
+  packages: any[]; // Added packages
   categories: Category[]; // Added categories
   getLocalizedValue: (data: any, field: string) => string;
 }
@@ -185,6 +186,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currency, setCurrency] = useState<Currency>('KRW');
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [realtimeProducts, setRealtimeProducts] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]); // New State
   const [categories, setCategories] = useState<Category[]>([]);
 
   // Init from Local Storage
@@ -208,9 +210,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => unsubscribe();
   }, []);
 
+  // Fetch Packages from Firestore Real-time
+  useEffect(() => {
+    const q = query(collection(db, "cms_packages"), orderBy("createdAt", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setPackages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'package' })));
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Fetch Categories from Firestore Real-time
-  // !!! FIXED: No longer using Fallback Data. 
-  // If DB is empty, website shows empty. This ensures sync with Admin.
   useEffect(() => {
     const q = query(collection(db, "cms_categories"), orderBy("createdAt", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -271,7 +280,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const displayProducts = realtimeProducts; 
 
   return (
-    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: displayProducts, categories, getLocalizedValue }}>
+    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: displayProducts, packages, categories, getLocalizedValue }}>
       {children}
     </GlobalContext.Provider>
   );

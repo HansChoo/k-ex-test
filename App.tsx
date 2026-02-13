@@ -36,7 +36,7 @@ interface ToastMsg {
 }
 
 const AppContent: React.FC = () => {
-  const { language, t } = useGlobal();
+  const { language, t, packages } = useGlobal();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -197,9 +197,17 @@ const AppContent: React.FC = () => {
   }, []);
 
   const handlePackageBookClick = (pkgId: string) => {
-      if (pkgId.includes('pkg_idol')) navigateTo('reservation_premium');
-      else if (pkgId.includes('pkg_glow')) navigateTo('reservation_premium');
-      else navigateTo('reservation_basic');
+      // Find package in fetched packages
+      const pkg = packages.find(p => p.id === pkgId);
+      if (pkg) {
+          setSelectedProduct(pkg);
+          navigateTo('product_detail');
+      } else {
+          // Fallback legacy logic if not found
+          if (pkgId.includes('pkg_idol')) navigateTo('reservation_premium');
+          else if (pkgId.includes('pkg_glow')) navigateTo('reservation_premium');
+          else navigateTo('reservation_basic');
+      }
   };
 
   return (
