@@ -110,15 +110,35 @@ export const AdminDashboard: React.FC<any> = () => {
 
   // --- Logic Helpers ---
 
+  // Enhanced Price Parser to prevent NaN
   const parsePrice = (val: any) => {
-      if (typeof val === 'number') return val;
-      if (typeof val === 'string') return Number(val.replace(/[^0-9]/g, '')) || 0;
+      if (val === undefined || val === null) return 0;
+      if (typeof val === 'number') return isNaN(val) ? 0 : val;
+      if (typeof val === 'string') {
+          // Remove commas, currency symbols, spaces
+          const num = Number(val.replace(/[^0-9.]/g, ''));
+          return isNaN(num) ? 0 : num;
+      }
       return 0;
   };
 
   const allProducts = useMemo(() => {
-      const p = products.map(item => ({ ...item, type: 'product', _coll: 'products', price: parsePrice(item.price || item.priceVal) }));
-      const pkg = packages.map(item => ({ ...item, type: 'package', category: '올인원패키지', _coll: 'cms_packages', price: parsePrice(item.price) }));
+      // Normalize Products
+      const p = products.map(item => ({ 
+          ...item, 
+          type: 'product', 
+          _coll: 'products', 
+          price: parsePrice(item.price || item.priceVal),
+          category: item.category || '미지정' // Ensure category string
+      }));
+      // Normalize Packages (Force category)
+      const pkg = packages.map(item => ({ 
+          ...item, 
+          type: 'package', 
+          category: '올인원패키지', 
+          _coll: 'cms_packages', 
+          price: parsePrice(item.price) 
+      }));
       return [...p, ...pkg];
   }, [products, packages]);
 
@@ -128,8 +148,8 @@ export const AdminDashboard: React.FC<any> = () => {
       if (productCategoryFilter !== 'all') {
           data = data.filter(p => {
               if (!p.category) return false;
-              // Check if category includes keyword (e.g. 'K-IDOL' matches 'K-IDOL Premium')
-              return p.category.includes(productCategoryFilter);
+              // Strict string check
+              return String(p.category).includes(productCategoryFilter);
           });
       }
       return data;
@@ -208,7 +228,7 @@ export const AdminDashboard: React.FC<any> = () => {
       const payload = { ...editingItem };
       if (modalType === 'product' || modalType === 'magazine') {
           payload.images = galleryImages;
-          payload.price = parsePrice(editingItem.price);
+          payload.price = parsePrice(editingItem.price); // Ensure saved price is number
       }
       
       // Remove internal fields
@@ -370,7 +390,7 @@ export const AdminDashboard: React.FC<any> = () => {
                     {/* Category Filter */}
                     <div className="flex gap-2 mb-4">
                         {['all', '건강검진', '뷰티시술', 'K-IDOL', '뷰티컨설팅', '올인원패키지'].map(cat => (
-                            <button key={cat} onClick={()=>setProductCategoryFilter(cat)} className={`px-3 py-1 rounded border text-xs font-bold ${productCategoryFilter===cat?'bg-black text-white':'bg-white text-gray-600'}`}>
+                            <button key={cat} onClick={()=>setProductCategoryFilter(cat)} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter===cat?'bg-black text-white':'bg-white text-gray-600'}`}>
                                 {cat}
                             </button>
                         ))}
