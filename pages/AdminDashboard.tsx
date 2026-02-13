@@ -267,11 +267,19 @@ export const AdminDashboard: React.FC<any> = () => {
   };
 
   const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files?.[0]) {
-          setUploadingImg(true);
-          const url = await uploadImage(e.target.files[0], 'main_images');
-          setEditingItem((prev: any) => ({ ...prev, image: url }));
-          setUploadingImg(false);
+      const file = e.target.files?.[0];
+      if (file) {
+          try {
+              setUploadingImg(true);
+              const url = await uploadImage(file, 'main_images');
+              setEditingItem((prev: any) => ({ ...prev, image: url }));
+          } catch (error) {
+              console.error(error);
+              showToast("이미지 업로드 실패. 다시 시도해주세요.", 'error');
+          } finally {
+              setUploadingImg(false);
+              e.target.value = ''; // Reset input to allow re-upload
+          }
       }
   };
 
@@ -285,6 +293,7 @@ export const AdminDashboard: React.FC<any> = () => {
           }
           setGalleryImages([...galleryImages, ...newUrls]);
           setUploadingImg(false);
+          e.target.value = ''; // Reset input
       }
   };
 
@@ -649,8 +658,11 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 mb-2">대표 이미지 (1장)</label>
                                         <div className="aspect-video bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl relative flex items-center justify-center overflow-hidden">
+                                            {/* Loader Overlay */}
+                                            {uploadingImg && <div className="absolute inset-0 bg-black/20 z-20 flex items-center justify-center"><RefreshCw className="animate-spin text-white" size={32}/></div>}
+                                            
                                             {editingItem.image ? <img src={editingItem.image} className="w-full h-full object-cover"/> : <ImageIcon className="text-gray-300"/>}
-                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleMainImageUpload}/>
+                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={handleMainImageUpload} accept="image/*" disabled={uploadingImg}/>
                                         </div>
                                     </div>
                                     <div className="space-y-4">
