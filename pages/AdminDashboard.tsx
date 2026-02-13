@@ -288,11 +288,58 @@ export const AdminDashboard: React.FC<any> = () => {
       delete payload.type;
 
       try {
-          if (editingItem.id) await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
-          else await addDoc(collection(db, col), { ...payload, createdAt: serverTimestamp() });
+          if (editingItem.id) {
+              // Special Logic for Category Update (Cascading Update)
+              if (modalType === 'category') {
+                  const originalCat = categories.find(c => c.id === editingItem.id);
+                  // Check if label (name) changed
+                  if (originalCat && originalCat.label !== payload.label) {
+                      const batch = writeBatch(db);
+                      const oldLabel = originalCat.label;
+                      const newLabel = payload.label;
+                      let updatedCount = 0;
+
+                      // 1. Update Category itself
+                      const catRef = doc(db, "cms_categories", editingItem.id);
+                      batch.update(catRef, { ...payload, updatedAt: serverTimestamp() });
+
+                      // 2. Find and Update Linked Products
+                      products.forEach(p => {
+                          if (p.category === oldLabel) {
+                              const pRef = doc(db, "products", p.id);
+                              batch.update(pRef, { category: newLabel });
+                              updatedCount++;
+                          }
+                      });
+
+                      // 3. Find and Update Linked Packages
+                      packages.forEach(p => {
+                          if (p.category === oldLabel) {
+                              const pRef = doc(db, "cms_packages", p.id);
+                              batch.update(pRef, { category: newLabel });
+                              updatedCount++;
+                          }
+                      });
+
+                      await batch.commit();
+                      showToast(`카테고리 수정 및 연결된 상품 ${updatedCount}건 업데이트 완료!`);
+                  } else {
+                      // Normal update if label didn't change
+                      await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
+                      showToast("저장되었습니다.");
+                  }
+              } else {
+                  // Normal update for other types
+                  await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
+                  showToast("저장되었습니다.");
+              }
+          } else {
+              // Create new
+              await addDoc(collection(db, col), { ...payload, createdAt: serverTimestamp() });
+              showToast("저장되었습니다.");
+          }
           
           setModalType(null);
-          showToast("저장되었습니다.");
       } catch(e: any) { 
           showToast("저장 실패: " + e.message, 'error'); 
           console.error(e);
