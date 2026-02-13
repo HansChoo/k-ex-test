@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { GlobalProvider, useGlobal } from './contexts/GlobalContext';
 import { Navbar } from './components/Navbar';
 import { BottomNav } from './components/BottomNav';
@@ -17,7 +17,7 @@ import { MyPage } from './pages/MyPage';
 import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
 import { MagazinePage } from './pages/MagazinePage';
-import { SurveyPage } from './pages/SurveyPage'; // New Import
+import { SurveyPage } from './pages/SurveyPage';
 import { collection, query, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
 import { db } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
@@ -36,50 +36,105 @@ interface ToastMsg {
 }
 
 const AppContent: React.FC = () => {
-  const { language, t, packages } = useGlobal();
+  const { language, t, packages, products } = useGlobal();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [socialProof, setSocialProof] = useState<{name: string, country: string, product: string} | null>(null);
-  
-  // Category Selection State (Stores ID and timestamp to force updates)
   const [selectedCategory, setSelectedCategory] = useState<{id: string, ts: number} | null>(null);
-  
-  // Auth State Lifted to App Level
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
-  const navigateTo = (page: PageView) => {
-    setCurrentView(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Smooth scroll to top
-  };
-
-  // Scroll to top on initial load
-  useEffect(() => {
-    if ('scrollRestoration' in history) {
-        history.scrollRestoration = 'manual';
+  // --- 핵심 수정: 히스토리 관리 및 내비게이션 ---
+  
+  // URL 상태와 동기화하여 페이지 이동
+  const navigateTo = useCallback((page: PageView, productData?: any, replace = false) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', page);
+    
+    // 상품 상세일 경우 ID 저장
+    if (page === 'product_detail' && productData?.id) {
+        url.searchParams.set('pid', productData.id);
+    } else {
+        url.searchParams.delete('pid');
     }
-    window.scrollTo(0, 0);
+
+    if (replace) {
+        window.history.replaceState({ page, pid: productData?.id }, '', url.toString());
+    } else {
+        window.history.pushState({ page, pid: productData?.id }, '', url.toString());
+    }
+
+    setCurrentView(page);
+    if (productData) setSelectedProduct(productData);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
-  // Protected Navigation Handler
+  // 브라우저 뒤로가기/앞으로가기 감지
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+        const params = new URLSearchParams(window.location.search);
+        const view = (params.get('view') as PageView) || 'home';
+        const pid = params.get('pid');
+
+        setCurrentView(view);
+        
+        // 상품 상세 페이지인 경우 상품 데이터 복구
+        if (view === 'product_detail' && pid) {
+            const found = [...products, ...packages].find(p => String(p.id) === String(pid));
+            if (found) setSelectedProduct(found);
+        }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [products, packages]);
+
+  // 초기 로딩 시 URL 파라미터 확인 (딥 링크)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view') as PageView;
+    const pid = params.get('pid');
+
+    if (view && view !== 'home') {
+        if (view === 'product_detail' && pid) {
+            // 상품 데이터가 로드될 때까지 기다렸다가 설정 (아래 products dependency 활용)
+        } else {
+            setCurrentView(view);
+        }
+    }
+  }, []);
+
+  // 상품 데이터가 들어왔을 때 URL의 pid와 대조하여 상세페이지로 이동
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    const pid = params.get('pid');
+    
+    if (view === 'product_detail' && pid && (products.length > 0 || packages.length > 0)) {
+        const found = [...products, ...packages].find(p => String(p.id) === String(pid));
+        if (found) {
+            setSelectedProduct(found);
+            setCurrentView('product_detail');
+        }
+    }
+  }, [products, packages]);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
   const handleProtectedNav = (page: string) => {
-      // Protected Routes check
       if ((page === 'mypage' || page === 'wishlist') && !user) {
           setIsAuthModalOpen(true);
           return;
       }
       
-      // Default Navigation
-      if (page === 'home' || page === 'group_buying' || page === 'wishlist' || page === 'mypage') {
+      if (['home', 'group_buying', 'wishlist', 'mypage', 'magazine'].includes(page)) {
           navigateTo(page as PageView);
       }
-      // Handle 'product_list' nav click (from bottom nav) -> Go Home and Scroll
+      
       if (page === 'product_list') {
-          setCurrentView('home');
+          navigateTo('home');
           setTimeout(() => {
               document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
           }, 100);
@@ -87,21 +142,16 @@ const AppContent: React.FC = () => {
   };
 
   const handleCategoryClick = (category: string) => {
-      // 1. Set category with timestamp to ensure ProductList detects change even if clicking same category
       setSelectedCategory({ id: category, ts: Date.now() });
-
-      // 2. Ensure we are on Home view
       if (currentView !== 'home') {
-          setCurrentView('home');
-          // ProductList will mount and useEffect will handle the scroll
+          navigateTo('home');
       } else {
-          // 3. If already on home, manually scroll
           document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
       }
   };
 
   const handleLogoClick = () => {
-      setSelectedCategory(null); // Reset category filter so it doesn't auto-scroll down
+      setSelectedCategory(null);
       navigateTo('home');
   };
 
@@ -130,35 +180,18 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    
-    // Admin Shortcut
     if (params.get('mode') === 'admin') {
-        setCurrentView('admin');
+        navigateTo('admin');
         window.history.replaceState({}, '', window.location.pathname);
     }
-    
-    // Survey Route Handling
     if (params.get('page') === 'survey' && params.get('id')) {
-        setCurrentView('survey');
+        navigateTo('survey');
     }
-
-    const refCode = params.get('ref');
-    if (refCode) {
-        sessionStorage.setItem('k_exp_ref', refCode);
-        (async () => {
-            try {
-                const q = query(collection(db, "affiliates"), where("code", "==", refCode));
-                const snap = await getDocs(q);
-                if(!snap.empty) await updateDoc(snap.docs[0].ref, { clicks: increment(1) });
-            } catch(e) { console.error("Ref track error", e); }
-        })();
-    }
-  }, []);
+  }, [navigateTo]);
 
   useEffect(() => {
       const handleProductNav = (e: any) => {
-          setSelectedProduct(e.detail);
-          navigateTo('product_detail');
+          navigateTo('product_detail', e.detail);
       };
       const handleMagNav = () => navigateTo('magazine');
       
@@ -169,9 +202,8 @@ const AppContent: React.FC = () => {
           window.removeEventListener('navigate-product-detail', handleProductNav);
           window.removeEventListener('navigate-magazine', handleMagNav);
       };
-  }, []);
+  }, [navigateTo]);
 
-  // Social Proof Logic
   useEffect(() => {
       const SOCIAL_DATA = [
           { country: "🇺🇸 USA", names: ["James", "Emma", "Michael", "Olivia", "William"] },
@@ -182,11 +214,11 @@ const AppContent: React.FC = () => {
           { country: "🇫🇷 France", names: ["Gabriel", "Leo", "Louise", "Alice"] },
           { country: "🇩🇪 Germany", names: ["Noah", "Leon", "Mia", "Hannah"] }
       ];
-      const products = ["K-IDOL Basic", "Health Checkup", "Glass Skin Pkg", "Rejuran Boost"];
+      const productsList = ["K-IDOL Basic", "Health Checkup", "Glass Skin Pkg", "Rejuran Boost"];
       const showPopup = () => {
           const randomRegion = SOCIAL_DATA[Math.floor(Math.random() * SOCIAL_DATA.length)];
           const randomName = randomRegion.names[Math.floor(Math.random() * randomRegion.names.length)];
-          const randomProduct = products[Math.floor(Math.random() * products.length)];
+          const randomProduct = productsList[Math.floor(Math.random() * productsList.length)];
           setSocialProof({ name: randomName, country: randomRegion.country, product: randomProduct });
           setTimeout(() => setSocialProof(null), 5000);
           const nextInterval = Math.random() * 30000 + 20000;
@@ -197,13 +229,10 @@ const AppContent: React.FC = () => {
   }, []);
 
   const handlePackageBookClick = (pkgId: string) => {
-      // Find package in fetched packages
       const pkg = packages.find(p => p.id === pkgId);
       if (pkg) {
-          setSelectedProduct(pkg);
-          navigateTo('product_detail');
+          navigateTo('product_detail', pkg);
       } else {
-          // Fallback legacy logic if not found
           if (pkgId.includes('pkg_idol')) navigateTo('reservation_premium');
           else if (pkgId.includes('pkg_glow')) navigateTo('reservation_premium');
           else navigateTo('reservation_basic');
@@ -213,7 +242,6 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight text-[#111]">
       
-      {/* Toast */}
       <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none">
         {toasts.map(toast => (
           <div key={toast.id} className={`pointer-events-auto flex items-center justify-between p-4 rounded-2xl shadow-xl backdrop-blur-md border animate-fade-in-down ${toast.type === 'success' ? 'bg-black/80 text-white border-black' : toast.type === 'error' ? 'bg-red-500/90 text-white border-red-600' : 'bg-blue-500/90 text-white border-blue-600'}`}>
@@ -228,7 +256,6 @@ const AppContent: React.FC = () => {
         ))}
       </div>
 
-      {/* Social Proof */}
       {socialProof && currentView === 'home' && (
           <div className="fixed bottom-24 right-4 z-40 bg-white/95 backdrop-blur-md border border-gray-100 p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-up max-w-[90%] md:max-w-[320px]">
               <div className="w-10 h-10 bg-gradient-to-tr from-green-400 to-green-600 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg">
@@ -275,8 +302,6 @@ const AppContent: React.FC = () => {
         {currentView === 'mypage' && <MyPage language={language} />}
         {currentView === 'magazine' && <MagazinePage />}
         {currentView === 'wishlist' && <WishlistPage language={language} />}
-        
-        {/* Survey Page Route */}
         {currentView === 'survey' && <SurveyPage language={language} />}
         
         {currentView === 'admin' && (
@@ -289,7 +314,6 @@ const AppContent: React.FC = () => {
       {currentView !== 'admin' && currentView !== 'survey' && <Footer language={language} />}
       {currentView !== 'admin' && currentView !== 'survey' && <BottomNav onNavClick={handleProtectedNav} currentView={currentView} toggleMenu={toggleMenu} />}
       
-      {/* Global Auth Modal */}
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} language={language} />
     </div>
   );

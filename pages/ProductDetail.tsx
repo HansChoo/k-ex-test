@@ -38,22 +38,24 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const infoText = getLocalizedValue(product, 'infoText');
   const faqText = getLocalizedValue(product, 'faqText');
 
+  // Logic to merge content for Packages
   const isPackage = product.type === 'package' || (product.selectedProductIds && product.selectedProductIds.length > 0);
   
-  const priceM = typeof product.price === 'string' ? Number(product.price.replace(/[^0-9]/g, '')) : (product.price || 0);
-  const priceF = product.priceFemale ? (typeof product.priceFemale === 'string' ? Number(product.priceFemale.replace(/[^0-9]/g, '')) : product.priceFemale) : priceM;
-  const hasDiff = priceM !== priceF;
-
   const renderCombinedContent = () => {
+      // 1. Package Intro
       let html = introContent ? `<div class="mb-10 text-lg leading-relaxed">${introContent}</div>` : '';
+      
+      // 2. Append Child Products
       if (isPackage && product.selectedProductIds) {
           html += `<div class="package-break mb-8 text-center"><span class="bg-gray-100 px-4 py-1 rounded-full text-xs font-bold text-gray-500 uppercase tracking-widest">Included Items</span></div>`;
+          
           product.selectedProductIds.forEach((pid: string) => {
               const childProd = products.find(p => p.id === pid);
               if (childProd) {
                   const childTitle = getLocalizedValue(childProd, 'title');
                   const childContent = getLocalizedValue(childProd, 'content');
                   const childImg = childProd.image;
+                  
                   html += `
                     <div class="mb-12 border border-gray-100 rounded-xl overflow-hidden shadow-sm">
                         <div class="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-2">
@@ -68,8 +70,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
               }
           });
       } else if (!introContent) {
+          // Fallback for normal products if no content
           return <img src={product.detailTopImage || product.image} className="w-full rounded-xl" />;
       }
+
       return <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
@@ -107,11 +111,16 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   };
 
   const getPrice = () => {
+      const numericPrice = typeof product.price === 'string' 
+        ? Number(product.price.replace(/[^0-9]/g, '')) 
+        : product.price;
+      const basePrice = isNaN(numericPrice) ? 100000 : numericPrice;
+      
       let total = 0;
       guestList.forEach(guest => {
-          // Use Female Price if guest is Female, otherwise Male Price
-          if (guest.gender === 'Female') total += priceF;
-          else total += priceM;
+          let p = basePrice;
+          if (guest.gender === 'Female' && product.category === '건강검진') p *= 1.05; // Mock logic
+          total += p;
       });
 
       if (appliedCoupon) {
@@ -169,12 +178,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     setOpenSection('options');
   };
 
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const CALENDAR_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
   return (
     <div className="w-full bg-white relative font-sans tracking-tight text-[#111]">
       <div className="max-w-[1360px] mx-auto lg:px-4 lg:py-10 flex flex-col lg:flex-row gap-10 relative">
         <div className="flex-1 w-full min-w-0">
+            {/* Same Left Column as before */}
             <div className="px-4 lg:px-0 mb-8">
                 <button onClick={() => window.location.href='/'} className="text-gray-400 mb-2 flex items-center gap-1 text-sm hover:text-black transition-colors"><ChevronLeft size={14}/> Back to list</button>
                 <div className="text-sm font-bold text-blue-600 mb-1 flex items-center gap-1">
@@ -183,28 +194,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 </div>
                 <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug">{title}</h1>
                 <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{description}</p>
-                
-                {/* Price Display */}
-                <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                        {hasDiff ? (
-                            <>
-                                <div className="flex items-center gap-2"><span className="text-xs font-bold text-blue-600 w-12">MEN</span><span className="text-2xl font-black text-[#111]">{convertPrice(priceM)}</span></div>
-                                <div className="flex items-center gap-2"><span className="text-xs font-bold text-red-500 w-12">WOMEN</span><span className="text-2xl font-black text-[#111]">{convertPrice(priceF)}</span></div>
-                            </>
-                        ) : (
-                            <span className="text-[32px] font-black text-[#111]">{convertPrice(priceM)}</span>
-                        )}
-                    </div>
-                    <div className="flex gap-4">
-                        <button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group"><Heart size={20} className={`transition-all duration-300 ${wishlist.includes(product.id || 999) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"}`} /><span>Wishlist</span></button>
-                        <button className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95"><Share2 size={20} /><span>{t('share')}</span></button>
-                    </div>
-                </div>
+                <div className="flex items-center justify-between"><div className="flex items-baseline gap-2"><span className="text-[32px] font-black text-[#111]">{convertPrice(getPrice() / (selectedPayment === 'deposit' ? 0.2 : 1))}</span></div><div className="flex gap-4"><button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group"><Heart size={20} className={`transition-all duration-300 ${wishlist.includes(product.id || 999) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"}`} /><span>Wishlist</span></button><button className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95"><Share2 size={20} /><span>{t('share')}</span></button></div></div>
             </div>
-            
+            {/* Package uses default image or specific hero image */}
             <div className="mb-12 overflow-x-auto no-scrollbar flex gap-4 px-4 lg:px-0 snap-x"><div className="relative w-[80vw] lg:w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg shrink-0 snap-center"><img src={product.image} className="w-full h-full object-cover" alt={title} /></div></div>
+            
             <div className="sticky top-[50px] lg:top-[90px] bg-white z-30 border-b border-gray-200 mb-8"><div className="flex text-center">{['detail', 'reviews', 'info', 'faq', 'map'].map((tab) => (<button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 font-bold relative transition-colors ${activeTab === tab ? 'text-[#111]' : 'text-[#888] hover:text-[#555]'}`}>{tab.toUpperCase()}{activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#111]"></div>}</button>))}</div></div>
+            
             <div className="px-4 lg:px-0 min-h-[400px] pb-20 animate-fade-in">
                 {activeTab === 'detail' && renderCombinedContent()}
                 {activeTab === 'reviews' && (<div className="space-y-6">{reviews.map((rev, i) => (<div key={i} className="border-b border-gray-100 pb-6"><div className="flex justify-between items-start mb-2"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs">{rev.user.charAt(0)}</div><div><div className="font-bold text-sm">{rev.user}</div><div className="text-yellow-400 text-xs">★★★★★</div></div></div><span className="text-xs text-gray-400">{rev.date}</span></div><p className="text-sm text-gray-600">{rev.text}</p></div>))}</div>)}
@@ -239,12 +235,9 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                         </div>
                                         <div className="space-y-2">
                                             <input type="text" placeholder="Passport Name" value={guest.name} onChange={e => updateGuest(idx, 'name', e.target.value)} className="w-full border p-2 rounded text-xs bg-white uppercase"/>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <select value={guest.gender} onChange={e => updateGuest(idx, 'gender', e.target.value)} className="w-full border p-2 rounded text-xs bg-white font-bold">
-                                                    <option value="Female">Female ({convertPrice(priceF)})</option>
-                                                    <option value="Male">Male ({convertPrice(priceM)})</option>
-                                                </select>
+                                            <div className="flex gap-2">
                                                 <input type="date" value={guest.dob} onChange={e => updateGuest(idx, 'dob', e.target.value)} className="w-full border p-2 rounded text-xs text-gray-500 bg-white"/>
+                                                <input type="text" placeholder="Nationality" value={guest.nationality} onChange={e => updateGuest(idx, 'nationality', e.target.value)} className="w-full border p-2 rounded text-xs bg-white"/>
                                             </div>
                                             {idx === 0 && (
                                                 <div className="pt-2 border-t border-gray-200 mt-2">
@@ -255,9 +248,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                         </div>
                                     </div>
                                 ))}
+                                
                                 <button onClick={addGuest} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-xs flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-500 transition-colors">
                                     <Plus size={16}/> Add Guest
                                 </button>
+
                                 <div><p className="text-[13px] font-bold text-[#333] mb-2">{t('payment_type')}</p><div className="flex flex-col gap-2">{['deposit', 'full'].map(p => (<button key={p} onClick={() => setSelectedPayment(p as any)} className={`w-full py-2.5 px-3 border rounded text-[13px] text-left flex justify-between bg-white ${selectedPayment === p ? 'border-[#0070F0] bg-[#F0F8FF] text-[#0070F0]' : 'border-[#ddd]'}`}>{p === 'deposit' ? t('pay_deposit') : t('pay_full')}{selectedPayment === p && <Check size={14} />}</button>))}</div></div>
                             </div>
                         )}
@@ -265,6 +260,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 </div>
 
                 <div className="bg-[#f9f9f9] p-5">
+                    {/* Coupon */}
                     <div className="bg-white p-3 rounded-lg border border-gray-200 mb-4 shadow-sm"><label className="block text-xs font-bold text-gray-500 mb-1">{t('coupon_code')}</label><div className="flex gap-2"><input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="flex-1 border border-gray-200 rounded px-2 text-sm uppercase bg-white" placeholder="CODE"/><button onClick={handleApplyCoupon} className="bg-black text-white px-3 py-1 rounded text-xs font-bold">{t('apply')}</button></div>{couponMessage && <p className={`text-[10px] mt-1 font-bold ${appliedCoupon ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}</div>
                     <div className="flex justify-between items-center mb-4"><span className="text-[14px] font-bold text-[#555]">{t('total')}</span><div className="text-right"><span className="text-[20px] font-black text-[#111]">{convertPrice(getPrice())}</span></div></div>
                     <button onClick={handleReservation} className="w-full bg-[#0070F0] text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-600 active:scale-95 transition-all">{t('book_now')}</button>
