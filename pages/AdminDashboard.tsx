@@ -4,7 +4,8 @@ import {
     LayoutDashboard, ShoppingCart, Users, Package, Plus, Edit2, Trash2, Megaphone, X, Save, 
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
     LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown, ListPlus,
-    Timer, Lock, CheckCircle2, Phone, Archive, Grid, Layers, FolderTree
+    Timer, Lock, CheckCircle2, Phone, Archive, Grid, Layers, FolderTree, Box, Calendar as CalendarIcon, 
+    List, ChevronLeft, ChevronRight, MoreHorizontal, Mail
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -25,9 +26,13 @@ const StatusBadge = ({ status }: { status: string }) => {
         'answered': 'bg-blue-100 text-blue-800',
         'active': 'bg-blue-100 text-blue-800'
     };
+    const labels: any = {
+        'pending': '대기중', 'confirmed': '확정됨', 'completed': '이용완료', 
+        'cancelled': '취소됨', 'waiting': '답변대기', 'answered': '답변완료'
+    };
     return (
         <span className={`px-2 py-1 rounded text-xs font-bold ${styles[status] || 'bg-gray-100'}`}>
-            {status.toUpperCase()}
+            {labels[status] || status.toUpperCase()}
         </span>
     );
 };
@@ -65,9 +70,10 @@ export const AdminDashboard: React.FC<any> = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>('all');
   
-  // Sub-tabs
-  const [productSubTab, setProductSubTab] = useState<'categories' | 'items'>('categories'); // Default to categories for logical flow
-  const [settingsTab, setSettingsTab] = useState<'basic'|'payment'|'email'|'receipt'|'survey'>('basic');
+  // Sub-tabs & Views
+  const [productSubTab, setProductSubTab] = useState<'categories' | 'items' | 'packages'>('categories'); 
+  const [reservationView, setReservationView] = useState<'list' | 'calendar'>('list'); // Persona 2: Calendar View
+  const [calendarDate, setCalendarDate] = useState(new Date());
 
   // Auth Inputs
   const [email, setEmail] = useState('');
@@ -121,23 +127,6 @@ export const AdminDashboard: React.FC<any> = () => {
     ];
     return () => unsubs.forEach(u => u());
   }, [isAdmin]);
-
-  // Check for expired group buys and move them to completed
-  useEffect(() => {
-      if (groupBuys.length > 0) {
-          const today = new Date().toISOString().split('T')[0];
-          const expiredGroups = groupBuys.filter(g => g.status !== 'completed' && g.visitDate < today);
-          
-          if (expiredGroups.length > 0) {
-              const batch = writeBatch(db);
-              expiredGroups.forEach(g => {
-                  const ref = doc(db, "group_buys", g.id);
-                  batch.update(ref, { status: 'completed' });
-              });
-              batch.commit().then(() => showToast(`${expiredGroups.length}개의 공동구매가 완료 처리되었습니다.`, 'info'));
-          }
-      }
-  }, [groupBuys]);
 
   // --- Logic Helpers ---
 
@@ -215,6 +204,16 @@ export const AdminDashboard: React.FC<any> = () => {
       showToast("삭제되었습니다.");
   };
 
+  const handleDeleteGroupBuy = async (group: any) => {
+      if (!window.confirm("정말 이 공동구매를 삭제하시겠습니까?")) return;
+      try {
+          await deleteDoc(doc(db, "group_buys", group.id));
+          showToast("공동구매가 삭제되었습니다.");
+      } catch (e) {
+          showToast("삭제 실패", 'error');
+      }
+  };
+
   // Safe Delete for Categories
   const handleDeleteCategory = async (cat: any) => {
       // Logic: If any product is using this category (by exact label matching), block deletion.
@@ -230,46 +229,28 @@ export const AdminDashboard: React.FC<any> = () => {
           return;
       }
 
+      if(!window.confirm(`'${cat.label}' 카테고리를 정말 삭제하시겠습니까?`)) return;
       await deleteItem('cms_categories', cat.id);
   };
 
-  const handleDeleteGroupBuy = async (group: any) => {
-      const hasParticipants = (group.currentCount && group.currentCount > 0) || (group.participants && group.participants.length > 0);
-      
-      if (hasParticipants) {
-          const input = window.prompt(
-              `⚠️ 경고: 현재 ${group.currentCount || 0}명의 참여자가 있습니다.\n` +
-              `삭제 시 모든 참여자에게 전액 환불이 진행됩니다.\n` +
-              `진행하시려면 '환불' 이라고 입력해주세요.`
-          );
-
-          if (input !== '환불') {
-              alert("입력값이 일치하지 않아 삭제가 취소되었습니다.");
-              return;
-          }
-
-          showToast("PG사 환불 시스템 연동 및 처리 중...", 'info');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-          try {
-            await deleteDoc(doc(db, "group_buys", group.id));
-            showToast(`총 ${group.currentCount}건 환불 완료 및 공동구매가 삭제되었습니다.`);
-          } catch(e) {
-              showToast("삭제 중 오류가 발생했습니다.", 'error');
-          }
-      } else {
-          if(!window.confirm("참여자가 없는 공동구매입니다. 삭제하시겠습니까?")) return;
-          await deleteDoc(doc(db, "group_buys", group.id));
-          showToast("삭제되었습니다.");
+  // Persona 2: Reservation Operations
+  const updateReservationStatus = async (id: string, status: string) => {
+      if (!window.confirm(`예약 상태를 '${status}'(으)로 변경하시겠습니까?`)) return;
+      try {
+          await updateDoc(doc(db, "reservations", id), { status });
+          showToast(`상태가 변경되었습니다.`);
+          if (modalType === 'reservation_detail') setModalType(null); // Close modal if open
+      } catch (e) {
+          showToast("변경 실패", 'error');
       }
   };
 
   const saveItem = async () => {
       let col = "";
       if (modalType === 'magazine') col = "cms_magazine";
-      else if (modalType === 'product') {
-          col = (editingItem.category === '올인원패키지' || editingItem.type === 'package') ? "cms_packages" : "products";
-      } else if (modalType === 'coupon') col = "coupons";
+      else if (modalType === 'product') col = "products";
+      else if (modalType === 'package') col = "cms_packages";
+      else if (modalType === 'coupon') col = "coupons";
       else if (modalType === 'affiliate') col = "affiliates";
       else if (modalType === 'groupbuy') col = "group_buys";
       else if (modalType === 'category') col = "cms_categories";
@@ -279,6 +260,13 @@ export const AdminDashboard: React.FC<any> = () => {
           payload.images = galleryImages;
           payload.price = parsePrice(editingItem.price);
       }
+      
+      // Handle Package Specifics (Persona 1)
+      if (modalType === 'package') {
+          payload.price = parsePrice(editingItem.price);
+          // Items are already updated in state as string array
+      }
+
       // Parse keywords for category
       if (modalType === 'category' && typeof payload.keywords === 'string') {
           payload.keywords = payload.keywords.split(',').map((k:string) => k.trim()).filter((k:string) => k);
@@ -289,21 +277,17 @@ export const AdminDashboard: React.FC<any> = () => {
 
       try {
           if (editingItem.id) {
-              // Special Logic for Category Update (Cascading Update)
               if (modalType === 'category') {
                   const originalCat = categories.find(c => c.id === editingItem.id);
-                  // Check if label (name) changed
                   if (originalCat && originalCat.label !== payload.label) {
                       const batch = writeBatch(db);
                       const oldLabel = originalCat.label;
                       const newLabel = payload.label;
                       let updatedCount = 0;
 
-                      // 1. Update Category itself
                       const catRef = doc(db, "cms_categories", editingItem.id);
                       batch.update(catRef, { ...payload, updatedAt: serverTimestamp() });
 
-                      // 2. Find and Update Linked Products
                       products.forEach(p => {
                           if (p.category === oldLabel) {
                               const pRef = doc(db, "products", p.id);
@@ -312,29 +296,17 @@ export const AdminDashboard: React.FC<any> = () => {
                           }
                       });
 
-                      // 3. Find and Update Linked Packages
-                      packages.forEach(p => {
-                          if (p.category === oldLabel) {
-                              const pRef = doc(db, "cms_packages", p.id);
-                              batch.update(pRef, { category: newLabel });
-                              updatedCount++;
-                          }
-                      });
-
                       await batch.commit();
                       showToast(`카테고리 수정 및 연결된 상품 ${updatedCount}건 업데이트 완료!`);
                   } else {
-                      // Normal update if label didn't change
                       await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
                       showToast("저장되었습니다.");
                   }
               } else {
-                  // Normal update for other types
                   await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
                   showToast("저장되었습니다.");
               }
           } else {
-              // Create new
               await addDoc(collection(db, col), { ...payload, createdAt: serverTimestamp() });
               showToast("저장되었습니다.");
           }
@@ -379,20 +351,106 @@ export const AdminDashboard: React.FC<any> = () => {
       }
   };
 
+  // Persona 1: Smart Package Builder Helpers
+  const togglePackageItem = (prod: any) => {
+      const currentSelectedIds = editingItem.selectedProductIds || [];
+      let newSelectedIds: string[];
+      let newItems: string[];
+      
+      if (currentSelectedIds.includes(prod.id)) {
+          newSelectedIds = currentSelectedIds.filter((id: string) => id !== prod.id);
+          newItems = (editingItem.items || []).filter((title: string) => title !== prod.title);
+      } else {
+          newSelectedIds = [...currentSelectedIds, prod.id];
+          newItems = [...(editingItem.items || []), prod.title];
+      }
+
+      setEditingItem({
+          ...editingItem,
+          selectedProductIds: newSelectedIds,
+          items: newItems
+      });
+  };
+
+  const getPackageTotal = () => {
+      if (!editingItem?.selectedProductIds) return 0;
+      return editingItem.selectedProductIds.reduce((sum: number, id: string) => {
+          const p = products.find(prod => prod.id === id);
+          return sum + (p ? parsePrice(p.price || p.priceVal) : 0);
+      }, 0);
+  };
+
   const handleGroupBuyProductSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const selectedId = e.target.value;
-      const product = allProducts.find(p => p.id === selectedId);
-      if (product) {
+      const pid = e.target.value;
+      if (!pid) {
+          setEditingItem({ ...editingItem, productId: '', productName: '', productImage: '', originalPrice: 0 });
+          return;
+      }
+      const prod = allProducts.find(p => p.id === pid);
+      if (prod) {
           setEditingItem({
               ...editingItem,
-              productId: product.id,
-              productName: product.title,
-              productImage: product.image,
-              originalPrice: product.price,
-              items: product.items || [], 
-              description: product.description
+              productId: prod.id,
+              productName: prod.title || prod.productName,
+              productImage: prod.image || '',
+              originalPrice: parsePrice(prod.price || prod.priceVal)
           });
       }
+  };
+
+  // Persona 2: Calendar Logic
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+  const renderCalendar = () => {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      const daysInMonth = getDaysInMonth(year, month);
+      const firstDay = getFirstDayOfMonth(year, month);
+      
+      const days = [];
+      // Empty cells for start padding
+      for (let i = 0; i < firstDay; i++) {
+          days.push(<div key={`empty-${i}`} className="h-32 bg-gray-50/50 border-b border-r border-gray-200"></div>);
+      }
+      // Days
+      for (let day = 1; day <= daysInMonth; day++) {
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dayReservations = reservations.filter(r => r.date === dateStr);
+          const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
+          days.push(
+              <div key={day} className={`h-32 border-b border-r border-gray-200 p-2 relative group hover:bg-blue-50/30 transition-colors ${isToday ? 'bg-blue-50' : ''}`}>
+                  <span className={`text-sm font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>{day}</span>
+                  <div className="mt-1 space-y-1 overflow-y-auto max-h-[90px] no-scrollbar">
+                      {dayReservations.map(res => (
+                          <div 
+                            key={res.id} 
+                            onClick={() => { setEditingItem(res); setModalType('reservation_detail'); }}
+                            className={`text-[10px] px-2 py-1 rounded cursor-pointer truncate font-medium border ${
+                                res.status === 'confirmed' ? 'bg-green-100 text-green-800 border-green-200' :
+                                res.status === 'cancelled' ? 'bg-red-50 text-red-400 border-red-100 line-through' :
+                                res.status === 'completed' ? 'bg-gray-100 text-gray-500 border-gray-200' :
+                                'bg-yellow-100 text-yellow-800 border-yellow-200'
+                            }`}
+                          >
+                              {res.status === 'confirmed' && '✅ '}
+                              {res.options?.guests?.[0]?.name || 'Guest'} ({res.peopleCount}명)
+                          </div>
+                      ))}
+                  </div>
+                  {/* Add Quick Action on Hover */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); /* Logic to add manual block */ }}
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500"
+                  >
+                      <Plus size={16}/>
+                  </button>
+              </div>
+          );
+      }
+
+      return days;
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><RefreshCw className="animate-spin text-blue-500"/></div>;
@@ -460,6 +518,71 @@ export const AdminDashboard: React.FC<any> = () => {
                     </div>
                 </div>
             )}
+
+            {/* RESERVATIONS TAB (Persona 2: Operations) */}
+            {activeTab === 'reservations' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-black flex items-center gap-2"><ShoppingCart className="text-[#0070F0]"/> 예약 관리</h2>
+                        <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
+                            <button 
+                                onClick={() => setReservationView('list')}
+                                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${reservationView === 'list' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <List size={16}/> 리스트
+                            </button>
+                            <button 
+                                onClick={() => setReservationView('calendar')}
+                                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${reservationView === 'calendar' ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <CalendarIcon size={16}/> 캘린더 (운영팀)
+                            </button>
+                        </div>
+                    </div>
+
+                    {reservationView === 'list' ? (
+                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 border-b"><tr><th className="p-4">날짜</th><th className="p-4">상품명</th><th className="p-4">예약자</th><th className="p-4">인원</th><th className="p-4">금액</th><th className="p-4">상태</th><th className="p-4">관리</th></tr></thead>
+                                <tbody className="divide-y">
+                                    {reservations.map(res => (
+                                        <tr key={res.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="p-4 font-mono">{res.date}</td>
+                                            <td className="p-4 font-bold">{res.productName}</td>
+                                            <td className="p-4">{res.options?.guests?.[0]?.name || res.userId}</td>
+                                            <td className="p-4">{res.peopleCount}명</td>
+                                            <td className="p-4 font-bold">₩{Number(res.totalPrice).toLocaleString()}</td>
+                                            <td className="p-4"><StatusBadge status={res.status}/></td>
+                                            <td className="p-4"><button onClick={() => { setEditingItem(res); setModalType('reservation_detail'); }} className="text-gray-400 hover:text-black"><MoreHorizontal size={20}/></button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-xl border shadow-sm">
+                            {/* Calendar Header */}
+                            <div className="p-4 flex items-center justify-between border-b">
+                                <h3 className="font-bold text-lg">{calendarDate.getFullYear()}년 {calendarDate.getMonth() + 1}월</h3>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth() - 1)))} className="p-2 hover:bg-gray-100 rounded-full"><ChevronLeft/></button>
+                                    <button onClick={() => setCalendarDate(new Date())} className="px-3 py-1 text-xs font-bold bg-gray-100 rounded hover:bg-gray-200">Today</button>
+                                    <button onClick={() => setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth() + 1)))} className="p-2 hover:bg-gray-100 rounded-full"><ChevronRight/></button>
+                                </div>
+                            </div>
+                            {/* Calendar Grid */}
+                            <div className="grid grid-cols-7 border-b bg-gray-50">
+                                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+                                    <div key={day} className="py-2 text-center text-xs font-bold text-gray-500 border-r last:border-0">{day}</div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-7">
+                                {renderCalendar()}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
             
             {/* INTEGRATED PRODUCTS & CATEGORIES TAB */}
             {activeTab === 'products' && (
@@ -478,6 +601,12 @@ export const AdminDashboard: React.FC<any> = () => {
                         >
                             <Grid size={18}/> 상품 목록
                         </button>
+                        <button 
+                            onClick={() => setProductSubTab('packages')} 
+                            className={`px-4 py-2 font-bold text-sm flex items-center gap-2 transition-colors ${productSubTab === 'packages' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            <Layers size={18}/> 패키지 구성 (MD)
+                        </button>
                     </div>
 
                     {/* SUB-TAB: CATEGORIES */}
@@ -494,9 +623,7 @@ export const AdminDashboard: React.FC<any> = () => {
                             </div>
                             <div className="grid grid-cols-4 gap-6">
                                 {categories.map((cat) => {
-                                    // Count products linked to this category for display
                                     const linkedCount = allProducts.filter(p => p.category === cat.label).length;
-                                    
                                     return (
                                         <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group relative">
                                             <div className="h-40 bg-gray-100 relative">
@@ -528,8 +655,9 @@ export const AdminDashboard: React.FC<any> = () => {
                                     );
                                 })}
                                 {categories.length === 0 && (
-                                    <div className="col-span-4 text-center py-20 bg-white border border-dashed rounded-xl text-gray-400">
-                                        등록된 카테고리가 없습니다. 먼저 카테고리를 추가해주세요.
+                                    <div className="col-span-4 text-center py-20 bg-white border border-dashed border-gray-300 rounded-xl text-gray-400 flex flex-col items-center gap-2">
+                                        <p>등록된 카테고리가 없습니다.</p>
+                                        <p className="text-xs">우측 상단 [카테고리 추가] 버튼을 눌러 카테고리를 생성해주세요.</p>
                                     </div>
                                 )}
                             </div>
@@ -543,7 +671,6 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <h2 className="text-xl font-black">상품 목록</h2>
                                 <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
                             </div>
-                            {/* Category Filter */}
                             <div className="flex gap-2 mb-4 bg-gray-100 p-2 rounded-lg inline-flex">
                                 <button onClick={()=>setProductCategoryFilter('all')} className={`px-3 py-1 rounded text-xs font-bold transition-all ${productCategoryFilter==='all'?'bg-white shadow-sm text-black':'text-gray-500 hover:text-black'}`}>전체 보기</button>
                                 {categories.map((cat) => (
@@ -572,6 +699,57 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SUB-TAB: PACKAGES (Persona 1: MD) */}
+                    {productSubTab === 'packages' && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-xl font-black">올인원 패키지 구성 (Smart Builder)</h2>
+                                    <p className="text-xs text-gray-500 mt-1">개별 상품들을 조합하여 패키지를 만들고 할인 가격을 설정하세요.</p>
+                                </div>
+                                <button onClick={() => { setEditingItem({ title: '', items: [], theme: 'mint', price: 0, selectedProductIds: [] }); setModalType('package'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
+                                    <Plus size={16}/> 패키지 만들기
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-6">
+                                {packages.map((pkg) => {
+                                    const themeColors: any = { mint: 'bg-[#40E0D0]', yellow: 'bg-[#FFD700]', orange: 'bg-[#FFB800]' };
+                                    const bgClass = themeColors[pkg.theme] || 'bg-gray-400';
+                                    
+                                    return (
+                                        <div key={pkg.id} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 flex flex-col relative group">
+                                            <div className={`h-24 ${bgClass} flex items-center justify-center relative`}>
+                                                <h3 className="text-white font-black text-xl drop-shadow-md">{pkg.title}</h3>
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <button onClick={() => { setEditingItem(pkg); setModalType('package'); }} className="bg-white text-black p-2 rounded-full hover:bg-gray-200"><Edit2 size={16}/></button>
+                                                    <button onClick={() => deleteItem('cms_packages', pkg.id)} className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"><Trash2 size={16}/></button>
+                                                </div>
+                                            </div>
+                                            <div className="p-6 flex-1 flex flex-col">
+                                                <ul className="space-y-2 mb-4 flex-1">
+                                                    {pkg.items?.map((item: string, i: number) => (
+                                                        <li key={i} className="text-sm text-gray-600 flex items-center gap-2">
+                                                            <CheckCircle2 size={14} className="text-green-500"/> {item}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                                <div className="pt-4 border-t border-gray-100">
+                                                    <p className="text-xs text-gray-400 text-right mb-1">패키지 할인가</p>
+                                                    <p className="text-xl font-black text-right text-[#111]">₩ {pkg.price.toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {packages.length === 0 && (
+                                    <div className="col-span-3 py-20 text-center bg-white border border-dashed rounded-xl text-gray-400">
+                                        등록된 패키지가 없습니다. [패키지 만들기]를 눌러 시작하세요.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -748,11 +926,61 @@ export const AdminDashboard: React.FC<any> = () => {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                     <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                        <h3 className="font-bold text-lg">{modalType.toUpperCase()} EDITOR</h3>
+                        <h3 className="font-bold text-lg">{modalType === 'reservation_detail' ? '예약 상세 정보' : modalType.toUpperCase() + ' EDITOR'}</h3>
                         <button onClick={()=>setModalType(null)}><X/></button>
                     </div>
                     <div className="p-8 overflow-y-auto flex-1 space-y-6">
                         
+                        {/* RESERVATION DETAIL MODAL */}
+                        {modalType === 'reservation_detail' && editingItem && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="text-sm text-gray-500 mb-1">{editingItem.date}</div>
+                                        <h2 className="text-2xl font-black">{editingItem.productName}</h2>
+                                        <p className="text-sm font-bold text-gray-600 mt-1">
+                                            예약자: {editingItem.options?.guests?.[0]?.name || editingItem.userId} 
+                                            <span className="text-gray-400 mx-2">|</span>
+                                            인원: {editingItem.peopleCount}명
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <StatusBadge status={editingItem.status}/>
+                                        <div className="text-xl font-bold mt-2">₩ {Number(editingItem.totalPrice).toLocaleString()}</div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-400 mb-2">예약자 상세</h4>
+                                        <div className="space-y-2 text-sm">
+                                            <p><span className="font-bold mr-2">Email:</span> {editingItem.options?.guestEmail || '-'}</p>
+                                            <p><span className="font-bold mr-2">메신저:</span> {editingItem.options?.guests?.[0]?.messengerApp} / {editingItem.options?.guests?.[0]?.messengerId}</p>
+                                            <p><span className="font-bold mr-2">국적:</span> {editingItem.options?.guests?.[0]?.nationality}</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-gray-400 mb-2">결제 정보</h4>
+                                        <div className="space-y-2 text-sm">
+                                            <p><span className="font-bold mr-2">방식:</span> {editingItem.options?.payment === 'deposit' ? '예약금 결제' : '전액 결제'}</p>
+                                            <p><span className="font-bold mr-2">쿠폰:</span> {editingItem.options?.coupon || '사용안함'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-6">
+                                    <h4 className="text-sm font-bold mb-3">상태 변경 (Ops Action)</h4>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => updateReservationStatus(editingItem.id, 'confirmed')} className="px-4 py-2 bg-green-100 text-green-700 font-bold rounded hover:bg-green-200">확정 처리</button>
+                                        <button onClick={() => updateReservationStatus(editingItem.id, 'completed')} className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded hover:bg-gray-200">이용 완료</button>
+                                        <button onClick={() => updateReservationStatus(editingItem.id, 'cancelled')} className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded hover:bg-red-200">예약 취소</button>
+                                        <div className="flex-1"></div>
+                                        <button className="px-4 py-2 border border-gray-200 text-gray-600 font-bold rounded hover:bg-gray-50 flex items-center gap-2"><Mail size={16}/> 바우처 재발송</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* CATEGORY EDITOR */}
                         {modalType === 'category' && (
                             <div className="space-y-6">
@@ -831,7 +1059,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                             {categories.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
                                             {/* Fallback hardcoded options if needed, but dynamic is better */}
                                         </select>
-                                        <p className="text-[10px] text-gray-400 mt-1">* 카테고리 관리에서 생성한 항목만 선택 가능합니다.</p>
+                                        <p className="text-[10px] text-gray-400 mt-1">* 카테고리 관리에서 생성한 항목만 선택 가능합니다. <br/>순서: 카테고리 생성 &rarr; 상품 등록</p>
                                     </div>
                                     <div><label className="block text-xs font-bold mb-1">상품명</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
                                     <div><label className="block text-xs font-bold mb-1">가격 (KRW)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} /></div>
@@ -842,6 +1070,67 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <div><label className="block text-xs font-bold mb-2">상세 본문 (이미지/텍스트)</label><RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} /></div>
                              </div>
                          )}
+
+                         {/* PACKAGE EDITOR (NEW) */}
+                         {modalType === 'package' && (
+                             <div className="flex gap-6 h-[500px]">
+                                 {/* Left: Settings */}
+                                 <div className="w-1/2 space-y-4">
+                                     <div>
+                                         <label className="block text-xs font-bold mb-1">패키지 이름 (한글/영문)</label>
+                                         <input className="w-full border p-2 rounded" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} placeholder="예: K-VIP All-in-One"/>
+                                     </div>
+                                     <div>
+                                         <label className="block text-xs font-bold mb-1">간단 설명</label>
+                                         <input className="w-full border p-2 rounded" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} placeholder="예: 건강검진 + 뷰티 풀코스"/>
+                                     </div>
+                                     <div>
+                                         <label className="block text-xs font-bold mb-1">디자인 테마</label>
+                                         <div className="flex gap-2">
+                                             {['mint', 'yellow', 'orange'].map(theme => (
+                                                 <button 
+                                                    key={theme} 
+                                                    onClick={() => setEditingItem({...editingItem, theme})} 
+                                                    className={`w-8 h-8 rounded-full border-2 ${editingItem.theme === theme ? 'border-black scale-110' : 'border-transparent'} ${theme === 'mint' ? 'bg-[#40E0D0]' : theme === 'yellow' ? 'bg-[#FFD700]' : 'bg-[#FFB800]'}`}
+                                                 />
+                                             ))}
+                                         </div>
+                                     </div>
+                                     <div className="bg-gray-50 p-4 rounded-xl space-y-2 mt-auto">
+                                         <div className="flex justify-between text-sm"><span>선택 상품 합계 (정가)</span><span className="font-bold line-through text-gray-400">₩ {getPackageTotal().toLocaleString()}</span></div>
+                                         <div className="flex justify-between items-center">
+                                             <label className="text-sm font-bold">최종 할인가 (판매가)</label>
+                                             <input type="number" className="w-32 border p-1 rounded text-right font-black" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})}/>
+                                         </div>
+                                         <div className="text-right text-red-500 font-bold text-xs">
+                                             {getPackageTotal() > 0 ? Math.round(((getPackageTotal() - editingItem.price) / getPackageTotal()) * 100) : 0}% 할인 적용됨
+                                         </div>
+                                     </div>
+                                 </div>
+
+                                 {/* Right: Product Selector */}
+                                 <div className="w-1/2 border border-gray-200 rounded-xl flex flex-col overflow-hidden">
+                                     <div className="bg-gray-50 p-3 text-xs font-bold border-b border-gray-200">패키지 구성 상품 선택 ({editingItem.items?.length || 0}개)</div>
+                                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                                         {products.map(prod => {
+                                             const isSelected = (editingItem.selectedProductIds || []).includes(prod.id);
+                                             return (
+                                                 <div key={prod.id} onClick={() => togglePackageItem(prod)} className={`p-2 rounded cursor-pointer border flex items-center gap-2 ${isSelected ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-100 hover:bg-gray-50'}`}>
+                                                     <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'}`}>
+                                                         {isSelected && <CheckCircle2 size={12} className="text-white"/>}
+                                                     </div>
+                                                     <div className="flex-1 min-w-0">
+                                                         <div className="text-xs font-bold truncate">{prod.title}</div>
+                                                         <div className="text-[10px] text-gray-500">₩ {parsePrice(prod.price || prod.priceVal).toLocaleString()}</div>
+                                                     </div>
+                                                 </div>
+                                             );
+                                         })}
+                                     </div>
+                                 </div>
+                             </div>
+                         )}
+
                          {modalType === 'coupon' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-xs font-bold mb-1">쿠폰명</label><input className="w-full border p-2 rounded" value={editingItem.name} onChange={e=>setEditingItem({...editingItem, name:e.target.value})}/></div>
@@ -852,10 +1141,12 @@ export const AdminDashboard: React.FC<any> = () => {
                             </div>
                         )}
                     </div>
-                    <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
-                        <button onClick={()=>setModalType(null)} className="px-4 py-2 font-bold text-gray-500">취소</button>
-                        <button onClick={saveItem} className="bg-black text-white px-6 py-2 rounded font-bold flex items-center gap-2">{uploadingImg?<RefreshCw className="animate-spin" size={16}/>:<Save size={16}/>} 저장하기</button>
-                    </div>
+                    {modalType !== 'reservation_detail' && (
+                        <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
+                            <button onClick={()=>setModalType(null)} className="px-4 py-2 font-bold text-gray-500">취소</button>
+                            <button onClick={saveItem} className="bg-black text-white px-6 py-2 rounded font-bold flex items-center gap-2">{uploadingImg?<RefreshCw className="animate-spin" size={16}/>:<Save size={16}/>} 저장하기</button>
+                        </div>
+                    )}
                 </div>
             </div>
         )}

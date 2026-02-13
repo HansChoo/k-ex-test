@@ -30,39 +30,8 @@ export const COUNTRY_CODES = [
     { code: 'CN', name: 'China', dial: '+86', flag: '🇨🇳', lang: 'zh', curr: 'CNY' },
 ];
 
-// NEW: All-in-One Packages Data
-export const ALL_IN_ONE_PACKAGES = [
-  {
-    id: 'pkg_wellness',
-    title: 'WELLNESS 올인원',
-    title_en: 'WELLNESS All-in-One',
-    description: '건강검진 + 엘피지오 관리',
-    items: ['건강검진 (베이직)', '엘피지오 (페이스)', '엘피지오 (바디)'],
-    price: 1701000,
-    originalPrice: 1890000,
-    theme: 'mint' // Custom theme color identifier
-  },
-  {
-    id: 'pkg_idol',
-    title: 'K-IDOL 올인원',
-    title_en: 'K-IDOL All-in-One',
-    description: 'K-IDOL + 엘피지오 + 글래스스킨',
-    items: ['K-IDOL (프리미엄)', '엘피지오 (페이스)', '글래스스킨 뷰티시술'],
-    price: 2195100,
-    originalPrice: 2439000,
-    theme: 'yellow'
-  },
-  {
-    id: 'pkg_glow',
-    title: 'K-GLOW UP 올인원',
-    title_en: 'K-GLOW UP All-in-One',
-    description: '엘피지오 + 리쥬란 부스트',
-    items: ['엘피지오 (페이스)', '엘피지오 (바디)', '리쥬란 부스트 뷰티시술'],
-    price: 4147200,
-    originalPrice: 4608000,
-    theme: 'orange'
-  }
-];
+// NOTE: All-in-One Packages are now fully dynamic from Firestore (cms_packages).
+// Hardcoded data removed to prevent sync issues.
 
 const BASE_PRODUCTS = [
   {

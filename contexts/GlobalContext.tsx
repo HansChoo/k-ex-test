@@ -33,38 +33,6 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 const RATES = { KRW: 1, USD: 0.00075, JPY: 0.11, CNY: 0.0054 };
 const SYMBOLS = { KRW: '₩', USD: '$', JPY: '¥', CNY: '¥' };
 
-// Fallback Categories if DB is empty
-const DEFAULT_CATEGORIES: Category[] = [
-    { 
-      id: 'health', 
-      label: '건강검진', 
-      labelEn: 'Health Check', 
-      image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?q=80&w=1000&auto=format&fit=crop', 
-      keywords: ['건강', 'health'] 
-    },
-    { 
-      id: 'beauty', 
-      label: '뷰티 시술', 
-      labelEn: 'Beauty Procedure', 
-      image: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?q=80&w=1000&auto=format&fit=crop', 
-      keywords: ['뷰티', 'beauty'] 
-    },
-    { 
-      id: 'idol', 
-      label: 'K-IDOL 체험', 
-      labelEn: 'K-IDOL', 
-      image: 'https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop', 
-      keywords: ['idol', '아이돌'] 
-    },
-    { 
-      id: 'consulting', 
-      label: '뷰티 컨설팅', 
-      labelEn: 'Beauty Consulting', 
-      image: 'https://images.unsplash.com/photo-1596462502278-27bfdd403ccc?q=80&w=1000&auto=format&fit=crop', 
-      keywords: ['컨설팅', 'consulting'] 
-    },
-];
-
 const TRANSLATIONS: any = {
   ko: {
     login: '로그인', signup: '회원가입', mypage: '마이페이지', logout: '로그아웃',
@@ -241,14 +209,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   // Fetch Categories from Firestore Real-time
+  // !!! FIXED: No longer using Fallback Data. 
+  // If DB is empty, website shows empty. This ensures sync with Admin.
   useEffect(() => {
     const q = query(collection(db, "cms_categories"), orderBy("createdAt", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        if (snapshot.empty) {
-            setCategories(DEFAULT_CATEGORIES);
-        } else {
-            setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
-        }
+        setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
     });
     return () => unsubscribe();
   }, []);

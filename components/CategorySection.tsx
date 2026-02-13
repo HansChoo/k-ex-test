@@ -27,31 +27,36 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ onCategoryClic
             <p className="text-[12px] text-gray-500">{t('select_category_desc')}</p>
         </div>
         
-        {/* Adjusted Grid: 2 cols on mobile, 4 on desktop */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {categories.map((cat) => (
-            <div 
-              key={cat.id} 
-              onClick={() => onCategoryClick(cat.id)}
-              className="relative rounded-[16px] overflow-hidden aspect-[4/5] md:aspect-square cursor-pointer group shadow-sm bg-gray-100"
-            >
-              <img src={cat.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={cat.label} />
-              
-              {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
-
-              {/* Text Content */}
-              <div className="absolute bottom-4 left-4 right-4 text-left">
-                <h3 className="text-white font-bold text-[14px] md:text-[16px] leading-tight mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                    {language === 'ko' ? cat.label : cat.labelEn}
-                </h3>
-                <p className="text-white/80 text-[11px] md:text-[12px] font-medium bg-white/20 backdrop-blur-sm inline-block px-2 py-0.5 rounded-full">
-                    {getCount(cat.keywords || [])}개 체험
-                </p>
-              </div>
+        {categories.length === 0 ? (
+            <div className="w-full py-16 bg-gray-50 rounded-[16px] flex items-center justify-center text-gray-400 text-sm">
+                카테고리가 준비 중입니다.
             </div>
-          ))}
-        </div>
+        ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {categories.map((cat) => (
+                <div 
+                key={cat.id} 
+                onClick={() => onCategoryClick(cat.id)}
+                className="relative rounded-[16px] overflow-hidden aspect-[4/5] md:aspect-square cursor-pointer group shadow-sm bg-gray-100"
+                >
+                <img src={cat.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={cat.label} />
+                
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
+
+                {/* Text Content */}
+                <div className="absolute bottom-4 left-4 right-4 text-left">
+                    <h3 className="text-white font-bold text-[14px] md:text-[16px] leading-tight mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {language === 'ko' ? cat.label : cat.labelEn}
+                    </h3>
+                    <p className="text-white/80 text-[11px] md:text-[12px] font-medium bg-white/20 backdrop-blur-sm inline-block px-2 py-0.5 rounded-full">
+                        {getCount(cat.keywords || [])}개 체험
+                    </p>
+                </div>
+                </div>
+            ))}
+            </div>
+        )}
       </ScrollReveal>
     </section>
   );
