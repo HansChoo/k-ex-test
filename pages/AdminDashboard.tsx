@@ -66,7 +66,7 @@ export const AdminDashboard: React.FC<any> = () => {
   const [modalType, setModalType] = useState<string | null>(null); 
   const [editingItem, setEditingItem] = useState<any>(null);
   const [uploadingImg, setUploadingImg] = useState(false);
-  const [toast, setToast] = useState<{msg: string, type: 'success'|'error'}|null>(null);
+  const [toast, setToast] = useState<{msg: string, type: 'success'|'error'|'info'}|null>(null);
 
   // Images for Editor
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
@@ -110,39 +110,7 @@ export const AdminDashboard: React.FC<any> = () => {
     return () => unsubs.forEach(u => u());
   }, [isAdmin]);
 
-  // --- AUTO CREATE EXAMPLE GROUP BUY ---
-  useEffect(() => {
-      if (!isAdmin || loading || groupBuys.length > 0) return;
-      
-      const createExample = async () => {
-          // Check if "Basic Package" exists in products or packages
-          const basicPkg = packages.find(p => p.title.includes('Basic') || p.id.includes('basic')) 
-                        || products.find(p => p.title.includes('Basic'));
-          
-          if (basicPkg) {
-              await addDoc(collection(db, "group_buys"), {
-                  productId: basicPkg.id,
-                  productName: basicPkg.title,
-                  productImage: basicPkg.image || '',
-                  originalPrice: basicPkg.price || 1700000,
-                  currentCount: 1, // Start with 1 (Leader)
-                  maxCount: 10,
-                  visitDate: '2026-03-01',
-                  deadline: '2026-02-28',
-                  leaderName: 'K-Experience Admin',
-                  participants: [currentUser?.uid || 'admin'],
-                  items: basicPkg.items || ['Basic Checkup', 'K-IDOL Photo', 'Rejuran Healer'],
-                  description: basicPkg.description || 'Special Group Buy Event',
-                  status: 'active',
-                  createdAt: serverTimestamp()
-              });
-              showToast("예시 공동구매(베이직 패키지)가 자동 생성되었습니다.");
-          }
-      };
-      
-      const timer = setTimeout(createExample, 2000);
-      return () => clearTimeout(timer);
-  }, [isAdmin, loading, groupBuys, packages, products]);
+  // AUTO CREATE LOGIC REMOVED AS PER REQUEST
 
   // --- Logic Helpers ---
 
@@ -200,7 +168,7 @@ export const AdminDashboard: React.FC<any> = () => {
       };
   }, [reservations, users]);
 
-  const showToast = (msg: string, type: 'success'|'error' = 'success') => {
+  const showToast = (msg: string, type: 'success'|'error'|'info' = 'success') => {
       setToast({ msg, type });
       setTimeout(() => setToast(null), 3000);
   };
@@ -215,6 +183,43 @@ export const AdminDashboard: React.FC<any> = () => {
       if(!window.confirm("삭제하시겠습니까?")) return;
       await deleteDoc(doc(db, col, id));
       showToast("삭제되었습니다.");
+  };
+
+  // Specific handler for Group Buy Deletion with Refund Logic
+  const handleDeleteGroupBuy = async (group: any) => {
+      const hasParticipants = (group.currentCount && group.currentCount > 0) || (group.participants && group.participants.length > 0);
+      
+      if (hasParticipants) {
+          const input = window.prompt(
+              `⚠️ 경고: 현재 ${group.currentCount || 0}명의 참여자가 있습니다.\n` +
+              `삭제 시 모든 참여자에게 전액 환불이 진행됩니다.\n` +
+              `진행하시려면 '환불' 이라고 입력해주세요.`
+          );
+
+          if (input !== '환불') {
+              alert("입력값이 일치하지 않아 삭제가 취소되었습니다.");
+              return;
+          }
+
+          // Simulate Refund Processing
+          showToast("PG사 환불 시스템 연동 및 처리 중...", 'info');
+          
+          // Wait for 2 seconds to simulate API call
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          try {
+            await deleteDoc(doc(db, "group_buys", group.id));
+            showToast(`총 ${group.currentCount}건 환불 완료 및 공동구매가 삭제되었습니다.`);
+          } catch(e) {
+              showToast("삭제 중 오류가 발생했습니다.", 'error');
+          }
+
+      } else {
+          // No participants, standard delete
+          if(!window.confirm("참여자가 없는 공동구매입니다. 삭제하시겠습니까?")) return;
+          await deleteDoc(doc(db, "group_buys", group.id));
+          showToast("삭제되었습니다.");
+      }
   };
 
   const saveItem = async () => {
@@ -319,7 +324,7 @@ export const AdminDashboard: React.FC<any> = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F5F7FB] font-sans text-[#333]">
-        {toast && <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg text-white font-bold flex items-center gap-2 ${toast.type==='success'?'bg-black':'bg-red-500'}`}>{toast.type==='success'?<CheckCircle size={16}/>:<AlertCircle size={16}/>} {toast.msg}</div>}
+        {toast && <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg text-white font-bold flex items-center gap-2 ${toast.type==='success'?'bg-black':toast.type==='error'?'bg-red-500':'bg-blue-500'}`}>{toast.type==='success'?<CheckCircle size={16}/>:toast.type==='error'?<AlertCircle size={16}/>:<RefreshCw size={16} className="animate-spin"/>} {toast.msg}</div>}
 
         {/* SIDEBAR */}
         <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col h-screen fixed">
@@ -379,103 +384,111 @@ export const AdminDashboard: React.FC<any> = () => {
                          </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {groupBuys.map(group => {
-                            // UI Logic from GroupBuyingPage for high fidelity
-                            const safeName = group.productName || 'Unknown Product';
-                            const isBasic = safeName.includes('Basic');
-                            const safeMax = group.maxCount || 10;
-                            const safeCurrent = group.currentCount || 0;
-                            const progress = Math.min(100, (safeCurrent / safeMax) * 100);
-                            const themeColor = isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700] text-black';
-                            const themeText = isBasic ? 'text-[#00C7AE]' : 'text-[#D4AF37]';
+                    {groupBuys.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
+                            <Megaphone size={48} className="text-gray-200 mb-4"/>
+                            <p className="text-gray-500 font-bold">현재 진행 중인 공동구매가 없습니다.</p>
+                            <p className="text-xs text-gray-400 mt-1">사용자가 웹페이지에서 공동구매를 생성하면 여기에 표시됩니다.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {groupBuys.map(group => {
+                                // UI Logic from GroupBuyingPage for high fidelity
+                                const safeName = group.productName || 'Unknown Product';
+                                const isBasic = safeName.includes('Basic');
+                                const safeMax = group.maxCount || 10;
+                                const safeCurrent = group.currentCount || 0;
+                                const progress = Math.min(100, (safeCurrent / safeMax) * 100);
+                                const themeColor = isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700] text-black';
+                                const themeText = isBasic ? 'text-[#00C7AE]' : 'text-[#D4AF37]';
 
-                            return (
-                                <div key={group.id} className="bg-white rounded-[24px] shadow-lg overflow-hidden border border-gray-100 relative group-card">
-                                    {/* Admin Controls Overlay */}
-                                    <div className="absolute top-4 right-4 z-20 flex gap-2">
-                                        <button onClick={()=>deleteItem('group_buys', group.id)} className="bg-white/80 hover:bg-red-500 hover:text-white text-red-500 p-2 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-red-100">
-                                            <Trash2 size={16}/>
-                                        </button>
-                                    </div>
-
-                                    {/* Secret Badge */}
-                                    {group.isSecret && (
-                                        <div className="absolute top-16 right-4 z-10 bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-md">
-                                            <Lock size={12}/> Secret
+                                return (
+                                    <div key={group.id} className="bg-white rounded-[24px] shadow-lg overflow-hidden border border-gray-100 relative group-card">
+                                        {/* Admin Controls Overlay */}
+                                        <div className="absolute top-4 right-4 z-20 flex gap-2">
+                                            <button onClick={()=>handleDeleteGroupBuy(group)} className="bg-white/80 hover:bg-red-500 hover:text-white text-red-500 p-2 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-red-100">
+                                                <Trash2 size={16}/>
+                                            </button>
                                         </div>
-                                    )}
-                                    
-                                    {/* Header */}
-                                    <div className={`h-14 ${themeColor} px-6 flex items-center justify-between text-white`}>
-                                        <span className="font-black tracking-wider text-sm uppercase">{isBasic ? 'BASIC' : 'PREMIUM'}</span>
-                                        <div className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded-lg text-xs font-bold">
-                                            <Timer size={12}/> <span>{group.visitDate}</span>
-                                        </div>
-                                    </div>
 
-                                    <div className="p-6">
-                                        <div className="mb-4">
-                                            <h2 className="text-xl font-black text-gray-900 mb-1 leading-snug truncate">{safeName}</h2>
-                                            <p className="text-xs text-gray-500 mb-3 truncate">{group.description || 'Admin View'}</p>
-                                            <div className="flex flex-wrap gap-2 mb-4">
-                                                {(group.items || ['건강검진','뷰티시술','K-IDOL']).slice(0,2).map((item: string, i: number) => (
-                                                    <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] rounded font-bold border border-gray-100 flex items-center gap-1">
-                                                        <CheckCircle2 size={10} className={themeText}/> {item}
-                                                    </span>
-                                                ))}
+                                        {/* Secret Badge */}
+                                        {group.isSecret && (
+                                            <div className="absolute top-16 right-4 z-10 bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-md">
+                                                <Lock size={12}/> Secret
+                                            </div>
+                                        )}
+                                        
+                                        {/* Header */}
+                                        <div className={`h-14 ${themeColor} px-6 flex items-center justify-between text-white`}>
+                                            <span className="font-black tracking-wider text-sm uppercase">{isBasic ? 'BASIC' : 'PREMIUM'}</span>
+                                            <div className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded-lg text-xs font-bold">
+                                                <Timer size={12}/> <span>{group.visitDate}</span>
                                             </div>
                                         </div>
 
-                                        <div className="mb-4 bg-gray-50 rounded-xl p-3 border border-gray-100">
-                                            <div className="flex justify-between items-end mb-2">
-                                                <span className="text-xs font-bold text-gray-700">진행 현황</span>
-                                                <div className="flex items-center gap-1">
-                                                    <span className={`text-sm font-black ${themeText}`}>{safeCurrent}명</span>
-                                                    <span className="text-xs text-gray-400">/ {safeMax}명</span>
+                                        <div className="p-6">
+                                            <div className="mb-4">
+                                                <h2 className="text-xl font-black text-gray-900 mb-1 leading-snug truncate">{safeName}</h2>
+                                                <p className="text-xs text-gray-500 mb-3 truncate">{group.description || 'Admin View'}</p>
+                                                <div className="flex flex-wrap gap-2 mb-4">
+                                                    {(group.items || ['건강검진','뷰티시술','K-IDOL']).slice(0,2).map((item: string, i: number) => (
+                                                        <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] rounded font-bold border border-gray-100 flex items-center gap-1">
+                                                            <CheckCircle2 size={10} className={themeText}/> {item}
+                                                        </span>
+                                                    ))}
                                                 </div>
                                             </div>
-                                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                <div className={`h-full ${isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700]'}`} style={{ width: `${progress}%` }}></div>
-                                            </div>
-                                        </div>
 
-                                        <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50/50 rounded-lg border border-blue-50">
-                                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg relative">
-                                                🧑‍💻
-                                                <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 border border-white"><Crown size={8} className="text-white fill-white"/></div>
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-[10px] text-gray-400 font-bold uppercase">LEADER</p>
-                                                <p className="text-xs font-bold text-gray-800 truncate">{group.leaderName}</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Admin Only Info */}
-                                        <div className="border-t border-gray-100 pt-3 mt-3">
-                                            <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase flex items-center gap-1"><SettingsIcon size={10}/> Admin Details</h4>
-                                            
-                                            {group.isSecret && (
-                                                <div className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded text-xs mb-2">
-                                                    <span className="font-bold text-gray-600">Secret Code</span>
-                                                    <span className="font-mono font-black text-red-500">{group.secretCode}</span>
-                                                </div>
-                                            )}
-
-                                            <div className="bg-gray-50 rounded p-2 max-h-24 overflow-y-auto no-scrollbar">
-                                                <p className="text-[10px] text-gray-500 font-bold mb-1">참여자 리스트 ({group.participants?.length || 0})</p>
-                                                {group.participants?.map((pid: string, idx: number) => (
-                                                    <div key={idx} className="text-[10px] text-gray-400 font-mono truncate border-b border-gray-100 last:border-0 py-0.5">
-                                                        {idx + 1}. {pid}
+                                            <div className="mb-4 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                                                <div className="flex justify-between items-end mb-2">
+                                                    <span className="text-xs font-bold text-gray-700">진행 현황</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className={`text-sm font-black ${themeText}`}>{safeCurrent}명</span>
+                                                        <span className="text-xs text-gray-400">/ {safeMax}명</span>
                                                     </div>
-                                                ))}
+                                                </div>
+                                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div className={`h-full ${isBasic ? 'bg-[#00C7AE]' : 'bg-[#FFD700]'}`} style={{ width: `${progress}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50/50 rounded-lg border border-blue-50">
+                                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg relative">
+                                                    🧑‍💻
+                                                    <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 border border-white"><Crown size={8} className="text-white fill-white"/></div>
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase">LEADER</p>
+                                                    <p className="text-xs font-bold text-gray-800 truncate">{group.leaderName}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Admin Only Info */}
+                                            <div className="border-t border-gray-100 pt-3 mt-3">
+                                                <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase flex items-center gap-1"><SettingsIcon size={10}/> Admin Details</h4>
+                                                
+                                                {group.isSecret && (
+                                                    <div className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded text-xs mb-2">
+                                                        <span className="font-bold text-gray-600">Secret Code</span>
+                                                        <span className="font-mono font-black text-red-500">{group.secretCode}</span>
+                                                    </div>
+                                                )}
+
+                                                <div className="bg-gray-50 rounded p-2 max-h-24 overflow-y-auto no-scrollbar">
+                                                    <p className="text-[10px] text-gray-500 font-bold mb-1">참여자 리스트 ({group.participants?.length || 0})</p>
+                                                    {group.participants?.map((pid: string, idx: number) => (
+                                                        <div key={idx} className="text-[10px] text-gray-400 font-mono truncate border-b border-gray-100 last:border-0 py-0.5">
+                                                            {idx + 1}. {pid}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
             
