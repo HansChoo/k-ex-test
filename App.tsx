@@ -17,6 +17,7 @@ import { MyPage } from './pages/MyPage';
 import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
 import { MagazinePage } from './pages/MagazinePage';
+import { SurveyPage } from './pages/SurveyPage'; // New Import
 import { collection, query, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
 import { db } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
@@ -26,7 +27,7 @@ import { AuthModal } from './components/AuthModal';
 
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 
-export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine' | 'product_list';
+export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine' | 'product_list' | 'survey';
 
 interface ToastMsg {
   id: number;
@@ -98,10 +99,18 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // Admin Shortcut
     if (params.get('mode') === 'admin') {
         setCurrentView('admin');
         window.history.replaceState({}, '', window.location.pathname);
     }
+    
+    // Survey Route Handling
+    if (params.get('page') === 'survey' && params.get('id')) {
+        setCurrentView('survey');
+    }
+
     const refCode = params.get('ref');
     if (refCode) {
         sessionStorage.setItem('k_exp_ref', refCode);
@@ -197,7 +206,7 @@ const AppContent: React.FC = () => {
           </div>
       )}
 
-      {currentView !== 'admin' && (
+      {currentView !== 'admin' && currentView !== 'survey' && (
           <Navbar 
             isMenuOpen={isMenuOpen} 
             toggleMenu={toggleMenu} 
@@ -231,6 +240,9 @@ const AppContent: React.FC = () => {
         {currentView === 'magazine' && <MagazinePage />}
         {currentView === 'wishlist' && <WishlistPage language={language} />}
         
+        {/* Survey Page Route */}
+        {currentView === 'survey' && <SurveyPage language={language} />}
+        
         {currentView === 'admin' && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>}>
             <AdminDashboard language={language} />
@@ -238,8 +250,8 @@ const AppContent: React.FC = () => {
         )}
       </main>
 
-      {currentView !== 'admin' && <Footer language={language} />}
-      {currentView !== 'admin' && <BottomNav onNavClick={handleProtectedNav} currentView={currentView} toggleMenu={toggleMenu} />}
+      {currentView !== 'admin' && currentView !== 'survey' && <Footer language={language} />}
+      {currentView !== 'admin' && currentView !== 'survey' && <BottomNav onNavClick={handleProtectedNav} currentView={currentView} toggleMenu={toggleMenu} />}
       
       {/* Global Auth Modal */}
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} language={language} />

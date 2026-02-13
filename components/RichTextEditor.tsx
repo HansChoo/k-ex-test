@@ -1,5 +1,7 @@
+
 import React, { useEffect, useRef, useState } from 'react';
-import { Bold, Italic, Underline, Heading1, Heading2, List, ListOrdered, Image as ImageIcon, Youtube, Link as LinkIcon, AlignLeft, AlignCenter, AlignRight, Type } from 'lucide-react';
+import { Bold, Italic, Underline, Heading1, Heading2, List, ListOrdered, Image as ImageIcon, Youtube, Link as LinkIcon, AlignLeft, AlignCenter, AlignRight, Type, Loader2 } from 'lucide-react';
+import { uploadImage } from '../services/imageService';
 
 interface RichTextEditorProps {
     value: string;
@@ -9,17 +11,15 @@ interface RichTextEditorProps {
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
 
-    // Initial Value Sync
     useEffect(() => {
         if (editorRef.current && value !== editorRef.current.innerHTML) {
-            // Only set if significantly different to avoid cursor jumps, 
-            // but for simple implementation we just set it if empty or strictly needed.
             if (editorRef.current.innerHTML === '' || value === '') {
                  editorRef.current.innerHTML = value;
             }
         }
-    }, []); // Run once on mount mostly, or handle carefully
+    }, [value]);
 
     const handleInput = () => {
         if (editorRef.current) {
@@ -32,42 +32,63 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
         editorRef.current?.focus();
     };
 
-    const handleDrop = (e: React.DragEvent) => {
+    // Handle Drag & Drop Image Upload
+    const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         const files = Array.from(e.dataTransfer.files);
         if (files.length > 0) {
             const file = files[0] as File;
             if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    if (event.target?.result) {
-                        execCommand('insertImage', event.target.result as string);
-                    }
-                };
-                reader.readAsDataURL(file);
+                setIsUploading(true);
+                try {
+                    const url = await uploadImage(file, 'editor_uploads');
+                    execCommand('insertImage', url);
+                    handleInput();
+                } catch (error) {
+                    alert("이미지 업로드 실패");
+                } finally {
+                    setIsUploading(false);
+                }
             }
         }
     };
 
     const addYoutube = () => {
-        const url = prompt("Enter YouTube URL:");
+        const url = prompt("유튜브 영상 링크를 입력하세요:");
         if (url) {
             const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
             if (match && match[1]) {
-                const embedHtml = `<div class="video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin-bottom:20px;"><iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" src="https://www.youtube.com/embed/${match[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div><p><br></p>`;
+                const embedHtml = `<div class="video-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:20px 0;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);"><iframe style="position:absolute;top:0;left:0;width:100%;height:100%;" src="https://www.youtube.com/embed/${match[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div><p><br></p>`;
                 execCommand('insertHTML', embedHtml);
+                handleInput();
             } else {
-                alert("Invalid YouTube URL");
+                alert("올바른 유튜브 링크가 아닙니다.");
             }
         }
     };
 
-    const addImageByUrl = () => {
-        const url = prompt("Enter Image URL:");
-        if (url) execCommand('insertImage', url);
+    const addImageByUpload = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                setIsUploading(true);
+                try {
+                    const url = await uploadImage(file, 'editor_uploads');
+                    execCommand('insertImage', url);
+                    handleInput();
+                } catch (error) {
+                    alert("업로드 실패");
+                } finally {
+                    setIsUploading(false);
+                }
+            }
+        };
+        input.click();
     };
 
-    // Image Resizing Logic
     const handleEditorClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
         if (target.tagName === 'IMG') {
@@ -80,40 +101,47 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
     const resizeImage = (widthPercent: string) => {
         if (selectedImage) {
             selectedImage.style.width = widthPercent;
-            selectedImage.style.height = 'auto'; // Maintain aspect ratio
-            handleInput(); // Trigger change
-            setSelectedImage(null); // Deselect
+            selectedImage.style.height = 'auto';
+            handleInput();
+            setSelectedImage(null);
         }
     };
 
     return (
-        <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col h-[600px]">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 border-b border-gray-200">
-                <ToolbarButton icon={<Bold size={18}/>} onClick={() => execCommand('bold')} label="Bold" />
-                <ToolbarButton icon={<Italic size={18}/>} onClick={() => execCommand('italic')} label="Italic" />
-                <ToolbarButton icon={<Underline size={18}/>} onClick={() => execCommand('underline')} label="Underline" />
-                <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                <ToolbarButton icon={<Heading1 size={18}/>} onClick={() => execCommand('formatBlock', 'H2')} label="H1" />
-                <ToolbarButton icon={<Heading2 size={18}/>} onClick={() => execCommand('formatBlock', 'H3')} label="H2" />
-                <ToolbarButton icon={<Type size={18}/>} onClick={() => execCommand('formatBlock', 'P')} label="Paragraph" />
-                <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                <ToolbarButton icon={<List size={18}/>} onClick={() => execCommand('insertUnorderedList')} label="Bullet List" />
-                <ToolbarButton icon={<ListOrdered size={18}/>} onClick={() => execCommand('insertOrderedList')} label="Number List" />
-                <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                <ToolbarButton icon={<AlignLeft size={18}/>} onClick={() => execCommand('justifyLeft')} label="Left" />
-                <ToolbarButton icon={<AlignCenter size={18}/>} onClick={() => execCommand('justifyCenter')} label="Center" />
-                <ToolbarButton icon={<AlignRight size={18}/>} onClick={() => execCommand('justifyRight')} label="Right" />
-                <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                <ToolbarButton icon={<LinkIcon size={18}/>} onClick={() => { const url=prompt('URL:'); if(url) execCommand('createLink', url); }} label="Link" />
-                <ToolbarButton icon={<ImageIcon size={18}/>} onClick={addImageByUrl} label="Image URL" />
-                <ToolbarButton icon={<Youtube size={18}/>} onClick={addYoutube} label="YouTube" />
+        <div className="border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm flex flex-col h-[600px] relative">
+            {isUploading && (
+                <div className="absolute inset-0 bg-white/80 z-20 flex flex-col items-center justify-center">
+                    <Loader2 className="animate-spin text-blue-600 mb-2" size={32} />
+                    <span className="font-bold text-gray-600">이미지 업로드 중...</span>
+                </div>
+            )}
+            
+            {/* Toolbar - Sticky */}
+            <div className="flex flex-wrap items-center gap-1 p-2 bg-[#f8f9fa] border-b border-gray-300 sticky top-0 z-10">
+                <ToolbarButton icon={<Bold size={16}/>} onClick={() => execCommand('bold')} label="굵게" />
+                <ToolbarButton icon={<Italic size={16}/>} onClick={() => execCommand('italic')} label="기울임" />
+                <ToolbarButton icon={<Underline size={16}/>} onClick={() => execCommand('underline')} label="밑줄" />
+                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                <ToolbarButton icon={<Heading1 size={16}/>} onClick={() => execCommand('formatBlock', 'H2')} label="제목 1" />
+                <ToolbarButton icon={<Heading2 size={16}/>} onClick={() => execCommand('formatBlock', 'H3')} label="제목 2" />
+                <ToolbarButton icon={<Type size={16}/>} onClick={() => execCommand('formatBlock', 'P')} label="본문" />
+                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                <ToolbarButton icon={<AlignLeft size={16}/>} onClick={() => execCommand('justifyLeft')} label="왼쪽 정렬" />
+                <ToolbarButton icon={<AlignCenter size={16}/>} onClick={() => execCommand('justifyCenter')} label="가운데 정렬" />
+                <ToolbarButton icon={<AlignRight size={16}/>} onClick={() => execCommand('justifyRight')} label="오른쪽 정렬" />
+                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                <ToolbarButton icon={<List size={16}/>} onClick={() => execCommand('insertUnorderedList')} label="글머리 기호" />
+                <ToolbarButton icon={<ListOrdered size={16}/>} onClick={() => execCommand('insertOrderedList')} label="번호 매기기" />
+                <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                <ToolbarButton icon={<LinkIcon size={16}/>} onClick={() => { const url=prompt('링크 URL:'); if(url) execCommand('createLink', url); }} label="링크" />
+                <ToolbarButton icon={<ImageIcon size={16}/>} onClick={addImageByUpload} label="사진 업로드" />
+                <ToolbarButton icon={<Youtube size={16}/>} onClick={addYoutube} label="동영상" />
             </div>
 
             {/* Resize Overlay */}
             {selectedImage && (
-                <div className="absolute z-10 bg-black/80 text-white px-3 py-2 rounded-lg flex gap-2 items-center left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-xl animate-fade-in">
-                    <span className="text-xs font-bold mr-2">Resize:</span>
+                <div className="absolute z-20 bg-black/80 text-white px-3 py-2 rounded-lg flex gap-2 items-center left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-xl animate-fade-in">
+                    <span className="text-xs font-bold mr-2">크기 조절:</span>
                     <button onClick={() => resizeImage('25%')} className="hover:text-blue-400 text-xs font-bold">25%</button>
                     <button onClick={() => resizeImage('50%')} className="hover:text-blue-400 text-xs font-bold">50%</button>
                     <button onClick={() => resizeImage('75%')} className="hover:text-blue-400 text-xs font-bold">75%</button>
@@ -125,17 +153,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange 
             {/* Content Area */}
             <div 
                 ref={editorRef}
-                className="flex-1 overflow-y-auto p-6 focus:outline-none prose max-w-none"
+                className="flex-1 overflow-y-auto p-8 focus:outline-none prose max-w-none prose-img:rounded-xl prose-img:shadow-sm"
                 contentEditable
                 onInput={handleInput}
                 onDrop={handleDrop}
                 onDragOver={e => e.preventDefault()}
                 onClick={handleEditorClick}
+                spellCheck={false}
                 style={{ minHeight: '300px' }}
                 dangerouslySetInnerHTML={{ __html: value }}
             />
-            <div className="bg-gray-50 p-2 text-xs text-center text-gray-400 border-t border-gray-100">
-                Tip: Drag & Drop images directly into the editor. Click an image to resize.
+            <div className="bg-gray-50 p-2 text-xs text-center text-gray-400 border-t border-gray-200">
+                Tip: 이미지를 드래그하여 본문에 바로 추가할 수 있습니다.
             </div>
         </div>
     );
@@ -146,7 +175,7 @@ const ToolbarButton = ({ icon, onClick, label }: { icon: React.ReactNode, onClic
         type="button"
         onClick={onClick} 
         title={label}
-        className="p-2 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors"
+        className="p-2 hover:bg-white hover:text-blue-600 rounded transition-all text-gray-600"
     >
         {icon}
     </button>

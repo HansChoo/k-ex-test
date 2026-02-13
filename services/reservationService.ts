@@ -13,6 +13,7 @@ import {
   updateDoc
 } from "firebase/firestore";
 import { db } from "./firebaseConfig";
+import { sendEmail } from "./emailService";
 
 interface ReservationData {
   userId: string;
@@ -32,6 +33,8 @@ export const createReservation = async (data: ReservationData) => {
   const inventoryRef = doc(db, "inventory", data.date); 
   
   try {
+    const reservationRef = doc(collection(db, "reservations")); // Generate ID first
+
     await runTransaction(db, async (transaction) => {
       // 1. Inventory Check
       const inventoryDoc = await transaction.get(inventoryRef);
@@ -66,8 +69,7 @@ export const createReservation = async (data: ReservationData) => {
           transaction.update(couponRef, { currentUsage: currentUsage + 1 });
       }
 
-      // 3. Create Reservation
-      const reservationRef = doc(collection(db, "reservations"));
+      // 3. Create Reservation (Using pre-generated ref)
       transaction.set(reservationRef, {
         ...data,
         createdAt: serverTimestamp(),
@@ -81,8 +83,7 @@ export const createReservation = async (data: ReservationData) => {
       }, { merge: true });
     });
     
-    // 5. Post-transaction: Update Affiliate Stats (Click count handles in app.tsx, this is Sales/Revenue)
-    // We do this outside transaction to avoid complexity, but could be inside if critical consistency needed.
+    // 5. Update Affiliate Stats
     if (data.options?.affiliateCode) {
         const q = query(collection(db, "affiliates"), where("code", "==", data.options.affiliateCode));
         const snap = await getDocs(q);
@@ -90,13 +91,21 @@ export const createReservation = async (data: ReservationData) => {
             const affDoc = snap.docs[0].ref;
             await updateDoc(affDoc, { 
                 sales: increment(1),
-                totalRevenue: increment(data.totalPrice) // Add actual transaction amount to revenue
+                totalRevenue: increment(data.totalPrice)
             });
         }
     }
 
-    console.log("Reservation Successful!");
-    return { success: true };
+    // 6. Send Email with Survey Link
+    await sendEmail('confirmation', {
+        name: data.options.guestEmail || data.userId,
+        email: data.options.guestEmail,
+        productName: data.productName,
+        date: data.date
+    }, reservationRef.id);
+
+    console.log("Reservation Successful! ID:", reservationRef.id);
+    return { success: true, id: reservationRef.id };
 
   } catch (e: any) {
     console.error("Reservation Failed: ", e);
