@@ -5,7 +5,7 @@ import {
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
     LogOut, Globe, Calendar as CalendarIcon, FileText, Monitor, Check, DollarSign, RefreshCw,
     Search, Filter, MoreHorizontal, Shield, UserX, TrendingUp, CreditCard, Lock, Copy, Eye, ExternalLink,
-    AlertCircle, CheckCircle
+    AlertCircle, CheckCircle, Ban, LockKeyhole, UserCheck
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -106,7 +106,6 @@ export const AdminDashboard: React.FC<any> = () => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setReservations(data);
             
-            // Calculate Stats
             const totalRev = data.reduce((acc, curr: any) => acc + (Number(curr.totalPrice) || 0), 0);
             const thisMonth = new Date().getMonth();
             const monthlyRev = data
@@ -117,7 +116,7 @@ export const AdminDashboard: React.FC<any> = () => {
         }),
         onSnapshot(collection(db, "products"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as ItemType)))),
         onSnapshot(collection(db, "cms_packages"), (snap) => setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() } as ItemType)))),
-        onSnapshot(query(collection(db, "group_buys"), orderBy("visitDate", "asc")), (snap) => setGroupBuys(snap.docs.map(d => ({ id: d.id, ...d.data() } as ItemType)))),
+        onSnapshot(query(collection(db, "group_buys"), orderBy("createdAt", "desc")), (snap) => setGroupBuys(snap.docs.map(d => ({ id: d.id, ...d.data() } as ItemType)))),
         onSnapshot(collection(db, "coupons"), (snap) => setCoupons(snap.docs.map(d => ({ id: d.id, ...d.data() } as ItemType)))),
         onSnapshot(collection(db, "affiliates"), (snap) => setAffiliates(snap.docs.map(d => ({ id: d.id, ...d.data() } as ItemType)))),
         onSnapshot(query(collection(db, "cms_magazine"), orderBy("createdAt", "desc")), (snap) => setMagazinePosts(snap.docs.map(d => ({ id: d.id, ...d.data() } as ItemType)))),
@@ -220,27 +219,34 @@ export const AdminDashboard: React.FC<any> = () => {
       showToast("권한이 변경되었습니다.");
   };
 
-  // --- Filtering Helper ---
+  // --- Fixed Filtering Logic ---
+  const getFilteredProducts = () => {
+      // 1. Merge collections for viewing (if not strictly separated) or handle separately
+      let allItems = [
+          ...products.map(p => ({...p, _source: 'products'})), 
+          ...packages.map(p => ({...p, _source: 'cms_packages', category: '올인원패키지', type: 'package'}))
+      ];
+
+      // 2. Apply Category Filter
+      if (productCategoryFilter !== 'all') {
+          allItems = allItems.filter(p => p.category === productCategoryFilter);
+      }
+
+      // 3. Apply Search Term
+      if (searchTerm) {
+          allItems = allItems.filter(item => 
+              JSON.stringify(Object.values(item)).toLowerCase().includes(searchTerm.toLowerCase())
+          );
+      }
+
+      return allItems;
+  };
+
   const filterData = (data: any[]) => {
       if (!searchTerm) return data;
       return data.filter(item => 
           JSON.stringify(Object.values(item)).toLowerCase().includes(searchTerm.toLowerCase())
       );
-  };
-
-  // --- Missing Functions Implementation ---
-
-  const getFilteredProducts = () => {
-      let items: any[] = [];
-      if (productCategoryFilter === '올인원패키지') {
-          items = packages.map(p => ({ ...p, type: 'package', category: '올인원패키지' }));
-      } else {
-          items = products;
-          if (productCategoryFilter !== 'all') {
-              items = items.filter(p => p.category === productCategoryFilter);
-          }
-      }
-      return items;
   };
 
   const openGroupParticipants = async (group: any) => {
@@ -250,6 +256,9 @@ export const AdminDashboard: React.FC<any> = () => {
       } catch(e) { showToast("참여자 로딩 실패", 'error'); }
   };
 
+  // Generate unique code for affiliates/coupons
+  const generateCode = () => Math.random().toString(36).substring(2, 10).toUpperCase();
+
   if (loading) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F7FB]"><RefreshCw className="animate-spin text-blue-500 mb-2"/> <span className="text-sm font-bold text-gray-500">관리자 데이터 로딩중...</span></div>;
   
   if (!isAdmin) return (
@@ -258,11 +267,10 @@ export const AdminDashboard: React.FC<any> = () => {
             <div className="text-center mb-8">
                 <Lock className="w-12 h-12 text-[#0070F0] mx-auto mb-4"/>
                 <h2 className="text-2xl font-black text-[#111]">관리자 로그인</h2>
-                <p className="text-gray-500 text-sm mt-2">인가된 관리자 계정으로 접속해주세요.</p>
             </div>
             <form onSubmit={handleLogin} className="space-y-4">
-              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full border p-4 rounded-xl bg-gray-50 focus:bg-white focus:border-[#0070F0] outline-none transition-all font-medium" placeholder="admin@k-experience.com"/>
-              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full border p-4 rounded-xl bg-gray-50 focus:bg-white focus:border-[#0070F0] outline-none transition-all font-medium" placeholder="비밀번호"/>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full border p-4 rounded-xl" placeholder="admin@k-experience.com"/>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full border p-4 rounded-xl" placeholder="비밀번호"/>
               <button className="w-full bg-[#111] text-white py-4 rounded-xl font-bold hover:bg-black transition shadow-lg mt-4">접속하기</button>
             </form>
           </div>
@@ -288,7 +296,7 @@ export const AdminDashboard: React.FC<any> = () => {
                     { id: 'dashboard', icon: LayoutDashboard, label: '대시보드' },
                     { id: 'reservations', icon: ShoppingCart, label: '예약/주문 관리' },
                     { id: 'products', icon: Package, label: '상품/패키지' },
-                    { id: 'groupbuys', icon: Megaphone, label: '공동구매 관리' },
+                    { id: 'groupbuys', icon: Megaphone, label: '공동구매 모니터링' },
                     { id: 'coupons', icon: Ticket, label: '쿠폰/프로모션' },
                     { id: 'magazine', icon: BookOpen, label: '매거진(블로그)' },
                     { id: 'inquiries', icon: MessageCircle, label: '1:1 문의' },
@@ -312,26 +320,20 @@ export const AdminDashboard: React.FC<any> = () => {
         <main className="flex-1 ml-64 p-8 min-w-[1024px]">
             {/* Top Bar */}
             <div className="flex justify-between items-center mb-8 sticky top-0 z-10 bg-[#F5F7FB]/90 backdrop-blur-sm py-4">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-black text-[#111]">{activeTab === 'groupbuys' ? '공동구매 현황' : activeTab === 'dashboard' ? '관리자 대시보드' : activeTab.toUpperCase()}</h2>
+                <h2 className="text-2xl font-black text-[#111] capitalize">{activeTab.replace('groupbuys', 'Group Buy Monitoring')}</h2>
+                <div className="flex gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16}/>
                         <input 
                             type="text" 
-                            placeholder="데이터 검색 (이름, 상품명...)" 
+                            placeholder="전체 데이터 검색..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium focus:ring-2 focus:ring-blue-100 outline-none w-64 shadow-sm"
+                            className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium w-64 focus:ring-2 focus:ring-blue-100 outline-none"
                         />
                     </div>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200 flex items-center gap-2 shadow-sm">
-                        <RefreshCw size={12} className="text-green-500"/>
-                        환율: 1$ = {Math.round(1/rates.USD)}원
-                    </div>
-                    <button onClick={() => window.open('/', '_blank')} className="bg-black text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-gray-800 transition shadow-lg">
-                        <Globe size={12}/> 내 사이트 보기
+                    <button onClick={() => window.open('/', '_blank')} className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 hover:bg-gray-50">
+                        <Globe size={14}/> 사이트 바로가기
                     </button>
                 </div>
             </div>
@@ -346,49 +348,27 @@ export const AdminDashboard: React.FC<any> = () => {
                             { l:'총 예약 건수', v:`${stats.orders}건`, i:ShoppingCart, c:'bg-purple-50 text-purple-600' }, 
                             { l:'총 회원 수', v:`${stats.users}명`, i:Users, c:'bg-orange-50 text-orange-600' }
                         ].map((s,i) => (
-                            <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
-                                <div><p className="text-gray-400 text-xs font-bold mb-1 uppercase tracking-wider">{s.l}</p><h3 className="text-2xl font-black tracking-tight">{s.v}</h3></div>
+                            <div key={i} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                                <div><p className="text-gray-400 text-xs font-bold mb-1 uppercase">{s.l}</p><h3 className="text-2xl font-black">{s.v}</h3></div>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${s.c}`}><s.i size={24}/></div>
                             </div>
                         ))}
                     </div>
-
-                    <div className="grid grid-cols-3 gap-6">
-                        <div className="col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><ShoppingCart size={20}/> 최근 예약 내역</h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase"><tr><th className="p-3">예약일</th><th className="p-3">고객명</th><th className="p-3">상품명</th><th className="p-3">상태</th></tr></thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {reservations.slice(0, 5).map((r: any) => (
-                                            <tr key={r.id}>
-                                                <td className="p-3 text-gray-500">{r.date}</td>
-                                                <td className="p-3 font-bold">{r.options?.guestEmail || r.userId}</td>
-                                                <td className="p-3 truncate max-w-[200px]">{r.productName}</td>
-                                                <td className="p-3"><StatusBadge status={r.status}/></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Megaphone size={20}/> 핫딜 현황</h3>
-                            <div className="space-y-4">
-                                {groupBuys.slice(0, 3).map((gb: any) => (
-                                    <div key={gb.id} className="border border-gray-100 rounded-xl p-3 flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white text-xs ${gb.productType==='basic'?'bg-teal-400':'bg-yellow-400'}`}>
-                                            {gb.productType==='basic'?'BS':'PR'}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-sm truncate">{gb.title}</h4>
-                                            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-1"><div className="bg-red-500 h-full rounded-full" style={{width: `${(gb.currentCount/gb.maxCount)*100}%`}}></div></div>
-                                        </div>
-                                        <span className="text-xs font-bold text-red-500">{gb.currentCount}/{gb.maxCount}</span>
-                                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><ShoppingCart size={20}/> 최근 예약 내역</h3>
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-500 text-xs uppercase"><tr><th className="p-3">예약일</th><th className="p-3">고객명</th><th className="p-3">상품명</th><th className="p-3">상태</th></tr></thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {reservations.slice(0, 5).map((r: any) => (
+                                    <tr key={r.id}>
+                                        <td className="p-3 text-gray-500">{r.date}</td>
+                                        <td className="p-3 font-bold">{r.options?.guestEmail || r.userId}</td>
+                                        <td className="p-3 truncate max-w-[200px]">{r.productName}</td>
+                                        <td className="p-3"><StatusBadge status={r.status}/></td>
+                                    </tr>
                                 ))}
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
@@ -397,7 +377,7 @@ export const AdminDashboard: React.FC<any> = () => {
             {activeTab === 'reservations' && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up">
                     <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                        <h3 className="font-bold text-lg">전체 예약 리스트 ({filterData(reservations).length})</h3>
+                        <h3 className="font-bold text-lg">전체 예약 리스트 ({reservations.length})</h3>
                         <div className="flex gap-2">
                              <button className="px-3 py-1.5 bg-white border border-gray-200 rounded text-xs font-bold hover:bg-gray-50">엑셀 다운로드</button>
                         </div>
@@ -415,7 +395,7 @@ export const AdminDashboard: React.FC<any> = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {filterData(reservations).map((r: any) => (
+                            {reservations.map((r: any) => (
                                 <tr key={r.id} className="hover:bg-blue-50/30 transition-colors group">
                                     <td className="p-4">
                                         <div className="font-bold">{r.date}</div>
@@ -484,7 +464,7 @@ export const AdminDashboard: React.FC<any> = () => {
                     </div>
 
                     <div className="grid grid-cols-4 gap-6">
-                        {filterData(getFilteredProducts()).map((item: any) => (
+                        {getFilteredProducts().map((item: any) => (
                             <div key={item.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all group flex flex-col h-full">
                                 <div className="relative aspect-video bg-gray-100 group">
                                     {item.image ? <img src={item.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt={item.title}/> : <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon/></div>}
@@ -513,45 +493,49 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
 
-            {/* GROUP BUY TAB */}
+            {/* GROUP BUY MONITORING TAB */}
             {activeTab === 'groupbuys' && (
                 <div className="space-y-6 animate-fade-in-up">
-                    <div className="flex justify-end">
-                        <button onClick={() => { setEditingItem({ productType: 'basic', maxCount: 10, currentCount: 0 }); setModalType('groupbuy'); }} className="bg-[#FF6B6B] text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-red-200 hover:bg-[#ff5252] transition-all flex items-center gap-2">
-                            <Plus size={18}/> 핫딜 생성
-                        </button>
+                    <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl flex items-start gap-3">
+                        <AlertCircle className="text-orange-500 mt-0.5" size={20}/>
+                        <div className="text-sm text-orange-800">
+                            <strong>공동구매 관리자 가이드:</strong> 공동구매는 <u>이용자가 직접 생성</u>합니다. 관리자는 생성된 공구를 모니터링하고, 부적절한 공구를 삭제하거나 강제 종료할 수 있습니다.
+                        </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-6">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filterData(groupBuys).map((gb: any) => {
                              const progress = (gb.currentCount / gb.maxCount) * 100;
                              const dDay = Math.ceil((new Date(gb.visitDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
                              return (
-                                <div key={gb.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-red-200 transition-colors group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex gap-2">
-                                            <span className={`px-2 py-1 rounded text-[10px] font-bold text-white ${gb.productType === 'basic' ? 'bg-[#00C7AE]' : 'bg-[#FFD700]'}`}>{gb.productType === 'basic' ? 'BASIC' : 'PREMIUM'}</span>
-                                            {dDay > 0 && <span className="px-2 py-1 rounded text-[10px] font-bold bg-red-100 text-red-600">D-{dDay}</span>}
-                                        </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => { setEditingItem(gb); setModalType('groupbuy'); }} className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600"><Edit2 size={14}/></button>
-                                            <button onClick={() => deleteItem("group_buys", gb.id)} className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600"><Trash2 size={14}/></button>
-                                        </div>
+                                <div key={gb.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:border-red-200 transition-colors group relative">
+                                    {gb.isPrivate && <div className="absolute top-4 right-4 bg-gray-100 text-gray-500 p-1.5 rounded-full" title="비공개 공구"><LockKeyhole size={14}/></div>}
+                                    
+                                    <div className="flex gap-2 mb-3">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold text-white ${gb.productType === 'basic' ? 'bg-[#00C7AE]' : 'bg-[#FFD700]'}`}>{gb.productType === 'basic' ? 'BASIC' : 'PREMIUM'}</span>
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${dDay > 0 ? 'bg-red-100 text-red-600' : 'bg-gray-200 text-gray-500'}`}>{dDay > 0 ? `D-${dDay}` : '마감됨'}</span>
                                     </div>
-                                    <h3 className="font-bold text-lg mb-1 truncate">{gb.title}</h3>
-                                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-4"><CalendarIcon size={12}/> {gb.visitDate}</div>
+                                    
+                                    <h3 className="font-bold text-lg mb-1 truncate pr-8">{gb.title}</h3>
+                                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
+                                        <span className="flex items-center gap-1"><UserCheck size={12}/> 리더: {gb.leaderName || 'Unknown'}</span>
+                                        <span>|</span>
+                                        <span className="flex items-center gap-1"><CalendarIcon size={12}/> {gb.visitDate}</span>
+                                    </div>
                                     
                                     <div className="mb-4">
                                         <div className="flex justify-between text-xs font-bold mb-1">
-                                            <span className="text-gray-500">{gb.currentCount}명 참여</span>
+                                            <span className="text-gray-500">{gb.currentCount} / {gb.maxCount}명</span>
                                             <span className="text-red-500">{progress.toFixed(0)}%</span>
                                         </div>
                                         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                            <div className="bg-gradient-to-r from-orange-400 to-red-500 h-full rounded-full transition-all duration-1000" style={{width: `${progress}%`}}></div>
+                                            <div className="bg-gradient-to-r from-orange-400 to-red-500 h-full rounded-full transition-all" style={{width: `${progress}%`}}></div>
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-2">
-                                        <button onClick={() => openGroupParticipants(gb)} className="flex-1 py-2.5 bg-black text-white rounded-lg text-xs font-bold hover:bg-gray-800">참여자 관리</button>
+                                    <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-100">
+                                        <button onClick={() => openGroupParticipants(gb)} className="py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-bold hover:bg-gray-50">참여자 조회</button>
+                                        <button onClick={() => deleteItem("group_buys", gb.id)} className="py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 flex items-center justify-center gap-1"><Ban size={12}/> 강제 종료</button>
                                     </div>
                                 </div>
                              );
@@ -560,30 +544,69 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
 
-            {/* USERS MANAGEMENT */}
-            {activeTab === 'users' && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 text-gray-500"><tr><th className="p-4">이름</th><th className="p-4">이메일</th><th className="p-4">전화번호</th><th className="p-4">권한</th><th className="p-4">관리</th></tr></thead>
-                        <tbody>
-                            {filterData(users).map(u => (
-                                <tr key={u.id} className="border-b hover:bg-gray-50">
-                                    <td className="p-4 font-bold">{u.name}</td>
-                                    <td className="p-4">{u.email}</td>
-                                    <td className="p-4">{u.phone || '-'}</td>
-                                    <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>{u.role === 'admin' ? '관리자' : '일반회원'}</span></td>
-                                    <td className="p-4 flex gap-2">
-                                        <button onClick={() => toggleUserAdmin(u.id, u.role)} className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 font-bold">{u.role==='admin' ? '권한해제' : '관리자지정'}</button>
-                                        <button onClick={() => deleteItem("users", u.id)} className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 font-bold">삭제</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {/* COUPONS TAB - FULLY IMPLEMENTED */}
+            {activeTab === 'coupons' && (
+                <div className="space-y-6 animate-fade-in-up">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg">발행된 쿠폰 목록</h3>
+                        <button onClick={() => { setEditingItem({ type: 'percent', value: 10, maxUsage: 100, code: generateCode() }); setModalType('coupon'); }} className="bg-black text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"><Plus size={16}/> 쿠폰 생성</button>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-500"><tr><th className="p-4">쿠폰명</th><th className="p-4">코드</th><th className="p-4">혜택</th><th className="p-4">사용현황</th><th className="p-4">만료일</th><th className="p-4">관리</th></tr></thead>
+                            <tbody>
+                                {coupons.map(c => (
+                                    <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
+                                        <td className="p-4 font-bold">{c.name}</td>
+                                        <td className="p-4 font-mono bg-gray-50 text-blue-600 rounded px-2 w-fit">{c.code}</td>
+                                        <td className="p-4 font-bold text-green-600">{c.type === 'percent' ? `${c.value}% 할인` : `₩${c.value.toLocaleString()} 할인`}</td>
+                                        <td className="p-4 text-xs">{c.currentUsage || 0} / {c.maxUsage}회</td>
+                                        <td className="p-4 text-gray-500">{c.expiryDate}</td>
+                                        <td className="p-4"><button onClick={() => deleteItem("coupons", c.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded"><Trash2 size={16}/></button></td>
+                                    </tr>
+                                ))}
+                                {coupons.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">발행된 쿠폰이 없습니다.</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* SETTINGS (Simplified for brevity but fully functional tabs) */}
+            {/* AFFILIATES TAB - FULLY IMPLEMENTED */}
+            {activeTab === 'affiliates' && (
+                <div className="space-y-6 animate-fade-in-up">
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-bold text-lg">제휴 파트너 관리</h3>
+                        <button onClick={() => { setEditingItem({ commissionRate: 10, code: generateCode(), clicks: 0, sales: 0 }); setModalType('affiliate'); }} className="bg-[#0070F0] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"><Plus size={16}/> 파트너 등록</button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {affiliates.map(aff => (
+                            <div key={aff.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-10"><LinkIcon size={64}/></div>
+                                <h4 className="font-bold text-lg mb-1">{aff.name}</h4>
+                                <div className="text-xs font-mono text-gray-400 mb-4 bg-gray-50 inline-block px-2 py-1 rounded">CODE: {aff.code}</div>
+                                
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-blue-50 p-3 rounded-xl">
+                                        <span className="text-xs text-blue-500 font-bold block">유입(클릭)</span>
+                                        <span className="text-xl font-black text-blue-700">{aff.clicks || 0}</span>
+                                    </div>
+                                    <div className="bg-green-50 p-3 rounded-xl">
+                                        <span className="text-xs text-green-500 font-bold block">판매발생</span>
+                                        <span className="text-xl font-black text-green-700">{aff.sales || 0}건</span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center text-xs font-bold text-gray-500 pt-4 border-t border-gray-100">
+                                    <span>수수료율: {aff.commissionRate}%</span>
+                                    <button onClick={() => deleteItem("affiliates", aff.id)} className="text-red-500 hover:underline">계약해지</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* SETTINGS - FULLY IMPLEMENTED */}
             {activeTab === 'settings' && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in-up">
                     <div className="flex border-b border-gray-200">
@@ -601,6 +624,26 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <div><label className="block text-sm font-bold text-gray-700 mb-2">고객센터 연락처</label><input className="w-full border p-3 rounded-xl bg-gray-50 focus:bg-white transition-colors" value={settings.contactPhone||''} onChange={e=>setSettings({...settings, contactPhone:e.target.value})}/></div>
                             </div>
                         )}
+                        {settingsTab === 'payment' && (
+                            <div className="space-y-6">
+                                <div className="bg-blue-50 p-4 rounded-xl text-sm text-blue-700 mb-4"><strong>Tip:</strong> 포트원(구 아임포트) 관리자 콘솔에서 발급받은 식별코드를 입력하세요.</div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-2">가맹점 식별코드 (User Code)</label><input className="w-full border p-3 rounded-xl font-mono" placeholder="imp00000000" value={settings.impCode||''} onChange={e=>setSettings({...settings, impCode:e.target.value})}/></div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-2">PG사 선택</label><select className="w-full border p-3 rounded-xl" value={settings.pgProvider||'html5_inicis'} onChange={e=>setSettings({...settings, pgProvider:e.target.value})}><option value="html5_inicis">KG이니시스</option><option value="kakaopay">카카오페이</option><option value="tosspayments">토스페이먼츠</option><option value="paypal">페이팔 (해외)</option></select></div>
+                            </div>
+                        )}
+                        {settingsTab === 'seo' && (
+                            <div className="space-y-6">
+                                <div><label className="block text-sm font-bold text-gray-700 mb-2">메타 타이틀 (Title)</label><input className="w-full border p-3 rounded-xl" value={settings.metaTitle||''} onChange={e=>setSettings({...settings, metaTitle:e.target.value})}/></div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-2">메타 설명 (Description)</label><textarea className="w-full border p-3 rounded-xl h-24" value={settings.metaDesc||''} onChange={e=>setSettings({...settings, metaDesc:e.target.value})}/></div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-2">대표 키워드</label><input className="w-full border p-3 rounded-xl" placeholder="K-POP, 한국여행, 건강검진..." value={settings.keywords||''} onChange={e=>setSettings({...settings, keywords:e.target.value})}/></div>
+                            </div>
+                        )}
+                        {settingsTab === 'policy' && (
+                            <div className="space-y-6">
+                                <div><label className="block text-sm font-bold text-gray-700 mb-2">이용약관</label><textarea className="w-full border p-3 rounded-xl h-40 font-mono text-xs" value={settings.terms||''} onChange={e=>setSettings({...settings, terms:e.target.value})}/></div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-2">개인정보처리방침</label><textarea className="w-full border p-3 rounded-xl h-40 font-mono text-xs" value={settings.privacy||''} onChange={e=>setSettings({...settings, privacy:e.target.value})}/></div>
+                            </div>
+                        )}
                         <div className="mt-10 pt-6 border-t border-gray-100 text-right">
                             <button onClick={async () => { await setDoc(doc(db, "settings", "global"), settings); showToast("설정이 저장되었습니다."); }} className="bg-[#111] text-white px-10 py-3.5 rounded-xl font-bold shadow-lg hover:bg-gray-800 transition-all">변경사항 저장</button>
                         </div>
@@ -608,7 +651,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
 
-            {/* Other tabs follow same pattern... (Coupons, Magazine, etc.) */}
+            {/* Other tabs follow same pattern... (Magazine, etc.) */}
             {activeTab === 'magazine' && (
                 <div className="space-y-6 animate-fade-in-up">
                      <div className="flex justify-end"><button onClick={()=>{setEditingItem({}); setModalType('magazine');}} className="bg-[#0070F0] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2"><Plus size={18}/> 포스트 작성</button></div>
@@ -634,7 +677,11 @@ export const AdminDashboard: React.FC<any> = () => {
             <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                        <h3 className="font-black text-xl text-[#111]">{modalType === 'product' ? '상품 정보 수정' : modalType === 'groupbuy' ? '공동구매 설정' : '콘텐츠 작성'}</h3>
+                        <h3 className="font-black text-xl text-[#111]">
+                            {modalType === 'product' ? '상품 정보 수정' : 
+                             modalType === 'coupon' ? '쿠폰 발행' : 
+                             modalType === 'affiliate' ? '파트너 등록' : '콘텐츠 작성'}
+                        </h3>
                         <button onClick={()=>setModalType(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><X size={20}/></button>
                     </div>
                     
@@ -661,13 +708,6 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <div className="col-span-2"><label className="block text-sm font-bold text-gray-700 mb-2">상세 페이지 디자인 (에디터)</label><RichTextEditor value={editingItem.content||''} onChange={h=>setEditingItem({...editingItem, content:h})}/></div>
                             </div>
                         )}
-                        {modalType === 'groupbuy' && (
-                             <div className="grid grid-cols-2 gap-6">
-                                <div className="col-span-2"><label className="font-bold block mb-2">공구 제목</label><input className="w-full border p-3 rounded-xl" value={editingItem.title||''} onChange={e=>setEditingItem({...editingItem, title:e.target.value})}/></div>
-                                <div><label className="font-bold block mb-2">방문 예정일</label><input type="date" className="w-full border p-3 rounded-xl" value={editingItem.visitDate||''} onChange={e=>setEditingItem({...editingItem, visitDate:e.target.value})}/></div>
-                                <div><label className="font-bold block mb-2">목표 인원</label><input type="number" className="w-full border p-3 rounded-xl" value={editingItem.maxCount||10} onChange={e=>setEditingItem({...editingItem, maxCount:Number(e.target.value)})}/></div>
-                             </div>
-                        )}
                         {modalType === 'magazine' && (
                             <div className="space-y-4">
                                 <input className="w-full border p-4 rounded-xl text-lg font-bold" placeholder="제목을 입력하세요" value={editingItem.title||''} onChange={e=>setEditingItem({...editingItem, title:e.target.value})}/>
@@ -681,10 +721,35 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <RichTextEditor value={editingItem.content||''} onChange={h=>setEditingItem({...editingItem, content:h})}/>
                             </div>
                         )}
+                        {modalType === 'coupon' && (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="font-bold block mb-2">쿠폰명</label><input className="w-full border p-3 rounded-xl" value={editingItem.name||''} onChange={e=>setEditingItem({...editingItem, name:e.target.value})}/></div>
+                                    <div><label className="font-bold block mb-2">코드 (자동생성)</label><input className="w-full border p-3 rounded-xl bg-gray-50" value={editingItem.code} readOnly/></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="font-bold block mb-2">할인 타입</label><select className="w-full border p-3 rounded-xl" value={editingItem.type} onChange={e=>setEditingItem({...editingItem, type:e.target.value})}><option value="percent">퍼센트(%)</option><option value="fixed">정액(원)</option></select></div>
+                                    <div><label className="font-bold block mb-2">할인값</label><input type="number" className="w-full border p-3 rounded-xl" value={editingItem.value} onChange={e=>setEditingItem({...editingItem, value:Number(e.target.value)})}/></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="font-bold block mb-2">만료일</label><input type="date" className="w-full border p-3 rounded-xl" value={editingItem.expiryDate||''} onChange={e=>setEditingItem({...editingItem, expiryDate:e.target.value})}/></div>
+                                    <div><label className="font-bold block mb-2">발행 수량 제한</label><input type="number" className="w-full border p-3 rounded-xl" value={editingItem.maxUsage} onChange={e=>setEditingItem({...editingItem, maxUsage:Number(e.target.value)})}/></div>
+                                </div>
+                            </div>
+                        )}
+                        {modalType === 'affiliate' && (
+                            <div className="space-y-4">
+                                <div><label className="font-bold block mb-2">파트너 이름/업체명</label><input className="w-full border p-3 rounded-xl" value={editingItem.name||''} onChange={e=>setEditingItem({...editingItem, name:e.target.value})}/></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="font-bold block mb-2">파트너 코드</label><input className="w-full border p-3 rounded-xl bg-gray-50" value={editingItem.code} readOnly/></div>
+                                    <div><label className="font-bold block mb-2">수수료율 (%)</label><input type="number" className="w-full border p-3 rounded-xl" value={editingItem.commissionRate} onChange={e=>setEditingItem({...editingItem, commissionRate:Number(e.target.value)})}/></div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
                         <button onClick={()=>setModalType(null)} className="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-200 transition-colors">취소</button>
-                        <button onClick={modalType === 'product' ? saveProduct : () => saveGeneric(modalType === 'groupbuy' ? 'group_buys' : 'cms_magazine')} className="bg-[#111] text-white px-8 py-3 rounded-xl font-bold hover:bg-black transition-all shadow-lg">저장하기</button>
+                        <button onClick={modalType === 'product' ? saveProduct : () => saveGeneric(modalType === 'coupon' ? 'coupons' : modalType === 'affiliate' ? 'affiliates' : 'cms_magazine')} className="bg-[#111] text-white px-8 py-3 rounded-xl font-bold hover:bg-black transition-all shadow-lg">저장하기</button>
                     </div>
                 </div>
             </div>
