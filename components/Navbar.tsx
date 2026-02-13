@@ -58,7 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
            <span className="text-[20px] font-black text-[#0070F0] tracking-tighter">K-Experience</span>
         </div>
 
-        {/* Right: Icons (Language, User, Admin) */}
+        {/* Right: Icons (Language, User Actions) */}
         <div className="flex items-center gap-4">
              {/* Language Dropdown */}
              <div className="relative" ref={langRef}>
@@ -91,15 +91,23 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
                  )}
              </div>
 
-             {/* Admin Button (Hidden shortcut) */}
-             <button onClick={onAdminClick} className="text-gray-300 hover:text-black transition-colors" title="Admin Dashboard">
-                <Lock size={18} />
-             </button>
-
-             {/* User Profile */}
-             <button onClick={user ? onMyPageClick : onLoginClick} className="text-[#333] hover:text-[#0070F0] transition-colors">
-                <UserIcon size={24} strokeWidth={1.5} />
-             </button>
+             {/* Auth Section */}
+             {user ? (
+                 <div className="flex items-center gap-3">
+                     {/* My Page Link */}
+                     <button onClick={onMyPageClick} className="text-[#333] hover:text-[#0070F0] transition-colors" title={language === 'ko' ? '마이페이지' : 'My Page'}>
+                        <UserIcon size={24} strokeWidth={1.5} />
+                     </button>
+                     {/* Logout Button */}
+                     <button onClick={logoutUser} className="text-xs font-bold text-gray-500 hover:text-red-500 transition-colors whitespace-nowrap">
+                        {language === 'ko' ? '로그아웃' : 'Logout'}
+                     </button>
+                 </div>
+             ) : (
+                 <button onClick={onLoginClick} className="bg-black text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-gray-800 transition-colors whitespace-nowrap shadow-sm">
+                    {language === 'ko' ? '로그인/회원가입' : 'Login / Sign Up'}
+                 </button>
+             )}
         </div>
 
       </div>
