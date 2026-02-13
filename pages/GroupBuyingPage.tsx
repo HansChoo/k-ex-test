@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Flame, Info, Crown, CheckCircle2, ChevronRight, Timer, Lock, Search, Plus, X, Calendar, CreditCard, UserPlus } from 'lucide-react';
+import { Users, Flame, Info, Crown, CheckCircle2, ChevronRight, Timer, Lock, Search, Plus, X, Calendar, CreditCard, UserPlus, Mail, Globe, Phone } from 'lucide-react';
 import { auth, db } from '../services/firebaseConfig';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { useGlobal } from '../contexts/GlobalContext';
 import { requestPayment } from '../services/paymentService';
+import { COUNTRY_CODES } from '../constants';
 
 interface GroupBuyingPageProps { language: 'ko' | 'en'; }
 
@@ -44,7 +45,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const [newGroupData, setNewGroupData] = useState<any>({
       productId: '',
       visitDate: '',
-      participants: [{ name: '', dob: '', gender: 'Female', phone: '' }] // Start with Leader
+      participants: [] 
   });
 
   // Fetch Groups & Packages
@@ -135,25 +136,51 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
           return;
       }
       setNewGroupType(type);
+      
+      // Default leader info from auth
+      const defaultNationality = COUNTRY_CODES.find(c => c.code === 'KR') || COUNTRY_CODES[0];
+      
       setNewGroupData({
           productId: '',
           visitDate: '',
           participants: [{ 
               name: auth.currentUser.displayName || '', 
+              email: auth.currentUser.email || '',
+              nationality: defaultNationality.code,
+              dialCode: defaultNationality.dial,
+              phone: '',
               dob: '', 
-              gender: 'Female', 
-              phone: '' 
+              gender: 'Female'
           }] 
       });
       setCreateStep(1);
       setIsCreateModalOpen(true);
   };
 
+  const handleUpdateParticipant = (index: number, field: string, value: any) => {
+      const updated = [...newGroupData.participants];
+      updated[index] = { ...updated[index], [field]: value };
+
+      // If nationality changes, update dial code automatically
+      if (field === 'nationality') {
+          const country = COUNTRY_CODES.find(c => c.code === value);
+          if (country) {
+              updated[index].dialCode = country.dial;
+          }
+      }
+
+      setNewGroupData({ ...newGroupData, participants: updated });
+  };
+
   const handleCreateGroupSubmit = async () => {
       // Validate
       if (!newGroupData.productId || !newGroupData.visitDate) return alert("상품과 날짜를 선택해주세요.");
-      for (const p of newGroupData.participants) {
-          if (!p.name || !p.phone) return alert("참여자 정보를 모두 입력해주세요.");
+      
+      for (let i = 0; i < newGroupData.participants.length; i++) {
+          const p = newGroupData.participants[i];
+          if (!p.name || !p.email || !p.phone || !p.dob) {
+              return alert(isEn ? `Please fill in all details for Participant ${i+1}` : `참여자 ${i+1}의 정보를 모두 입력해주세요.`);
+          }
       }
 
       // Find selected product info
@@ -434,35 +461,65 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                           <div className="space-y-6">
                               <div className="flex justify-between items-center">
                                 <label className="block text-sm font-bold flex items-center gap-2"><UserPlus size={16}/> 3. 참여자 정보 (본인 포함)</label>
-                                <button onClick={() => setNewGroupData({...newGroupData, participants: [...newGroupData.participants, { name: '', dob: '', phone: '' }]})} className="text-xs bg-gray-100 px-3 py-1 rounded-full font-bold flex items-center gap-1 hover:bg-gray-200"><Plus size={12}/> 인원 추가</button>
+                                <button onClick={() => {
+                                    const defaultCountry = COUNTRY_CODES[0];
+                                    setNewGroupData({
+                                        ...newGroupData, 
+                                        participants: [...newGroupData.participants, { 
+                                            name: '', email: '', dob: '', phone: '', nationality: defaultCountry.code, dialCode: defaultCountry.dial, gender: 'Female' 
+                                        }]
+                                    });
+                                }} className="text-xs bg-gray-100 px-3 py-1 rounded-full font-bold flex items-center gap-1 hover:bg-gray-200"><Plus size={12}/> 인원 추가</button>
                               </div>
                               
                               <div className="space-y-4">
                                   {newGroupData.participants.map((p: any, idx: number) => (
-                                      <div key={idx} className="p-4 border border-gray-200 rounded-xl bg-gray-50 relative">
+                                      <div key={idx} className="p-4 border border-gray-200 rounded-xl bg-gray-50 relative animate-fade-in-up">
                                           {idx > 0 && <button onClick={() => {
                                               const updated = [...newGroupData.participants];
                                               updated.splice(idx, 1);
                                               setNewGroupData({...newGroupData, participants: updated});
                                           }} className="absolute top-2 right-2 text-gray-400 hover:text-red-500"><X size={16}/></button>}
                                           
-                                          <div className="mb-2 font-bold text-xs text-gray-500">{idx === 0 ? '👑 리더 (본인)' : `참여자 ${idx + 1}`}</div>
-                                          <input type="text" placeholder="이름 (여권 영문명)" className="w-full border p-2 rounded mb-2 text-sm" value={p.name} onChange={(e) => {
-                                              const updated = [...newGroupData.participants];
-                                              updated[idx].name = e.target.value;
-                                              setNewGroupData({...newGroupData, participants: updated});
-                                          }}/>
-                                          <div className="flex gap-2">
-                                              <input type="text" placeholder="연락처" className="flex-1 border p-2 rounded text-sm" value={p.phone} onChange={(e) => {
-                                                  const updated = [...newGroupData.participants];
-                                                  updated[idx].phone = e.target.value;
-                                                  setNewGroupData({...newGroupData, participants: updated});
-                                              }}/>
-                                              <input type="date" className="flex-1 border p-2 rounded text-sm" value={p.dob} onChange={(e) => {
-                                                  const updated = [...newGroupData.participants];
-                                                  updated[idx].dob = e.target.value;
-                                                  setNewGroupData({...newGroupData, participants: updated});
-                                              }}/>
+                                          <div className="mb-3 font-bold text-xs text-gray-500 flex items-center gap-1">
+                                            {idx === 0 ? <><Crown size={12} className="text-yellow-500"/> 리더 (본인)</> : `참여자 ${idx + 1}`}
+                                          </div>
+                                          
+                                          {/* Name & Gender */}
+                                          <div className="grid grid-cols-2 gap-2 mb-2">
+                                              <input type="text" placeholder="Full Name (Passport)" className="border p-2 rounded text-sm w-full" value={p.name} onChange={(e) => handleUpdateParticipant(idx, 'name', e.target.value)}/>
+                                              <select value={p.gender} onChange={(e) => handleUpdateParticipant(idx, 'gender', e.target.value)} className="border p-2 rounded text-sm bg-white font-bold">
+                                                    <option value="Male">Male</option>
+                                                    <option value="Female">Female</option>
+                                              </select>
+                                          </div>
+
+                                          {/* Nationality & DOB */}
+                                          <div className="grid grid-cols-2 gap-2 mb-2">
+                                              <div className="relative">
+                                                  <select value={p.nationality} onChange={(e) => handleUpdateParticipant(idx, 'nationality', e.target.value)} className="w-full border p-2 rounded text-sm bg-white appearance-none pr-8">
+                                                      {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+                                                  </select>
+                                                  <Globe size={14} className="absolute right-2 top-3 text-gray-400 pointer-events-none"/>
+                                              </div>
+                                              <input type="date" className="border p-2 rounded text-sm w-full" value={p.dob} onChange={(e) => handleUpdateParticipant(idx, 'dob', e.target.value)}/>
+                                          </div>
+
+                                          {/* Phone */}
+                                          <div className="flex gap-2 mb-2">
+                                              <div className="w-20 bg-gray-100 border border-gray-200 rounded flex items-center justify-center text-sm font-bold text-gray-600">
+                                                  {p.dialCode || '+82'}
+                                              </div>
+                                              <div className="relative flex-1">
+                                                  <input type="tel" placeholder="Phone Number" className="w-full border p-2 pl-8 rounded text-sm" value={p.phone} onChange={(e) => handleUpdateParticipant(idx, 'phone', e.target.value.replace(/[^0-9]/g, ''))}/>
+                                                  <Phone size={14} className="absolute left-2.5 top-3 text-gray-400"/>
+                                              </div>
+                                          </div>
+
+                                          {/* Email */}
+                                          <div className="relative">
+                                              <input type="email" placeholder="Email Address" className="w-full border p-2 pl-8 rounded text-sm" value={p.email} onChange={(e) => handleUpdateParticipant(idx, 'email', e.target.value)}/>
+                                              <Mail size={14} className="absolute left-2.5 top-3 text-gray-400"/>
                                           </div>
                                       </div>
                                   ))}
