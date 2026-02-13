@@ -4,7 +4,7 @@ import {
     LayoutDashboard, ShoppingCart, Users, Package, Plus, Edit2, Trash2, Megaphone, X, Save, 
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
     LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown, ListPlus,
-    Timer, Lock, CheckCircle2, Phone
+    Timer, Lock, CheckCircle2, Phone, Archive
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -22,7 +22,8 @@ const StatusBadge = ({ status }: { status: string }) => {
         'completed': 'bg-gray-100 text-gray-800',
         'cancelled': 'bg-red-100 text-red-800',
         'waiting': 'bg-orange-100 text-orange-800',
-        'answered': 'bg-blue-100 text-blue-800'
+        'answered': 'bg-blue-100 text-blue-800',
+        'active': 'bg-blue-100 text-blue-800'
     };
     return (
         <span className={`px-2 py-1 rounded text-xs font-bold ${styles[status] || 'bg-gray-100'}`}>
@@ -118,6 +119,23 @@ export const AdminDashboard: React.FC<any> = () => {
     return () => unsubs.forEach(u => u());
   }, [isAdmin]);
 
+  // Check for expired group buys and move them to completed
+  useEffect(() => {
+      if (groupBuys.length > 0) {
+          const today = new Date().toISOString().split('T')[0];
+          const expiredGroups = groupBuys.filter(g => g.status !== 'completed' && g.visitDate < today);
+          
+          if (expiredGroups.length > 0) {
+              const batch = writeBatch(db);
+              expiredGroups.forEach(g => {
+                  const ref = doc(db, "group_buys", g.id);
+                  batch.update(ref, { status: 'completed' });
+              });
+              batch.commit().then(() => showToast(`${expiredGroups.length}개의 공동구매가 완료 처리되었습니다.`, 'info'));
+          }
+      }
+  }, [groupBuys]);
+
   // --- Logic Helpers ---
 
   const parsePrice = (val: any) => {
@@ -173,6 +191,9 @@ export const AdminDashboard: React.FC<any> = () => {
           users: users.length
       };
   }, [reservations, users]);
+
+  const activeGroupBuys = groupBuys.filter(g => g.status !== 'completed');
+  const pastGroupBuys = groupBuys.filter(g => g.status === 'completed');
 
   const showToast = (msg: string, type: 'success'|'error'|'info' = 'success') => {
       setToast({ msg, type });
@@ -367,156 +388,138 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
             
-            {/* GROUP BUYS (Updated with Varied Colors & Financial Info & Real Names) */}
+            {/* GROUP BUYS (Updated with Varied Colors & Financial Info & Real Names & Completed Section) */}
             {activeTab === 'groupbuys' && (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                         <h2 className="text-2xl font-black">공동구매 관리</h2>
-                         <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">
-                             * 공동구매는 사용자가 직접 생성합니다.
-                         </div>
+                <div className="space-y-8">
+                    {/* Active Section */}
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                             <h2 className="text-2xl font-black flex items-center gap-2"><Megaphone className="text-[#0070F0]"/> 진행 중인 공동구매</h2>
+                             <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">
+                                 * 날짜가 지난 공동구매는 자동으로 '완료됨' 처리됩니다.
+                             </div>
+                        </div>
+
+                        {activeGroupBuys.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
+                                <Megaphone size={48} className="text-gray-200 mb-4"/>
+                                <p className="text-gray-500 font-bold">현재 진행 중인 공동구매가 없습니다.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {activeGroupBuys.map((group, index) => {
+                                    const safeName = group.productName || 'Unknown Product';
+                                    const safeMax = group.maxCount || 10;
+                                    const safeCurrent = group.currentCount || 0;
+                                    const safeOriginalPrice = group.originalPrice || 0;
+                                    const progress = Math.min(100, (safeCurrent / safeMax) * 100);
+                                    const theme = CARD_THEMES[index % CARD_THEMES.length];
+                                    const discountRate = Math.min(0.5, safeCurrent * 0.05); 
+                                    const finalPrice = safeOriginalPrice * (1 - discountRate);
+                                    const depositPerPerson = Math.round(finalPrice * 0.2);
+                                    const totalDepositCollected = depositPerPerson * safeCurrent;
+                                    const remainingBalance = finalPrice - depositPerPerson;
+
+                                    return (
+                                        <div key={group.id} className="bg-white rounded-[24px] shadow-lg overflow-hidden border border-gray-100 relative group-card">
+                                            <div className="absolute top-4 right-4 z-20 flex gap-2">
+                                                <button onClick={()=>handleDeleteGroupBuy(group)} className="bg-white/80 hover:bg-red-500 hover:text-white text-red-500 p-2 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-red-100">
+                                                    <Trash2 size={16}/>
+                                                </button>
+                                            </div>
+                                            {group.isSecret && (
+                                                <div className="absolute top-16 right-4 z-10 bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-md">
+                                                    <Lock size={12}/> Secret
+                                                </div>
+                                            )}
+                                            <div className={`h-14 ${theme.bg} px-6 flex items-center justify-between text-white`}>
+                                                <span className="font-black tracking-wider text-sm uppercase">GROUP #{index+1}</span>
+                                                <div className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded-lg text-xs font-bold">
+                                                    <Timer size={12}/> <span>{group.visitDate}</span>
+                                                </div>
+                                            </div>
+                                            <div className="p-6">
+                                                <div className="mb-4">
+                                                    <h2 className="text-xl font-black text-gray-900 mb-1 leading-snug truncate">{safeName}</h2>
+                                                    <p className="text-xs text-gray-500 mb-3 truncate">{group.description || 'Admin View'}</p>
+                                                    <div className="flex flex-wrap gap-2 mb-4">
+                                                        {(group.items || ['건강검진','뷰티시술','K-IDOL']).slice(0,2).map((item: string, i: number) => (
+                                                            <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] rounded font-bold border border-gray-100 flex items-center gap-1">
+                                                                <CheckCircle2 size={10} className={theme.text}/> {item}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="mb-4 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                                                    <div className="flex justify-between items-end mb-2">
+                                                        <span className="text-xs font-bold text-gray-700">진행 현황 ({(discountRate * 100).toFixed(0)}% OFF)</span>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className={`text-sm font-black ${theme.text}`}>{safeCurrent}명</span>
+                                                            <span className="text-xs text-gray-400">/ {safeMax}명</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div className={`h-full ${theme.bg}`} style={{ width: `${progress}%` }}></div>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2 mb-4 text-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                    <div className="border-r border-gray-200 last:border-0"><p className="text-[10px] text-gray-400 font-bold mb-1">1인 할인가</p><p className="font-bold text-xs text-gray-800">₩{finalPrice.toLocaleString()}</p></div>
+                                                    <div className="border-r border-gray-200 last:border-0"><p className="text-[10px] text-gray-400 font-bold mb-1">총 결제액</p><p className="font-bold text-xs text-blue-600">₩{totalDepositCollected.toLocaleString()}</p></div>
+                                                    <div><p className="text-[10px] text-gray-400 font-bold mb-1">1인 잔금</p><p className="font-bold text-xs text-red-500">₩{remainingBalance.toLocaleString()}</p></div>
+                                                </div>
+                                                <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50/50 rounded-lg border border-blue-50">
+                                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg relative">
+                                                        🧑‍💻<div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 border border-white"><Crown size={8} className="text-white fill-white"/></div>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase">LEADER</p>
+                                                        <p className="text-xs font-bold text-gray-800 truncate">{group.leaderName}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="border-t border-gray-100 pt-3 mt-3">
+                                                    <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase flex items-center gap-1"><SettingsIcon size={10}/> Admin Details</h4>
+                                                    {group.isSecret && (<div className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded text-xs mb-2"><span className="font-bold text-gray-600">Secret Code</span><span className="font-mono font-black text-red-500">{group.secretCode}</span></div>)}
+                                                    <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto no-scrollbar">
+                                                        <p className="text-[10px] text-gray-500 font-bold mb-1">참여자 리스트 ({group.participants?.length || 0})</p>
+                                                        {group.participantDetails && group.participantDetails.length > 0 ? (
+                                                            group.participantDetails.map((p: any, idx: number) => (
+                                                                <div key={idx} className="flex justify-between items-center text-[10px] border-b border-gray-100 last:border-0 py-1">
+                                                                    <span className="font-bold text-gray-700 truncate max-w-[80px]">{p.name}</span>
+                                                                    <div className="flex items-center gap-1 text-gray-400"><Phone size={8}/> <span>{p.phone || '-'}</span></div>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            group.participants?.map((pid: string, idx: number) => (<div key={idx} className="text-[10px] text-gray-400 font-mono truncate border-b border-gray-100 last:border-0 py-0.5">{idx + 1}. {pid}</div>))
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
-                    {groupBuys.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-300">
-                            <Megaphone size={48} className="text-gray-200 mb-4"/>
-                            <p className="text-gray-500 font-bold">현재 진행 중인 공동구매가 없습니다.</p>
-                            <p className="text-xs text-gray-400 mt-1">사용자가 웹페이지에서 공동구매를 생성하면 여기에 표시됩니다.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {groupBuys.map((group, index) => {
-                                const safeName = group.productName || 'Unknown Product';
-                                const safeMax = group.maxCount || 10;
-                                const safeCurrent = group.currentCount || 0;
-                                const safeOriginalPrice = group.originalPrice || 0;
-                                const progress = Math.min(100, (safeCurrent / safeMax) * 100);
-                                
-                                // Color Theme Logic
-                                const theme = CARD_THEMES[index % CARD_THEMES.length];
-
-                                // Financial Calcs
-                                const discountRate = Math.min(0.5, safeCurrent * 0.05); // 5% per person, max 50%
-                                const finalPrice = safeOriginalPrice * (1 - discountRate);
-                                const depositPerPerson = Math.round(finalPrice * 0.2);
-                                const totalDepositCollected = depositPerPerson * safeCurrent;
-                                const remainingBalance = finalPrice - depositPerPerson;
-
-                                return (
-                                    <div key={group.id} className="bg-white rounded-[24px] shadow-lg overflow-hidden border border-gray-100 relative group-card">
-                                        {/* Admin Controls Overlay */}
-                                        <div className="absolute top-4 right-4 z-20 flex gap-2">
-                                            <button onClick={()=>handleDeleteGroupBuy(group)} className="bg-white/80 hover:bg-red-500 hover:text-white text-red-500 p-2 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-red-100">
-                                                <Trash2 size={16}/>
-                                            </button>
+                    {/* Past Section */}
+                    {pastGroupBuys.length > 0 && (
+                        <div className="pt-8 border-t border-dashed border-gray-300">
+                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-gray-500"><Archive className="text-gray-400"/> 진행 완료된 공동구매 (History)</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 opacity-75">
+                                {pastGroupBuys.map((group) => (
+                                    <div key={group.id} className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs font-bold">COMPLETED</span>
+                                            <div className="text-xs text-gray-400 font-mono">{group.visitDate}</div>
                                         </div>
-
-                                        {/* Secret Badge */}
-                                        {group.isSecret && (
-                                            <div className="absolute top-16 right-4 z-10 bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-md">
-                                                <Lock size={12}/> Secret
-                                            </div>
-                                        )}
-                                        
-                                        {/* Header */}
-                                        <div className={`h-14 ${theme.bg} px-6 flex items-center justify-between text-white`}>
-                                            <span className="font-black tracking-wider text-sm uppercase">GROUP #{index+1}</span>
-                                            <div className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded-lg text-xs font-bold">
-                                                <Timer size={12}/> <span>{group.visitDate}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-6">
-                                            <div className="mb-4">
-                                                <h2 className="text-xl font-black text-gray-900 mb-1 leading-snug truncate">{safeName}</h2>
-                                                <p className="text-xs text-gray-500 mb-3 truncate">{group.description || 'Admin View'}</p>
-                                                <div className="flex flex-wrap gap-2 mb-4">
-                                                    {(group.items || ['건강검진','뷰티시술','K-IDOL']).slice(0,2).map((item: string, i: number) => (
-                                                        <span key={i} className="px-2 py-1 bg-gray-50 text-gray-600 text-[10px] rounded font-bold border border-gray-100 flex items-center gap-1">
-                                                            <CheckCircle2 size={10} className={theme.text}/> {item}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="mb-4 bg-gray-50 rounded-xl p-3 border border-gray-100">
-                                                <div className="flex justify-between items-end mb-2">
-                                                    <span className="text-xs font-bold text-gray-700">진행 현황 ({(discountRate * 100).toFixed(0)}% OFF)</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <span className={`text-sm font-black ${theme.text}`}>{safeCurrent}명</span>
-                                                        <span className="text-xs text-gray-400">/ {safeMax}명</span>
-                                                    </div>
-                                                </div>
-                                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                                    <div className={`h-full ${theme.bg}`} style={{ width: `${progress}%` }}></div>
-                                                </div>
-                                            </div>
-
-                                            {/* Financial Dashboard (Added) */}
-                                            <div className="grid grid-cols-3 gap-2 mb-4 text-center bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                                <div className="border-r border-gray-200 last:border-0">
-                                                   <p className="text-[10px] text-gray-400 font-bold mb-1">1인 할인가</p>
-                                                   <p className="font-bold text-xs text-gray-800">₩{finalPrice.toLocaleString()}</p>
-                                                </div>
-                                                <div className="border-r border-gray-200 last:border-0">
-                                                   <p className="text-[10px] text-gray-400 font-bold mb-1">총 결제액</p>
-                                                   <p className="font-bold text-xs text-blue-600">₩{totalDepositCollected.toLocaleString()}</p>
-                                                </div>
-                                                <div>
-                                                   <p className="text-[10px] text-gray-400 font-bold mb-1">1인 잔금</p>
-                                                   <p className="font-bold text-xs text-red-500">₩{remainingBalance.toLocaleString()}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50/50 rounded-lg border border-blue-50">
-                                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg relative">
-                                                    🧑‍💻
-                                                    <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 border border-white"><Crown size={8} className="text-white fill-white"/></div>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-[10px] text-gray-400 font-bold uppercase">LEADER</p>
-                                                    <p className="text-xs font-bold text-gray-800 truncate">{group.leaderName}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Admin Only Info */}
-                                            <div className="border-t border-gray-100 pt-3 mt-3">
-                                                <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase flex items-center gap-1"><SettingsIcon size={10}/> Admin Details</h4>
-                                                
-                                                {group.isSecret && (
-                                                    <div className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded text-xs mb-2">
-                                                        <span className="font-bold text-gray-600">Secret Code</span>
-                                                        <span className="font-mono font-black text-red-500">{group.secretCode}</span>
-                                                    </div>
-                                                )}
-
-                                                <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto no-scrollbar">
-                                                    <p className="text-[10px] text-gray-500 font-bold mb-1">참여자 리스트 ({group.participants?.length || 0})</p>
-                                                    
-                                                    {/* Prioritize participantDetails if available for Real Names */}
-                                                    {group.participantDetails && group.participantDetails.length > 0 ? (
-                                                        group.participantDetails.map((p: any, idx: number) => (
-                                                            <div key={idx} className="flex justify-between items-center text-[10px] border-b border-gray-100 last:border-0 py-1">
-                                                                <span className="font-bold text-gray-700 truncate max-w-[80px]">{p.name}</span>
-                                                                <div className="flex items-center gap-1 text-gray-400">
-                                                                    <Phone size={8}/> <span>{p.phone || '-'}</span>
-                                                                </div>
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        // Fallback to IDs
-                                                        group.participants?.map((pid: string, idx: number) => (
-                                                            <div key={idx} className="text-[10px] text-gray-400 font-mono truncate border-b border-gray-100 last:border-0 py-0.5">
-                                                                {idx + 1}. {pid}
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
+                                        <h4 className="font-bold text-gray-700 truncate">{group.productName}</h4>
+                                        <p className="text-xs text-gray-500 mb-2">Leader: {group.leaderName}</p>
+                                        <div className="text-xs bg-white border rounded p-2 text-gray-500">
+                                            최종 인원: {group.currentCount}명
                                         </div>
                                     </div>
-                                );
-                            })}
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
