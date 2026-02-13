@@ -258,7 +258,15 @@ export const AdminDashboard: React.FC<any> = () => {
           
           setModalType(null);
           showToast("저장되었습니다.");
-      } catch(e) { showToast("저장 실패", 'error'); }
+      } catch(e: any) { 
+          // Enhanced Error Handling for Document Size
+          if (e.message && e.message.includes("exceeds the maximum size")) {
+              showToast("저장 실패: 이미지가 너무 많거나 용량이 큽니다. (1MB 제한)", 'error');
+          } else {
+              showToast("저장 실패", 'error'); 
+          }
+          console.error(e);
+      }
   };
 
   const saveSettings = async (docId: string, data: any) => {
@@ -287,7 +295,18 @@ export const AdminDashboard: React.FC<any> = () => {
       if (e.target.files) {
           setUploadingImg(true);
           const newUrls = [];
-          for (let i = 0; i < Math.min(e.target.files.length, 10 - galleryImages.length); i++) {
+          // Limit gallery upload to 5 items max when using fallback
+          const limit = 5; 
+          const remainingSlots = limit - galleryImages.length;
+
+          if (remainingSlots <= 0) {
+              showToast(`이미지는 최대 ${limit}장까지만 등록 가능합니다. (무료 DB 제한)`, 'error');
+              setUploadingImg(false);
+              e.target.value = '';
+              return;
+          }
+
+          for (let i = 0; i < Math.min(e.target.files.length, remainingSlots); i++) {
               const url = await uploadImage(e.target.files[i], 'gallery_images');
               newUrls.push(url);
           }
@@ -674,7 +693,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-2">추가 이미지 (최대 10장)</label>
+                                    <label className="block text-xs font-bold text-gray-500 mb-2">추가 이미지 (최대 5장)</label>
                                     <div className="flex gap-2 overflow-x-auto py-2">
                                         {galleryImages.map((img, i) => (
                                             <div key={i} className="w-20 h-20 relative flex-shrink-0 rounded-lg overflow-hidden border">
@@ -682,13 +701,14 @@ export const AdminDashboard: React.FC<any> = () => {
                                                 <button onClick={()=>setGalleryImages(galleryImages.filter((_, idx)=>idx!==i))} className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl"><X size={12}/></button>
                                             </div>
                                         ))}
-                                        {galleryImages.length < 10 && (
+                                        {galleryImages.length < 5 && (
                                             <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer relative hover:bg-gray-50">
                                                 <Plus size={20} className="text-gray-400"/>
                                                 <input type="file" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleGalleryUpload} />
                                             </div>
                                         )}
                                     </div>
+                                    <p className="text-[10px] text-gray-400 mt-1">* 무료 플랜에서는 갤러리 이미지가 최대 5장으로 제한됩니다.</p>
                                 </div>
                                 <div className="h-[400px]">
                                     <label className="block text-xs font-bold text-gray-500 mb-2">상세 내용 (에디터)</label>

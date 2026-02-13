@@ -11,8 +11,9 @@ const compressImage = (file: File): Promise<string> => {
             img.src = event.target?.result as string;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                // Resize logic: Max width 1000px, maintain aspect ratio
-                const MAX_WIDTH = 1000;
+                // Resize logic: More aggressive compression for Firestore storage
+                // Max width 800px is sufficient for mobile/web product cards
+                const MAX_WIDTH = 800;
                 let width = img.width;
                 let height = img.height;
 
@@ -27,8 +28,8 @@ const compressImage = (file: File): Promise<string> => {
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
                     ctx.drawImage(img, 0, 0, width, height);
-                    // Compress to JPEG with 0.8 quality
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    // Compress to JPEG with 0.6 quality to keep file size low (<100KB usually)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                     resolve(dataUrl);
                 } else {
                     reject(new Error("Canvas context error"));
@@ -56,7 +57,7 @@ const dataURLtoBlob = (dataurl: string) => {
 /**
  * Uploads a file with Fallback mechanism.
  * 1. Compresses image.
- * 2. Tries to upload to Firebase Storage (with 5s timeout).
+ * 2. Tries to upload to Firebase Storage (with 3s timeout).
  * 3. If fails (CORS, permission, timeout), returns Base64 string directly.
  */
 export const uploadImage = async (file: File, pathPrefix: string = 'uploads'): Promise<string> => {
@@ -70,9 +71,9 @@ export const uploadImage = async (file: File, pathPrefix: string = 'uploads'): P
         const uniqueName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
         const storageRef = ref(storage, `${pathPrefix}/${uniqueName}`);
         
-        // Create a promise that rejects after 5 seconds
+        // Create a promise that rejects after 3 seconds (Fast fail for fallback)
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Upload Timeout")), 5000)
+            setTimeout(() => reject(new Error("Upload Timeout")), 3000)
         );
 
         const uploadTask = uploadBytes(storageRef, compressedBlob);
@@ -84,9 +85,10 @@ export const uploadImage = async (file: File, pathPrefix: string = 'uploads'): P
         return downloadURL;
 
     } catch (storageError) {
-        console.warn("Firebase Storage Upload Failed/Timed out. Using Base64 Fallback.", storageError);
+        // Silent fallback for smooth UX
+        // console.warn("Using Base64 Fallback due to storage issue.");
+        
         // 3. Fallback: Return Base64 string directly
-        // Since we compressed it, it should be small enough (<1MB) for Firestore in most cases.
         return compressedDataUrl;
     }
 
