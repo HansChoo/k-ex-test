@@ -1,10 +1,19 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { PRODUCTS_DATA } from '../constants';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
 
 type Currency = 'KRW' | 'USD' | 'JPY' | 'CNY';
 type Language = 'ko' | 'en' | 'ja' | 'zh';
+
+export interface Category {
+    id: string;
+    label: string;
+    labelEn: string;
+    image: string;
+    keywords: string[]; // Used to filter products
+    order?: number;
+}
 
 interface GlobalContextType {
   language: Language;
@@ -15,6 +24,7 @@ interface GlobalContextType {
   toggleWishlist: (id: number) => void;
   t: (key: string) => string;
   products: any[];
+  categories: Category[]; // Added categories
   getLocalizedValue: (data: any, field: string) => string;
 }
 
@@ -22,6 +32,38 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 const RATES = { KRW: 1, USD: 0.00075, JPY: 0.11, CNY: 0.0054 };
 const SYMBOLS = { KRW: '₩', USD: '$', JPY: '¥', CNY: '¥' };
+
+// Fallback Categories if DB is empty
+const DEFAULT_CATEGORIES: Category[] = [
+    { 
+      id: 'health', 
+      label: '건강검진', 
+      labelEn: 'Health Check', 
+      image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?q=80&w=1000&auto=format&fit=crop', 
+      keywords: ['건강', 'health'] 
+    },
+    { 
+      id: 'beauty', 
+      label: '뷰티 시술', 
+      labelEn: 'Beauty Procedure', 
+      image: 'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?q=80&w=1000&auto=format&fit=crop', 
+      keywords: ['뷰티', 'beauty'] 
+    },
+    { 
+      id: 'idol', 
+      label: 'K-IDOL 체험', 
+      labelEn: 'K-IDOL', 
+      image: 'https://images.unsplash.com/photo-1514525253440-b393452e8d26?q=80&w=1000&auto=format&fit=crop', 
+      keywords: ['idol', '아이돌'] 
+    },
+    { 
+      id: 'consulting', 
+      label: '뷰티 컨설팅', 
+      labelEn: 'Beauty Consulting', 
+      image: 'https://images.unsplash.com/photo-1596462502278-27bfdd403ccc?q=80&w=1000&auto=format&fit=crop', 
+      keywords: ['컨설팅', 'consulting'] 
+    },
+];
 
 const TRANSLATIONS: any = {
   ko: {
@@ -159,13 +201,11 @@ const TRANSLATIONS: any = {
     usage_limit_reached: 'This coupon has reached its usage limit.'
   },
   ja: {
-    // ... existing ...
     magazine: 'K-マガジン', inquiry: '1:1 お問い合わせ', coupon: 'クーポン', affiliate: 'アフィリエイト',
     coupon_code: 'プロモーションコード', apply: '適用', discount_applied: '割引適用', invalid_coupon: '無効なクーポンです。',
     usage_limit_reached: 'このクーポンは使用上限に達しました。'
   },
   zh: {
-    // ... existing ...
     magazine: 'K-杂志', inquiry: '1:1 咨询', coupon: '优惠券', affiliate: '联盟营销',
     coupon_code: '优惠码', apply: '应用', discount_applied: '已应用折扣', invalid_coupon: '无效的优惠券',
     usage_limit_reached: '此优惠券已达到使用上限。'
@@ -177,6 +217,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [currency, setCurrency] = useState<Currency>('KRW');
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [realtimeProducts, setRealtimeProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Init from Local Storage
   useEffect(() => {
@@ -191,10 +232,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Fetch Products from Firestore Real-time
   useEffect(() => {
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc")); // Changed sort to createdAt for better default
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc")); 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setRealtimeProducts(products);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch Categories from Firestore Real-time
+  useEffect(() => {
+    const q = query(collection(db, "cms_categories"), orderBy("createdAt", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            setCategories(DEFAULT_CATEGORIES);
+        } else {
+            setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+        }
     });
     return () => unsubscribe();
   }, []);
@@ -245,14 +299,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (language === 'ko') return data[field] || '';
       
       const localizedField = `${field}_${language}`;
-      return data[localizedField] || data[field] || ''; // Fallback to default (KO) if specific lang missing
+      return data[localizedField] || data[field] || ''; 
   };
 
-  // !!! CHANGED: Strictly use Firebase data. Do not fallback to constants if empty.
   const displayProducts = realtimeProducts; 
 
   return (
-    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: displayProducts, getLocalizedValue }}>
+    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: displayProducts, categories, getLocalizedValue }}>
       {children}
     </GlobalContext.Provider>
   );

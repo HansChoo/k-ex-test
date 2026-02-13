@@ -4,7 +4,7 @@ import {
     LayoutDashboard, ShoppingCart, Users, Package, Plus, Edit2, Trash2, Megaphone, X, Save, 
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
     LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown, ListPlus,
-    Timer, Lock, CheckCircle2, Phone, Archive
+    Timer, Lock, CheckCircle2, Phone, Archive, Grid
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
@@ -43,7 +43,7 @@ const CARD_THEMES = [
 export const AdminDashboard: React.FC<any> = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservations' | 'products' | 'groupbuys' | 'coupons' | 'magazine' | 'inquiries' | 'affiliates' | 'users' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservations' | 'products' | 'groupbuys' | 'coupons' | 'magazine' | 'inquiries' | 'affiliates' | 'users' | 'settings' | 'categories'>('dashboard');
   
   // Data States
   const [reservations, setReservations] = useState<any[]>([]);
@@ -55,6 +55,7 @@ export const AdminDashboard: React.FC<any> = () => {
   const [magazinePosts, setMagazinePosts] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]); // New Categories State
   const [settings, setSettings] = useState<any>({});
   
   const [loading, setLoading] = useState(true);
@@ -110,6 +111,7 @@ export const AdminDashboard: React.FC<any> = () => {
         onSnapshot(query(collection(db, "cms_magazine"), orderBy("createdAt", "desc")), (s) => setMagazinePosts(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(query(collection(db, "inquiries"), orderBy("createdAt", "desc")), (s) => setInquiries(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(collection(db, "users"), (s) => setUsers(s.docs.map(d => ({id:d.id, ...d.data()})))),
+        onSnapshot(query(collection(db, "cms_categories"), orderBy("createdAt", "asc")), (s) => setCategories(s.docs.map(d => ({id:d.id, ...d.data()})))), // Categories Listener
         onSnapshot(collection(db, "settings"), (s) => {
             const temp: any = {};
             s.docs.forEach(d => temp[d.id] = d.data());
@@ -251,11 +253,16 @@ export const AdminDashboard: React.FC<any> = () => {
       } else if (modalType === 'coupon') col = "coupons";
       else if (modalType === 'affiliate') col = "affiliates";
       else if (modalType === 'groupbuy') col = "group_buys";
+      else if (modalType === 'category') col = "cms_categories";
 
       const payload = { ...editingItem };
       if (modalType === 'product' || modalType === 'magazine') {
           payload.images = galleryImages;
           payload.price = parsePrice(editingItem.price);
+      }
+      // Parse keywords for category
+      if (modalType === 'category' && typeof payload.keywords === 'string') {
+          payload.keywords = payload.keywords.split(',').map((k:string) => k.trim()).filter((k:string) => k);
       }
       
       delete payload._coll;
@@ -349,6 +356,7 @@ export const AdminDashboard: React.FC<any> = () => {
                     {id:'dashboard', label:'대시보드', icon:LayoutDashboard},
                     {id:'reservations', label:'예약 관리', icon:ShoppingCart},
                     {id:'products', label:'상품/패키지', icon:Package},
+                    {id:'categories', label:'카테고리 관리', icon:Grid}, // ADDED CATEGORIES TAB
                     {id:'groupbuys', label:'공동구매', icon:Megaphone},
                     {id:'coupons', label:'쿠폰 관리', icon:Ticket},
                     {id:'magazine', label:'매거진', icon:BookOpen},
@@ -388,7 +396,50 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
             
-            {/* GROUP BUYS (Updated with Varied Colors & Financial Info & Real Names & Completed Section) */}
+            {/* CATEGORIES TAB - NEW ADDITION */}
+            {activeTab === 'categories' && (
+                <div className="space-y-6">
+                     <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-black">카테고리 관리</h2>
+                        <button onClick={() => { setEditingItem({ label: '', labelEn: '', keywords: '' }); setModalType('category'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
+                            <Plus size={16}/> 카테고리 추가
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-6">
+                        {categories.map((cat) => (
+                            <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group">
+                                <div className="h-40 bg-gray-100 relative">
+                                    {cat.image ? (
+                                        <img src={cat.image} className="w-full h-full object-cover"/>
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <button onClick={() => { setEditingItem({ ...cat, keywords: Array.isArray(cat.keywords) ? cat.keywords.join(', ') : '' }); setModalType('category'); }} className="bg-white text-black p-2 rounded-full hover:bg-gray-200"><Edit2 size={16}/></button>
+                                        <button onClick={() => deleteItem('cms_categories', cat.id)} className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"><Trash2 size={16}/></button>
+                                    </div>
+                                </div>
+                                <div className="p-4">
+                                    <h3 className="font-bold text-lg mb-1">{cat.label}</h3>
+                                    <p className="text-sm text-gray-500 mb-2">{cat.labelEn}</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {(cat.keywords || []).map((k: string, i: number) => (
+                                            <span key={i} className="bg-gray-100 px-2 py-0.5 rounded text-[10px] text-gray-600">{k}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {categories.length === 0 && (
+                            <div className="col-span-4 text-center py-20 bg-white border border-dashed rounded-xl text-gray-400">
+                                등록된 카테고리가 없습니다.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* GROUP BUYS */}
             {activeTab === 'groupbuys' && (
                 <div className="space-y-8">
                     {/* Active Section */}
@@ -408,6 +459,7 @@ export const AdminDashboard: React.FC<any> = () => {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {activeGroupBuys.map((group, index) => {
+                                    // ... group render logic (unchanged)
                                     const safeName = group.productName || 'Unknown Product';
                                     const safeMax = group.maxCount || 10;
                                     const safeCurrent = group.currentCount || 0;
@@ -525,7 +577,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
             
-            {/* ... Other Tabs (Products, Coupons, etc.) ... */}
+            {/* Products, Coupons, etc. Tabs (Mostly unchanged) */}
             {activeTab === 'products' && (
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -534,9 +586,10 @@ export const AdminDashboard: React.FC<any> = () => {
                     </div>
                     {/* Category Filter */}
                     <div className="flex gap-2 mb-4">
-                        {['all', '건강검진', '뷰티시술', 'K-IDOL', '뷰티컨설팅', '올인원패키지'].map(cat => (
-                            <button key={cat} onClick={()=>setProductCategoryFilter(cat)} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter===cat?'bg-black text-white':'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                                {cat}
+                        <button onClick={()=>setProductCategoryFilter('all')} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter==='all'?'bg-black text-white':'bg-white text-gray-600 hover:bg-gray-50'}`}>전체</button>
+                        {categories.map((cat) => (
+                            <button key={cat.id} onClick={()=>setProductCategoryFilter(cat.label)} className={`px-3 py-1 rounded border text-xs font-bold transition-colors ${productCategoryFilter===cat.label?'bg-black text-white':'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                                {cat.label}
                             </button>
                         ))}
                     </div>
@@ -564,7 +617,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
 
-             {/* COUPONS */}
+            {/* Coupons */}
              {activeTab === 'coupons' && (
                 <div className="space-y-4">
                     <div className="flex justify-between">
@@ -600,7 +653,43 @@ export const AdminDashboard: React.FC<any> = () => {
                         <button onClick={()=>setModalType(null)}><X/></button>
                     </div>
                     <div className="p-8 overflow-y-auto flex-1 space-y-6">
-                        {/* EDITOR CONTENT... (Omitted unchanged parts for brevity, logic remains same) */}
+                        
+                        {/* CATEGORY EDITOR */}
+                        {modalType === 'category' && (
+                            <div className="space-y-6">
+                                <div className="flex gap-6 items-start">
+                                    <div className="w-40 h-40 bg-gray-100 rounded-xl flex items-center justify-center relative overflow-hidden group">
+                                        {editingItem.image ? (
+                                            <img src={editingItem.image} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-gray-400 text-xs">No Image</span>
+                                        )}
+                                        <label className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity font-bold text-xs">
+                                            변경 <input type="file" className="hidden" onChange={handleMainImageUpload} />
+                                        </label>
+                                        {uploadingImg && <div className="absolute inset-0 bg-white/50 flex items-center justify-center"><RefreshCw className="animate-spin text-blue-500"/></div>}
+                                    </div>
+                                    <div className="flex-1 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">카테고리명 (한글)</label>
+                                                <input className="w-full border p-2 rounded" value={editingItem.label} onChange={e=>setEditingItem({...editingItem, label:e.target.value})} placeholder="예: 뷰티 시술"/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Category Name (English)</label>
+                                                <input className="w-full border p-2 rounded" value={editingItem.labelEn} onChange={e=>setEditingItem({...editingItem, labelEn:e.target.value})} placeholder="e.g. Beauty Procedure"/>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">필터 키워드 (쉼표로 구분)</label>
+                                            <input className="w-full border p-2 rounded" value={editingItem.keywords} onChange={e=>setEditingItem({...editingItem, keywords:e.target.value})} placeholder="예: 뷰티, beauty, skin (상품 카테고리와 매칭됩니다)"/>
+                                            <p className="text-[10px] text-gray-400 mt-1">* 상품의 카테고리에 이 단어들이 포함되어 있으면 해당 카테고리로 분류됩니다.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {modalType === 'groupbuy' && (
                             <div className="space-y-4">
                                 <div>
@@ -636,7 +725,14 @@ export const AdminDashboard: React.FC<any> = () => {
                              <div className="space-y-6">
                                 {/* ... Product Editor (Unchanged) ... */}
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="block text-xs font-bold mb-1">카테고리</label><select className="w-full border p-2 rounded" value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})}><option value="건강검진">건강검진</option><option value="뷰티시술">뷰티시술</option><option value="K-IDOL">K-IDOL</option><option value="뷰티컨설팅">뷰티컨설팅</option><option value="올인원패키지">올인원패키지</option></select></div>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1">카테고리</label>
+                                        <select className="w-full border p-2 rounded" value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})}>
+                                            <option value="미지정">선택하세요</option>
+                                            {categories.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+                                            {/* Fallback hardcoded options if needed, but dynamic is better */}
+                                        </select>
+                                    </div>
                                     <div><label className="block text-xs font-bold mb-1">상품명</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
                                     <div><label className="block text-xs font-bold mb-1">가격 (KRW)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} /></div>
                                     <div><label className="block text-xs font-bold mb-1">짧은 설명 (카드 표시용)</label><input className="w-full border p-2 rounded" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} /></div>

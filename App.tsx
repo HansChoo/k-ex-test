@@ -27,7 +27,7 @@ import { AuthModal } from './components/AuthModal';
 
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 
-export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine' | 'product_list' | 'survey';
+export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine' | 'survey';
 
 interface ToastMsg {
   id: number;
@@ -42,7 +42,9 @@ const AppContent: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [socialProof, setSocialProof] = useState<{name: string, country: string, product: string} | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  // Category Selection State (Stores ID and timestamp to force updates)
+  const [selectedCategory, setSelectedCategory] = useState<{id: string, ts: number} | null>(null);
   
   // Auth State Lifted to App Level
   const [user, setUser] = useState<User | null>(null);
@@ -55,6 +57,14 @@ const AppContent: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
+  // Scroll to top on initial load
+  useEffect(() => {
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+  }, []);
+
   // Protected Navigation Handler
   const handleProtectedNav = (page: string) => {
       // Protected Routes check
@@ -64,14 +74,30 @@ const AppContent: React.FC = () => {
       }
       
       // Default Navigation
-      if (page === 'home' || page === 'group_buying' || page === 'product_list' || page === 'wishlist' || page === 'mypage') {
+      if (page === 'home' || page === 'group_buying' || page === 'wishlist' || page === 'mypage') {
           navigateTo(page as PageView);
+      }
+      // Handle 'product_list' nav click (from bottom nav) -> Go Home and Scroll
+      if (page === 'product_list') {
+          navigateTo('home');
+          setTimeout(() => {
+              document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
       }
   };
 
   const handleCategoryClick = (category: string) => {
-      setSelectedCategory(category);
-      navigateTo('product_list');
+      // 1. Set category with timestamp to ensure ProductList detects change even if clicking same category
+      setSelectedCategory({ id: category, ts: Date.now() });
+
+      // 2. Ensure we are on Home view
+      if (currentView !== 'home') {
+          setCurrentView('home');
+          // ProductList will mount and useEffect will handle the scroll
+      } else {
+          // 3. If already on home, manually scroll
+          document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+      }
   };
 
   useEffect(() => {
@@ -225,12 +251,9 @@ const AppContent: React.FC = () => {
             <CategorySection onCategoryClick={handleCategoryClick} />
             <PromoSection language={language} onGroupBuyClick={() => navigateTo('group_buying')} />
             <PackageSection language={language} onBookClick={handlePackageBookClick} />
-            <ProductList language={language} initialCategory="all" />
+            <ProductList language={language} initialCategory={selectedCategory} />
             <BottomHero language={language} />
           </>
-        )}
-        {currentView === 'product_list' && (
-            <ProductList language={language} initialCategory={selectedCategory} />
         )}
         {currentView === 'reservation_basic' && <ReservationBasic language={language} />}
         {currentView === 'reservation_premium' && <ReservationPremium language={language} />}

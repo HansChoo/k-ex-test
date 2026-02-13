@@ -15,28 +15,20 @@ const ProductSkeleton = () => (
 
 interface ProductListProps {
     language: 'ko' | 'en';
-    initialCategory?: string | null;
+    initialCategory?: { id: string, ts: number } | null;
 }
 
 export const ProductList: React.FC<ProductListProps> = ({ initialCategory }) => {
-  const { t, products, wishlist, toggleWishlist, getLocalizedValue, convertPrice } = useGlobal();
-  
-  // Mapping categories to filter keywords
-  const CATEGORY_MAP: Record<string, string> = {
-      'all': '전체',
-      'health': '건강검진',
-      'beauty': '뷰티시술',
-      'idol': 'K-IDOL',
-      'consulting': '뷰티컨설팅'
-  };
+  const { t, products, wishlist, toggleWishlist, getLocalizedValue, convertPrice, categories, language } = useGlobal();
+  const isEn = language !== 'ko';
 
-  const [activeFilter, setActiveFilter] = useState('전체');
+  const [activeFilter, setActiveFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
-  // Sync with initialCategory prop from parent
+  // Sync with initialCategory prop (ID + Timestamp) to force updates
   useEffect(() => {
-      if (initialCategory && CATEGORY_MAP[initialCategory]) {
-          setActiveFilter(CATEGORY_MAP[initialCategory]);
+      if (initialCategory && initialCategory.id) {
+          setActiveFilter(initialCategory.id);
           // Scroll to product section
           document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
       }
@@ -47,14 +39,17 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory }) => 
       setTimeout(() => setLoading(false), 500); 
   }, [activeFilter, products]);
 
-  const filteredProducts = activeFilter === '전체' 
+  const filteredProducts = activeFilter === 'all' 
     ? products 
     : products.filter(p => {
-        if (activeFilter === 'K-IDOL' && p.category.includes('IDOL')) return true;
-        if (activeFilter === '건강검진' && p.category.includes('건강')) return true;
-        if (activeFilter === '뷰티시술' && (p.category.includes('뷰티') || p.category.includes('Beauty'))) return true;
-        if (activeFilter === '뷰티컨설팅' && p.category.includes('컨설팅')) return true;
-        return false;
+        const activeCat = categories.find(c => c.id === activeFilter);
+        if (!activeCat) return false;
+        
+        const keywords = activeCat.keywords || [activeCat.label];
+        const productCat = (p.category || '').toLowerCase();
+        
+        // Simple keyword matching
+        return keywords.some(k => productCat.includes(k.toLowerCase()));
     });
 
   const handleProductClick = (product: any) => {
@@ -70,19 +65,29 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory }) => 
                     <h2 className="text-[20px] font-bold text-[#111]">{t('popular_products')}</h2>
                 </div>
                 
-                {/* Keyword Filter Buttons */}
+                {/* Dynamic Filter Buttons */}
                 <div className="flex flex-wrap gap-2">
-                    {Object.values(CATEGORY_MAP).map((keyword) => (
+                    <button 
+                        onClick={() => setActiveFilter('all')}
+                        className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-all ${
+                            activeFilter === 'all' 
+                            ? 'bg-[#0070F0] text-white border-[#0070F0]' 
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                        }`}
+                    >
+                        {t('tab_all')}
+                    </button>
+                    {categories.map((cat) => (
                         <button 
-                            key={keyword}
-                            onClick={() => setActiveFilter(keyword)}
+                            key={cat.id}
+                            onClick={() => setActiveFilter(cat.id)}
                             className={`px-4 py-2 rounded-full text-[13px] font-bold border transition-all ${
-                                activeFilter === keyword 
+                                activeFilter === cat.id 
                                 ? 'bg-[#0070F0] text-white border-[#0070F0]' 
                                 : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
                             }`}
                         >
-                            {keyword}
+                            {isEn ? cat.labelEn : cat.label}
                         </button>
                     ))}
                 </div>
@@ -93,13 +98,14 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory }) => 
              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-2">
                  {[1,2,3,4].map(i => <ProductSkeleton key={i} />)}
              </div>
+        ) : filteredProducts.length === 0 ? (
+             <div className="py-20 text-center text-gray-500 bg-gray-50 rounded-xl mx-2">
+                 {t('no_products')}
+             </div>
         ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-2">
                 {filteredProducts.map((product: any, idx: number) => {
                     const title = getLocalizedValue(product, 'title');
-                    // Ensure price is treated as a number. 
-                    // Constants provide 'priceVal' (numeric) which is mapped to this object.
-                    // If fallback needed, parse the 'price' string.
                     const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price);
 
                     return (
