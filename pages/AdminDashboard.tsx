@@ -74,7 +74,7 @@ export const AdminDashboard: React.FC<any> = () => {
             setStats(prev => ({ ...prev, revenue: totalRev, orders: snap.size }));
         }),
         onSnapshot(collection(db, "products"), (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as ProductType)))),
-        onSnapshot(collection(db, "cms_packages"), (snap) => setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() } as MainPackageType))),
+        onSnapshot(collection(db, "cms_packages"), (snap) => setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() } as MainPackageType)))), 
         onSnapshot(query(collection(db, "group_buys"), orderBy("visitDate", "asc")), (snap) => setGroupBuys(snap.docs.map(d => ({ id: d.id, ...d.data() } as GroupBuyType)))),
         onSnapshot(collection(db, "coupons"), (snap) => setCoupons(snap.docs.map(d => ({ id: d.id, ...d.data() } as CouponType)))),
         onSnapshot(collection(db, "affiliates"), (snap) => setAffiliates(snap.docs.map(d => ({ id: d.id, ...d.data() } as AffiliateType)))),
