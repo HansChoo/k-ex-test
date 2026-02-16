@@ -43,16 +43,51 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  // --- 핵심 라우팅 로직 ---
   const navigateTo = (page: PageView, data?: any) => {
     if (data) setSelectedProduct(data);
     setCurrentView(page);
-    window.location.hash = page === 'home' ? '' : page;
+    // URL 해시 업데이트 (관리자 모드가 아닐 때만)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') !== 'admin') {
+      window.location.hash = page === 'home' ? '' : page;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
+    const handleInitialRouting = () => {
+      // 1. URL 파라미터 체크 (?mode=admin 등)
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      const page = params.get('page');
+
+      if (mode === 'admin') {
+        setCurrentView('admin');
+        return;
+      }
+      if (page === 'survey') {
+        setCurrentView('survey');
+        return;
+      }
+
+      // 2. 해시 체크
+      const hash = window.location.hash.replace('#', '') as PageView;
+      if (hash && ['home', 'reservation_basic', 'reservation_premium', 'mypage', 'group_buying', 'product_detail', 'wishlist', 'magazine'].includes(hash)) {
+        setCurrentView(hash);
+      } else {
+        setCurrentView('home');
+      }
+    };
+
+    handleInitialRouting();
+
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '') as PageView || 'home';
+      // 관리자 모드 파라미터가 있으면 해시 변경에 의해 홈으로 튕기지 않게 방어
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'admin') return;
+
       if (hash === 'product_detail' && !selectedProduct) {
           setCurrentView('home');
           window.location.hash = '';
@@ -60,8 +95,8 @@ const AppContent: React.FC = () => {
           setCurrentView(hash);
       }
     };
+
     window.addEventListener('hashchange', handleHashChange);
-    handleHashChange();
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [selectedProduct]);
 
@@ -207,3 +242,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+    
