@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Menu, X, Search, User as UserIcon, Star, Globe, ChevronDown, Lock } from 'lucide-react';
+import { Menu, X, Search, User as UserIcon, Star, Globe, ChevronDown, Lock, BookOpen } from 'lucide-react';
 import { NAV_LINKS, COUNTRY_CODES } from '../constants';
 import { logoutUser, subscribeToAuthChanges } from '../services/authService';
 import { User } from 'firebase/auth';
@@ -17,7 +17,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoClick, onMyPageClick, onLoginClick, onAdminClick, onWishlistClick }) => {
-  const { language, setGlobalMode, t, wishlist } = useGlobal();
+  const { language, setGlobalMode, t } = useGlobal();
   const [user, setUser] = useState<User | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -48,14 +48,27 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
       setIsLangOpen(false);
   };
 
+  const handleMagazineClick = () => {
+      window.dispatchEvent(new CustomEvent('navigate-magazine'));
+  };
+
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-300 font-sans tracking-tight bg-white ${scrolled ? 'shadow-sm border-b border-gray-100' : ''}`}>
       <div className="max-w-[1320px] mx-auto px-4 h-[60px] flex items-center justify-between">
         
-        {/* Left: Logo */}
-        <div className="flex items-center gap-1 cursor-pointer" onClick={onLogoClick}>
-           <Star className="fill-[#0070F0] text-[#0070F0] w-6 h-6" />
-           <span className="text-[20px] font-black text-[#0070F0] tracking-tighter">K-Experience</span>
+        {/* Left: Logo & Menu */}
+        <div className="flex items-center gap-8">
+            <div className="flex items-center gap-1 cursor-pointer" onClick={onLogoClick}>
+               <Star className="fill-[#0070F0] text-[#0070F0] w-6 h-6" />
+               <span className="text-[20px] font-black text-[#0070F0] tracking-tighter">K-Experience</span>
+            </div>
+
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center gap-6">
+                <button onClick={handleMagazineClick} className="text-[13px] font-bold text-gray-600 hover:text-[#0070F0] flex items-center gap-1 transition-colors">
+                    <BookOpen size={16} /> {language === 'ko' ? 'K-매거진' : 'K-Magazine'}
+                </button>
+            </div>
         </div>
 
         {/* Right: Icons (Language, User Actions) */}
@@ -94,11 +107,9 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
              {/* Auth Section */}
              {user ? (
                  <div className="flex items-center gap-3">
-                     {/* My Page Link */}
-                     <button onClick={onMyPageClick} className="text-[#333] hover:text-[#0070F0] transition-colors" title={language === 'ko' ? '마이페이지' : 'My Page'}>
+                     <button onClick={onMyPageClick} className="text-[#333] hover:text-[#0070F0] transition-colors">
                         <UserIcon size={24} strokeWidth={1.5} />
                      </button>
-                     {/* Logout Button */}
                      <button onClick={logoutUser} className="text-xs font-bold text-gray-500 hover:text-red-500 transition-colors whitespace-nowrap">
                         {language === 'ko' ? '로그아웃' : 'Logout'}
                      </button>
