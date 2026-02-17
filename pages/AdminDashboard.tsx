@@ -1,18 +1,16 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { 
     LayoutDashboard, ShoppingCart, Users, Package, Plus, Edit2, Trash2, Megaphone, X, Save, 
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
-    LogOut, RefreshCw, Lock, CheckCircle2, Phone, Archive, Grid, Layers, FolderTree, 
-    Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, MoreHorizontal, Mail, DollarSign, ExternalLink, Database
+    LogOut, RefreshCw, Lock, CheckCircle2, List, Calendar as CalendarIcon, MoreHorizontal, Mail, Key
 } from 'lucide-react';
-import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, getDoc, setDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signInWithEmailAndPassword } from 'firebase/auth';
 import { logoutUser } from '../services/authService';
 import { RichTextEditor } from '../components/RichTextEditor';
 import { uploadImage } from '../services/imageService';
-import { PRODUCTS_DATA } from '../constants';
 
 const StatusBadge = ({ status }: { status: string }) => {
     const styles: any = {
@@ -21,15 +19,14 @@ const StatusBadge = ({ status }: { status: string }) => {
         'completed': 'bg-gray-100 text-gray-800',
         'cancelled': 'bg-red-100 text-red-800',
         'waiting': 'bg-orange-100 text-orange-800',
-        'answered': 'bg-blue-100 text-blue-800',
-        'active': 'bg-blue-100 text-blue-800'
+        'answered': 'bg-blue-100 text-blue-800'
     };
     const labels: any = {
         'pending': '대기중', 'confirmed': '확정됨', 'completed': '이용완료', 
-        'cancelled': '취소됨', 'waiting': '답변대기', 'answered': '답변완료', 'active': '활성'
+        'cancelled': '취소됨', 'waiting': '답변대기', 'answered': '답변완료'
     };
     return (
-        <span className={`px-2 py-1 rounded text-[10px] font-bold ${styles[status] || 'bg-gray-100'}`}>
+        <span className={`px-2 py-1 rounded text-xs font-bold ${styles[status] || 'bg-gray-100'}`}>
             {labels[status] || status.toUpperCase()}
         </span>
     );
@@ -37,9 +34,14 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 export const AdminDashboard: React.FC<any> = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservations' | 'products' | 'groupbuys' | 'coupons' | 'magazine' | 'inquiries' | 'affiliates' | 'users' | 'settings'>('dashboard');
+  const [isAdminVerified, setIsAdminVerified] = useState(false); // 관리자 인증 여부
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reservations' | 'products' | 'groupbuys' | 'coupons' | 'magazine' | 'inquiries'>('dashboard');
   
+  // Login Form State
+  const [loginId, setLoginId] = useState('');
+  const [loginPw, setLoginPw] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
   const [reservations, setReservations] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]); 
   const [packages, setPackages] = useState<any[]>([]); 
@@ -48,37 +50,50 @@ export const AdminDashboard: React.FC<any> = () => {
   const [magazinePosts, setMagazinePosts] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [affiliates, setAffiliates] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [settings, setSettings] = useState<any>({});
-  
   const [loading, setLoading] = useState(true);
-  const [productSubTab, setProductSubTab] = useState<'categories' | 'items' | 'packages'>('categories'); 
-  const [reservationView, setReservationView] = useState<'list' | 'calendar'>('list');
-  const [calendarDate, setCalendarDate] = useState(new Date());
 
+  const [productSubTab, setProductSubTab] = useState<'items' | 'packages'>('items'); 
   const [modalType, setModalType] = useState<string | null>(null); 
   const [editingItem, setEditingItem] = useState<any>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [uploadingImg, setUploadingImg] = useState(false);
 
+  // 초기 로드 시 현재 사용자가 관리자인지 확인 (세션 유지용)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      if (user) {
-          setIsAdmin(true);
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists() && userDoc.data().role === 'admin') {
-              setIsAdmin(true);
-          }
+      if (user && user.email === "admin@k-experience.com") {
+          setIsAdminVerified(true);
+      } else {
+          setIsAdminVerified(false);
       }
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
+  // 관리자 전용 로그인 처리
+  const handleAdminLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoginLoading(true);
+      try {
+          const result = await signInWithEmailAndPassword(auth, loginId, loginPw);
+          if (result.user.email === "admin@k-experience.com") {
+              setIsAdminVerified(true);
+              showToast("관리자로 로그인되었습니다.");
+          } else {
+              alert("관리자 권한이 없는 계정입니다.");
+              await logoutUser();
+          }
+      } catch (err) {
+          alert("로그인 정보가 올바르지 않습니다.");
+      } finally {
+          setLoginLoading(false);
+      }
+  };
+
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdminVerified) return;
     const unsubs = [
         onSnapshot(query(collection(db, "reservations"), orderBy("createdAt", "desc")), (s) => setReservations(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(collection(db, "products"), (s) => setProducts(s.docs.map(d => ({id:d.id, ...d.data()})))),
@@ -88,31 +103,13 @@ export const AdminDashboard: React.FC<any> = () => {
         onSnapshot(query(collection(db, "cms_magazine"), orderBy("createdAt", "desc")), (s) => setMagazinePosts(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(query(collection(db, "inquiries"), orderBy("createdAt", "desc")), (s) => setInquiries(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(collection(db, "users"), (s) => setUsers(s.docs.map(d => ({id:d.id, ...d.data()})))),
-        onSnapshot(collection(db, "affiliates"), (s) => setAffiliates(s.docs.map(d => ({id:d.id, ...d.data()})))),
-        onSnapshot(collection(db, "cms_categories"), (s) => setCategories(s.docs.map(d => ({id:d.id, ...d.data()})))),
-        onSnapshot(collection(db, "settings"), (s) => {
-            const temp: any = {};
-            s.docs.forEach(d => temp[d.id] = d.data());
-            setSettings(temp);
-        })
     ];
     return () => unsubs.forEach(u => u());
-  }, [isAdmin]);
+  }, [isAdminVerified]);
 
   const showToast = (msg: string) => {
       setToast(msg);
       setTimeout(() => setToast(null), 3000);
-  };
-
-  const syncDefaultData = async () => {
-      if (!window.confirm("기본 데이터를 Firestore로 동기화하시겠습니까? 기존 상품 데이터가 덮어씌워질 수 있습니다.")) return;
-      const batch = writeBatch(db);
-      PRODUCTS_DATA.ko.forEach((p: any) => {
-          const ref = doc(db, "products", p.id.toString());
-          batch.set(ref, { ...p, createdAt: serverTimestamp() });
-      });
-      await batch.commit();
-      showToast("동기화 완료!");
   };
 
   const deleteItem = async (col: string, id: string) => {
@@ -127,23 +124,12 @@ export const AdminDashboard: React.FC<any> = () => {
       else if (modalType === 'product') col = "products";
       else if (modalType === 'package') col = "cms_packages";
       else if (modalType === 'coupon') col = "coupons";
-      else if (modalType === 'groupbuy') col = "group_buys";
-      else if (modalType === 'affiliate') col = "affiliates";
-      else if (modalType === 'category') col = "cms_categories";
-      else if (modalType === 'inquiry_answer') col = "inquiries";
+      else if (modalType === 'groupbuy') col = "group_bu_ys";
 
       const payload = { ...editingItem };
       try {
           if (editingItem.id) {
-              if (modalType === 'inquiry_answer') {
-                  await updateDoc(doc(db, col, editingItem.id), { 
-                      answer: editingItem.answer, 
-                      status: 'answered', 
-                      answeredAt: serverTimestamp() 
-                  });
-              } else {
-                  await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
-              }
+              await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
           } else {
               await addDoc(collection(db, col), { ...payload, createdAt: serverTimestamp() });
           }
@@ -163,43 +149,65 @@ export const AdminDashboard: React.FC<any> = () => {
       }
   };
 
-  const renderCalendar = () => {
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDay = new Date(year, month, 1).getDay();
-    const days = [];
-    for (let i = 0; i < firstDay; i++) days.push(<div key={`e-${i}`} className="h-24 bg-gray-50/50 border-r border-b"></div>);
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const dayRes = reservations.filter(r => r.date === dateStr);
-        days.push(
-            <div key={d} className="h-24 border-r border-b p-1 relative hover:bg-blue-50/50 transition-colors group">
-                <span className="text-[10px] font-bold text-gray-400">{d}</span>
-                <div className="mt-1 space-y-1 overflow-hidden">
-                    {dayRes.slice(0, 3).map(res => (
-                        <div key={res.id} onClick={() => { setEditingItem(res); setModalType('reservation_detail'); }} className="text-[8px] bg-blue-100 text-blue-700 px-1 rounded truncate cursor-pointer font-bold">
-                            {res.productName}
-                        </div>
-                    ))}
-                    {dayRes.length > 3 && <div className="text-[8px] text-gray-400 text-center font-bold">+{dayRes.length-3} more</div>}
-                </div>
-            </div>
-        );
-    }
-    return days;
-  };
+  if (loading) return <div className="p-20 text-center">Loading Admin...</div>;
 
-  if (loading) return <div className="p-20 text-center"><RefreshCw className="animate-spin mx-auto text-blue-500" /></div>;
-  if (!isAdmin) return <div className="p-20 text-center flex flex-col items-center"><Lock className="mb-4" /> 로그인이 필요하거나 권한이 없습니다.</div>;
+  // 관리자 로그인이 되어 있지 않은 경우 로그인 폼 출력
+  if (!isAdminVerified) {
+      return (
+          <div className="min-h-screen bg-[#111] flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
+                  <div className="bg-[#0070F0] p-8 text-white text-center">
+                      <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+                          <Lock size={32} />
+                      </div>
+                      <h2 className="text-2xl font-black tracking-tight">K-EXPERIENCE</h2>
+                      <p className="text-white/70 font-bold text-sm">Administrator Login</p>
+                  </div>
+                  <form onSubmit={handleAdminLogin} className="p-8 space-y-4">
+                      <div>
+                          <label className="block text-[10px] font-black text-gray-400 mb-1 uppercase tracking-widest">Admin Email</label>
+                          <input 
+                            type="email" 
+                            className="w-full border border-gray-200 p-4 rounded-xl font-bold text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#0070F0] outline-none transition-all"
+                            placeholder="admin@k-experience.com"
+                            value={loginId}
+                            onChange={(e) => setLoginId(e.target.value)}
+                            required
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-[10px] font-black text-gray-400 mb-1 uppercase tracking-widest">Password</label>
+                          <input 
+                            type="password" 
+                            className="w-full border border-gray-200 p-4 rounded-xl font-bold text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#0070F0] outline-none transition-all"
+                            placeholder="••••••••"
+                            value={loginPw}
+                            onChange={(e) => setLoginPw(e.target.value)}
+                            required
+                          />
+                      </div>
+                      <button 
+                        type="submit" 
+                        disabled={loginLoading}
+                        className="w-full bg-black text-white py-4 rounded-xl font-black shadow-xl hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
+                      >
+                          {loginLoading ? <RefreshCw className="animate-spin" size={18}/> : <Key size={18}/>}
+                          LOGIN TO DASHBOARD
+                      </button>
+                      <p className="text-center text-[10px] text-gray-400 font-bold mt-4 uppercase">© K-Experience Management System</p>
+                  </form>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#F5F7FB] font-sans text-[#333]">
-        {toast && <div className="fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg text-white font-bold bg-black animate-fade-in">{toast}</div>}
+        {toast && <div className="fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg text-white font-bold bg-black">{toast}</div>}
 
         <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col h-screen fixed">
             <div className="h-16 flex items-center px-6 font-black text-xl text-[#0070F0]">K-ADMIN</div>
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto no-scrollbar">
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
                 {[
                     {id:'dashboard', label:'대시보드', icon:LayoutDashboard},
                     {id:'reservations', label:'예약 관리', icon:ShoppingCart},
@@ -208,235 +216,143 @@ export const AdminDashboard: React.FC<any> = () => {
                     {id:'magazine', label:'매거진 관리', icon:BookOpen},
                     {id:'coupons', label:'쿠폰 관리', icon:Ticket},
                     {id:'inquiries', label:'문의 관리', icon:MessageCircle},
-                    {id:'users', label:'회원 관리', icon:Users},
-                    {id:'affiliates', label:'제휴 파트너', icon:LinkIcon},
-                    {id:'settings', label:'환경 설정', icon:SettingsIcon},
                 ].map(item => (
-                    <button key={item.id} onClick={()=>setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all ${activeTab===item.id ? 'bg-[#0070F0] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>
+                    <button key={item.id} onClick={()=>setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold ${activeTab===item.id ? 'bg-[#0070F0] text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
                         <item.icon size={18}/> {item.label}
                     </button>
                 ))}
             </nav>
-            <div className="p-4 border-t"><button onClick={logoutUser} className="flex items-center gap-2 text-gray-500 font-bold text-sm"><LogOut size={16}/> 로그아웃</button></div>
+            <div className="p-4 border-t">
+                <button 
+                    onClick={async () => { await logoutUser(); setIsAdminVerified(false); }} 
+                    className="flex items-center gap-2 text-gray-500 font-bold text-sm w-full p-2 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"
+                >
+                    <LogOut size={16}/> 로그아웃
+                </button>
+            </div>
         </aside>
 
         <main className="flex-1 ml-64 p-8 min-w-[1000px]">
             {activeTab === 'dashboard' && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-black">Admin Overview</h2>
-                        <button onClick={syncDefaultData} className="flex items-center gap-2 bg-white border border-gray-200 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 shadow-sm transition-all"><Database size={16}/> 기본 데이터 동기화</button>
-                    </div>
+                <div className="space-y-6">
+                    <h2 className="text-2xl font-black">Admin Overview</h2>
                     <div className="grid grid-cols-4 gap-6">
-                        <div className="bg-white p-6 rounded-xl border shadow-sm"><h3 className="text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">총 매출</h3><p className="text-2xl font-black">₩ {reservations.reduce((s,r)=>s+Number(r.totalPrice||0),0).toLocaleString()}</p></div>
-                        <div className="bg-white p-6 rounded-xl border shadow-sm"><h3 className="text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">누적 예약</h3><p className="text-2xl font-black">{reservations.length}건</p></div>
-                        <div className="bg-white p-6 rounded-xl border shadow-sm"><h3 className="text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">활성 회원</h3><p className="text-2xl font-black">{users.length}명</p></div>
-                        <div className="bg-white p-6 rounded-xl border shadow-sm"><h3 className="text-gray-500 text-xs font-bold mb-2 uppercase tracking-wider">등록 상품</h3><p className="text-2xl font-black">{products.length + packages.length}개</p></div>
+                        <div className="bg-white p-6 rounded-xl border shadow-sm"><h3 className="text-gray-500 text-xs font-bold mb-2">총 매출</h3><p className="text-2xl font-black">₩ {reservations.reduce((s,r)=>s+Number(r.totalPrice||0),0).toLocaleString()}</p></div>
+                        <div className="bg-white p-6 rounded-xl border shadow-sm"><h3 className="text-gray-500 text-xs font-bold mb-2">예약 건수</h3><p className="text-2xl font-black">{reservations.length}건</p></div>
+                        <div className="bg-white p-6 rounded-xl border shadow-sm"><h3 className="text-gray-500 text-xs font-bold mb-2">회원수</h3><p className="text-2xl font-black">{users.length}명</p></div>
                     </div>
                 </div>
             )}
 
             {activeTab === 'reservations' && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-black">예약 관리</h2>
-                        <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
-                            <button onClick={()=>setReservationView('list')} className={`px-4 py-2 rounded text-xs font-bold ${reservationView==='list'?'bg-white shadow':'text-gray-500'}`}>리스트</button>
-                            <button onClick={()=>setReservationView('calendar')} className={`px-4 py-2 rounded text-xs font-bold ${reservationView==='calendar'?'bg-white shadow':'text-gray-500'}`}>캘린더</button>
-                        </div>
-                    </div>
-                    {reservationView === 'list' ? (
-                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-gray-50 border-b font-bold text-gray-500"><tr><th className="p-4">날짜</th><th className="p-4">상품명</th><th className="p-4">예약자</th><th className="p-4">인원</th><th className="p-4">금액</th><th className="p-4">상태</th><th className="p-4">조작</th></tr></thead>
-                                <tbody className="divide-y">
-                                    {reservations.map(res => (
-                                        <tr key={res.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="p-4 font-mono text-xs">{res.date}</td>
-                                            <td className="p-4 font-bold truncate max-w-[200px]">{res.productName}</td>
-                                            <td className="p-4">{res.options?.guests?.[0]?.name || 'N/A'}</td>
-                                            <td className="p-4">{res.peopleCount}명</td>
-                                            <td className="p-4 font-black">₩{Number(res.totalPrice).toLocaleString()}</td>
-                                            <td className="p-4"><StatusBadge status={res.status} /></td>
-                                            <td className="p-4"><button onClick={()=>{setEditingItem(res); setModalType('reservation_detail');}} className="text-blue-500 hover:underline font-bold text-xs">상세</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                            <div className="p-4 flex items-center justify-between border-b bg-gray-50">
-                                <button onClick={()=>setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth()-1)))} className="p-1"><ChevronLeft size={16}/></button>
-                                <span className="font-black text-sm">{calendarDate.getFullYear()}년 {calendarDate.getMonth()+1}월</span>
-                                <button onClick={()=>setCalendarDate(new Date(calendarDate.setMonth(calendarDate.getMonth()+1)))} className="p-1"><ChevronRight size={16}/></button>
-                            </div>
-                            <div className="grid grid-cols-7 text-center py-2 bg-gray-100 border-b text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=><div key={d}>{d}</div>)}
-                            </div>
-                            <div className="grid grid-cols-7 min-h-[400px]">
-                                {renderCalendar()}
-                            </div>
-                        </div>
-                    )}
+                <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                    <div className="p-4 border-b bg-gray-50 font-bold text-sm">최근 예약 리스트</div>
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-gray-50 border-b"><tr><th className="p-4">날짜</th><th className="p-4">상품명</th><th className="p-4">예약자</th><th className="p-4">인원</th><th className="p-4">금액</th><th className="p-4">상태</th></tr></thead>
+                        <tbody>
+                            {reservations.map(res => (
+                                <tr key={res.id} className="border-b hover:bg-gray-50 transition-colors">
+                                    <td className="p-4 font-mono text-xs">{res.date}</td>
+                                    <td className="p-4 font-bold">{res.productName}</td>
+                                    <td className="p-4">{res.options?.guests?.[0]?.name || 'N/A'}</td>
+                                    <td className="p-4">{res.peopleCount}명</td>
+                                    <td className="p-4 font-black">₩{Number(res.totalPrice).toLocaleString()}</td>
+                                    <td className="p-4"><StatusBadge status={res.status} /></td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
 
             {activeTab === 'products' && (
-                <div className="space-y-6 animate-fade-in">
+                <div className="space-y-6">
                     <div className="flex gap-4 border-b pb-1">
-                        <button onClick={() => setProductSubTab('categories')} className={`px-4 py-2 font-bold text-sm ${productSubTab === 'categories' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>카테고리</button>
                         <button onClick={() => setProductSubTab('items')} className={`px-4 py-2 font-bold text-sm ${productSubTab === 'items' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>일반 상품</button>
                         <button onClick={() => setProductSubTab('packages')} className={`px-4 py-2 font-bold text-sm ${productSubTab === 'packages' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>올인원 패키지</button>
                     </div>
-                    {productSubTab === 'categories' && (
-                        <div className="grid grid-cols-4 gap-4">
-                            <button onClick={()=>{setEditingItem({label:'', labelEn:'', image:''}); setModalType('category');}} className="border-2 border-dashed border-gray-300 rounded-xl h-40 flex flex-col items-center justify-center text-gray-400 hover:bg-white transition-colors"><Plus size={32}/><span className="font-bold">카테고리 추가</span></button>
-                            {categories.map(cat => (
-                                <div key={cat.id} className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col">
-                                    <div className="h-24 bg-gray-50"><img src={cat.image} className="w-full h-full object-cover" /></div>
-                                    <div className="p-3 flex justify-between items-center"><h4 className="font-bold text-sm">{cat.label}</h4><div className="flex gap-2"><button onClick={()=>{setEditingItem(cat); setModalType('category');}} className="text-gray-400 hover:text-black"><Edit2 size={14}/></button><button onClick={()=>deleteItem('cms_categories', cat.id)} className="text-red-400"><Trash2 size={14}/></button></div></div>
+                    <div className="grid grid-cols-4 gap-4">
+                        <button onClick={()=>{setEditingItem({title:'', priceMale:0, priceFemale:0, category:'건강검진'}); setModalType(productSubTab === 'items' ? 'product' : 'package');}} className="border-2 border-dashed border-gray-300 rounded-xl h-64 flex flex-col items-center justify-center text-gray-400 hover:bg-white transition-all"><Plus size={32}/><span className="font-bold">신규 등록</span></button>
+                        {(productSubTab === 'items' ? products : packages).map(p => (
+                            <div key={p.id} className="bg-white border rounded-xl overflow-hidden shadow-sm group">
+                                <div className="h-32 bg-gray-100 relative"><img src={p.image} className="w-full h-full object-cover"/></div>
+                                <div className="p-4">
+                                    <h4 className="font-bold truncate">{p.title}</h4>
+                                    <div className="text-[10px] text-gray-500 mb-2">M: {Number(p.priceMale||0).toLocaleString()} / F: {Number(p.priceFemale||0).toLocaleString()}</div>
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={()=>{setEditingItem(p); setModalType(productSubTab === 'items' ? 'product' : 'package');}} className="text-blue-500"><Edit2 size={16}/></button>
+                                        <button onClick={()=>deleteItem(productSubTab === 'items' ? 'products' : 'cms_packages', p.id)} className="text-red-500"><Trash2 size={16}/></button>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                    {(productSubTab === 'items' || productSubTab === 'packages') && (
-                        <div className="grid grid-cols-4 gap-4">
-                            <button onClick={()=>{setEditingItem({title:'', priceVal:0, category:'건강검진', image:''}); setModalType(productSubTab === 'items' ? 'product' : 'package');}} className="border-2 border-dashed border-gray-300 rounded-xl h-64 flex flex-col items-center justify-center text-gray-400 hover:bg-white transition-all"><Plus size={32}/><span className="font-bold">신규 등록</span></button>
-                            {(productSubTab === 'items' ? products : packages).map(p => (
-                                <div key={p.id} className="bg-white border rounded-xl overflow-hidden shadow-sm group">
-                                    <div className="h-32 bg-gray-100 relative"><img src={p.image} className="w-full h-full object-cover"/></div>
-                                    <div className="p-4"><h4 className="font-bold truncate text-sm">{p.title}</h4><div className="text-xs font-black text-blue-600 mb-2">₩ {Number(p.priceVal || p.price || 0).toLocaleString()}</div><div className="flex justify-end gap-2"><button onClick={()=>{setEditingItem(p); setModalType(productSubTab === 'items' ? 'product' : 'package');}} className="text-blue-500"><Edit2 size={16}/></button><button onClick={()=>deleteItem(productSubTab === 'items' ? 'products' : 'cms_packages', p.id)} className="text-red-500"><Trash2 size={16}/></button></div></div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === 'groupbuys' && (
-                <div className="space-y-6 animate-fade-in">
-                    <h2 className="text-2xl font-black">공동구매 관리</h2>
-                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b font-bold text-gray-500"><tr><th className="p-4">상품명</th><th className="p-4">리더</th><th className="p-4">참여수</th><th className="p-4">방문일</th><th className="p-4">상태</th><th className="p-4">관리</th></tr></thead>
-                            <tbody className="divide-y">
-                                {groupBuys.map(gb => (
-                                    <tr key={gb.id}>
-                                        <td className="p-4 font-bold">{gb.productName}</td>
-                                        <td className="p-4">{gb.leaderName}</td>
-                                        <td className="p-4 font-black text-blue-600">{gb.currentCount} / {gb.maxCount}</td>
-                                        <td className="p-4 text-xs font-mono">{gb.visitDate}</td>
-                                        <td className="p-4"><StatusBadge status={gb.status === 'completed' ? 'completed' : 'active'} /></td>
-                                        <td className="p-4"><button onClick={()=>deleteItem('group_buys', gb.id)} className="text-red-500"><Trash2 size={16}/></button></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'coupons' && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="flex justify-between items-center"><h2 className="text-2xl font-black">쿠폰 관리</h2><button onClick={()=>{setEditingItem({code:'', value:0, type:'percent', isActive:true, maxUsage:100, currentUsage:0}); setModalType('coupon');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 쿠폰 생성</button></div>
-                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b font-bold text-gray-500"><tr><th className="p-4">코드</th><th className="p-4">할인 내용</th><th className="p-4">사용수/한도</th><th className="p-4">상태</th><th className="p-4">관리</th></tr></thead>
-                            <tbody className="divide-y">
-                                {coupons.map(cp => (
-                                    <tr key={cp.id}><td className="p-4 font-mono font-bold text-blue-600 uppercase">{cp.code}</td><td className="p-4 font-bold">{cp.value}{cp.type === 'percent' ? '%' : '원'} 할인</td><td className="p-4">{cp.currentUsage || 0} / {cp.maxUsage}</td><td className="p-4"><StatusBadge status={cp.isActive ? 'active' : 'cancelled'} /></td><td className="p-4"><button onClick={()=>deleteItem('coupons', cp.id)} className="text-red-500"><Trash2 size={16}/></button></td></tr>
-                                ))}
-                            </tbody>
-                        </table>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
 
             {activeTab === 'magazine' && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="flex justify-between items-center"><h2 className="text-2xl font-black">매거진 관리</h2><button onClick={()=>{setEditingItem({title:'', excerpt:'', content:'', category:'K-Trend', author:'Admin'}); setModalType('magazine');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 포스트 작성</button></div>
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-black">매거진 관리</h2><button onClick={() => { setEditingItem({ title: '', category: 'Trend', excerpt: '', content: '' }); setModalType('magazine'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 포스트 작성</button></div>
                     <div className="grid grid-cols-3 gap-6">
                         {magazinePosts.map(post => (
-                            <div key={post.id} className="bg-white border rounded-xl overflow-hidden shadow-sm flex flex-col"><div className="h-40 bg-gray-100"><img src={post.image} className="w-full h-full object-cover" /></div><div className="p-4 flex-1"><h4 className="font-bold line-clamp-1 mb-2">{post.title}</h4><p className="text-xs text-gray-500 line-clamp-2 mb-4">{post.excerpt}</p><div className="flex justify-end gap-2"><button onClick={()=>{setEditingItem(post); setModalType('magazine');}} className="text-blue-500"><Edit2 size={16}/></button><button onClick={()=>deleteItem('cms_magazine', post.id)} className="text-red-500"><Trash2 size={16}/></button></div></div></div>
+                            <div key={post.id} className="bg-white rounded-xl border overflow-hidden shadow-sm">
+                                <img src={post.image} className="h-40 w-full object-cover" />
+                                <div className="p-4"><h4 className="font-bold truncate mb-2">{post.title}</h4><div className="flex justify-end gap-2"><button onClick={() => { setEditingItem(post); setModalType('magazine'); }} className="text-blue-500"><Edit2 size={16}/></button><button onClick={() => deleteItem('cms_magazine', post.id)} className="text-red-500"><Trash2 size={16}/></button></div></div>
+                            </div>
                         ))}
                     </div>
                 </div>
             )}
 
             {activeTab === 'inquiries' && (
-                <div className="space-y-6 animate-fade-in">
-                    <h2 className="text-2xl font-black">문의 관리</h2>
-                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">날짜</th><th className="p-4">작성자</th><th className="p-4">제목</th><th className="p-4">상태</th><th className="p-4">조작</th></tr></thead>
-                            <tbody className="divide-y">
-                                {inquiries.map(inq => (
-                                    <tr key={inq.id} className="hover:bg-gray-50"><td className="p-4 text-xs text-gray-400">{inq.createdAt?.seconds ? new Date(inq.createdAt.seconds*1000).toLocaleDateString() : '-'}</td><td className="p-4 font-bold">{inq.userName}</td><td className="p-4">{inq.title}</td><td className="p-4"><StatusBadge status={inq.status} /></td><td className="p-4"><button onClick={()=>{setEditingItem(inq); setModalType('inquiry_answer');}} className="text-blue-500 font-bold text-xs">답변하기</button></td></tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'users' && (
-                <div className="space-y-6 animate-fade-in">
-                    <h2 className="text-2xl font-black">회원 관리</h2>
-                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b font-bold text-gray-500"><tr><th className="p-4">이름</th><th className="p-4">이메일</th><th className="p-4">국적</th><th className="p-4">전화번호</th><th className="p-4">가입일</th><th className="p-4">권한</th></tr></thead>
-                            <tbody className="divide-y">
-                                {users.map(u => (
-                                    <tr key={u.id} className="hover:bg-gray-50"><td className="p-4 font-bold">{u.name || u.displayName}</td><td className="p-4 text-gray-500">{u.email}</td><td className="p-4">{u.nationality || '-'}</td><td className="p-4 font-mono">{u.phone || '-'}</td><td className="p-4 text-xs">{u.createdAt?.seconds ? new Date(u.createdAt.seconds*1000).toLocaleDateString() : '-'}</td><td className="p-4"><select className={`text-xs p-1 rounded font-bold ${u.role==='admin'?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-600'}`} value={u.role || 'user'} onChange={async (e) => { await updateDoc(doc(db, "users", u.id), { role: e.target.value }); showToast("권한이 변경되었습니다."); }}><option value="user">USER</option><option value="admin">ADMIN</option></select></td></tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'settings' && (
-                <div className="space-y-8 animate-fade-in max-w-2xl">
-                    <h2 className="text-2xl font-black">환경 설정</h2>
-                    <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
-                        <h3 className="font-bold border-b pb-2 flex items-center gap-2"><Mail size={18}/> EmailJS 알림 설정</h3>
-                        <div className="grid grid-cols-1 gap-4">
-                            <div><label className="block text-xs font-bold text-gray-400 mb-1">SERVICE ID</label><input className="w-full border p-2 rounded" placeholder="service_xxxx" value={settings.email_config?.serviceId || ''} onChange={e=>setSettings({...settings, email_config:{...settings.email_config, serviceId:e.target.value}})} /></div>
-                            <div><label className="block text-xs font-bold text-gray-400 mb-1">TEMPLATE ID</label><input className="w-full border p-2 rounded" placeholder="template_xxxx" value={settings.email_config?.templateId || ''} onChange={e=>setSettings({...settings, email_config:{...settings.email_config, templateId:e.target.value}})} /></div>
-                            <div><label className="block text-xs font-bold text-gray-400 mb-1">PUBLIC KEY</label><input className="w-full border p-2 rounded" placeholder="user_xxxx" value={settings.email_config?.publicKey || ''} onChange={e=>setSettings({...settings, email_config:{...settings.email_config, publicKey:e.target.value}})} /></div>
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold">1:1 문의 관리</h2>
+                    {inquiries.map(inq => (
+                        <div key={inq.id} className="bg-white p-6 rounded-xl border border-gray-100">
+                            <div className="flex justify-between mb-4"><div><h4 className="font-bold text-lg">{inq.title}</h4><p className="text-xs text-gray-400">{inq.userName}님 ({inq.userId})</p></div><StatusBadge status={inq.status} /></div>
+                            <p className="bg-gray-50 p-4 rounded text-sm mb-4">{inq.content}</p>
+                            <textarea className="w-full border p-3 rounded text-sm h-24 mb-2" placeholder="답변 내용을 입력하세요..." value={inq.tempAnswer || inq.answer || ''} onChange={e => {
+                                setInquiries(inquiries.map(item => item.id === inq.id ? {...item, tempAnswer: e.target.value} : item));
+                            }} />
+                            <button onClick={async () => {
+                                await updateDoc(doc(db, "inquiries", inq.id), { answer: inq.tempAnswer || inq.answer, status: 'answered', answeredAt: serverTimestamp() });
+                                showToast("답변이 등록되었습니다.");
+                            }} className="bg-[#0070F0] text-white px-6 py-2 rounded text-sm font-bold">답변 저장</button>
                         </div>
-                        <button onClick={async ()=>{ await setDoc(doc(db, "settings", "email_config"), settings.email_config); showToast("이메일 설정이 저장되었습니다."); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">이메일 설정 저장</button>
-                    </div>
+                    ))}
                 </div>
             )}
         </main>
 
         {modalType && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
-                <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-                    <div className="p-4 border-b flex justify-between items-center bg-gray-50"><h3 className="font-bold uppercase tracking-widest text-xs text-gray-500">{modalType} EDITOR</h3><button onClick={()=>setModalType(null)}><X size={20}/></button></div>
-                    <div className="p-8 overflow-y-auto flex-1 space-y-6 no-scrollbar">
-                        {modalType === 'category' && (
-                            <div className="space-y-4">
-                                <div><label className="block text-xs font-bold text-gray-400 mb-1">카테고리명 (KO)</label><input className="w-full border p-2 rounded font-bold" value={editingItem.label} onChange={e=>setEditingItem({...editingItem, label:e.target.value})} /></div>
-                                <div><label className="block text-xs font-bold text-gray-400 mb-1">Category Name (EN)</label><input className="w-full border p-2 rounded" value={editingItem.labelEn} onChange={e=>setEditingItem({...editingItem, labelEn:e.target.value})} /></div>
-                                <div><label className="block text-xs font-bold text-gray-400 mb-1">대표 이미지</label><input type="file" className="text-xs mb-2" onChange={handleMainImageUpload} />{editingItem.image && <img src={editingItem.image} className="w-20 h-20 object-cover rounded-lg border"/>}</div>
-                            </div>
-                        )}
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                    <div className="p-4 border-b flex justify-between items-center bg-gray-50"><h3 className="font-bold">{modalType.toUpperCase()} EDITOR</h3><button onClick={()=>setModalType(null)}><X/></button></div>
+                    <div className="p-8 overflow-y-auto flex-1 space-y-6">
                         {(modalType === 'product' || modalType === 'package') && (
-                            <div className="grid grid-cols-1 gap-4">
-                                <div><label className="block text-xs font-bold mb-1">명칭 (KO)</label><input className="w-full border p-2 rounded font-bold" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
-                                <div><label className="block text-xs font-bold mb-1 text-blue-600">가격 (KRW)</label><input type="number" className="w-full border p-2 rounded font-black text-lg" value={editingItem.priceVal || editingItem.price || 0} onChange={e => setEditingItem({...editingItem, priceVal: Number(e.target.value)})} /></div>
-                                <div><label className="block text-xs font-bold mb-1">대표 이미지</label><input type="file" className="block w-full text-xs mb-2" onChange={handleMainImageUpload} />{editingItem.image && <img src={editingItem.image} className="h-32 object-cover rounded border"/>}</div>
-                                <div><label className="block text-xs font-bold mb-2">상세 본문</label><RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} /></div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="col-span-2"><label className="block text-xs font-bold mb-1">명칭</label><input className="w-full border p-3 rounded-lg" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
+                                <div className="bg-blue-50 p-4 rounded-xl"><label className="block text-xs font-bold mb-1 text-blue-600 font-black">남성 가격 (KRW)</label><input type="number" className="w-full border p-2 rounded font-bold" value={editingItem.priceMale} onChange={e => setEditingItem({...editingItem, priceMale: Number(e.target.value)})} /></div>
+                                <div className="bg-pink-50 p-4 rounded-xl"><label className="block text-xs font-bold mb-1 text-pink-600 font-black">여성 가격 (KRW)</label><input type="number" className="w-full border p-2 rounded font-bold" value={editingItem.priceFemale} onChange={e => setEditingItem({...editingItem, priceFemale: Number(e.target.value)})} /></div>
+                                <div className="col-span-2"><label className="block text-xs font-bold mb-1">대표 이미지</label><input type="file" className="block w-full text-sm" onChange={handleMainImageUpload} /></div>
+                                <div className="col-span-2"><label className="block text-xs font-bold mb-2">상세 본문</label><RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} /></div>
                             </div>
                         )}
-                        {modalType === 'inquiry_answer' && (
-                            <div className="space-y-6"><div className="bg-gray-50 p-4 rounded-lg"><p className="text-xs text-gray-400 mb-1">Question by {editingItem.userName}</p><h4 className="font-bold mb-2">{editingItem.title}</h4><p className="text-sm">{editingItem.content}</p></div><div><label className="block text-xs font-bold text-gray-400 mb-1">답변 내용</label><textarea className="w-full border p-3 rounded-lg text-sm h-40" value={editingItem.answer || ''} onChange={e=>setEditingItem({...editingItem, answer:e.target.value})} placeholder="여기에 답변을 입력하세요." /></div></div>
+                        {modalType === 'magazine' && (
+                            <div className="space-y-6">
+                                <input className="w-full border p-3 rounded-lg font-bold" placeholder="제목" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} />
+                                <RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} />
+                            </div>
+                        )}
+                        {modalType === 'coupon' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <input className="border p-3 rounded" placeholder="쿠폰명" value={editingItem.name} onChange={e=>setEditingItem({...editingItem, name:e.target.value})}/>
+                                <input className="border p-3 rounded" placeholder="코드" value={editingItem.code} onChange={e=>setEditingItem({...editingItem, code:e.target.value})}/>
+                                <input className="border p-3 rounded" type="number" placeholder="할인값" value={editingItem.value} onChange={e=>setEditingItem({...editingItem, value:Number(e.target.value)})}/>
+                            </div>
                         )}
                     </div>
-                    <div className="p-4 border-t bg-gray-50 flex justify-end gap-2"><button onClick={()=>setModalType(null)} className="px-6 py-2 font-bold text-gray-500">취소</button><button onClick={saveItem} className="bg-[#0070F0] text-white px-8 py-2 rounded-lg font-bold flex items-center gap-2 shadow-md">{uploadingImg ? <RefreshCw className="animate-spin" size={16}/> : <Save size={16}/>} {modalType === 'inquiry_answer' ? '답변 전송' : '저장'}</button></div>
+                    <div className="p-4 border-t bg-gray-50 flex justify-end gap-2"><button onClick={()=>setModalType(null)} className="px-6 py-2 font-bold text-gray-500">취소</button><button onClick={saveItem} className="bg-[#0070F0] text-white px-8 py-2 rounded-lg font-bold">저장</button></div>
                 </div>
             </div>
         )}
