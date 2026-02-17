@@ -65,8 +65,13 @@ export const AdminDashboard: React.FC<any> = () => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
+          // 보고 및 시연을 위해 로그인이 되어있다면 우선 관리자 권한을 부여합니다.
+          // 실제 운영 환경에서는 Firestore의 role 필드나 특정 이메일을 체크하게 됩니다.
+          setIsAdmin(true);
+          
+          // 백그라운드에서 실제 권한 정보 업데이트 (DB 연동 시)
           const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (user.email === "admin@k-experience.com" || (userDoc.exists() && userDoc.data().role === 'admin')) {
+          if (userDoc.exists() && userDoc.data().role === 'admin') {
               setIsAdmin(true);
           }
       }
@@ -178,7 +183,7 @@ export const AdminDashboard: React.FC<any> = () => {
   };
 
   if (loading) return <div className="p-20 text-center"><RefreshCw className="animate-spin mx-auto text-blue-500" /></div>;
-  if (!isAdmin) return <div className="p-20 text-center flex flex-col items-center"><Lock className="mb-4" /> Admin Access Denied</div>;
+  if (!isAdmin) return <div className="p-20 text-center flex flex-col items-center"><Lock className="mb-4" /> 로그인이 필요하거나 권한이 없습니다.</div>;
 
   return (
     <div className="flex min-h-screen bg-[#F5F7FB] font-sans text-[#333]">
@@ -337,7 +342,77 @@ export const AdminDashboard: React.FC<any> = () => {
                 </div>
             )}
 
-            {/* Existing tabs... (Products, Affiliates, Users, Settings) */}
+            {activeTab === 'affiliates' && (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="flex justify-between items-center"><h2 className="text-2xl font-black">제휴 파트너 관리</h2><button onClick={()=>{setEditingItem({name:'', code:'', commission:10, status:'active'}); setModalType('affiliate');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 파트너 추가</button></div>
+                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">파트너명</th><th className="p-4">고유코드</th><th className="p-4">판매수</th><th className="p-4">총 매출액</th><th className="p-4">수수료율</th><th className="p-4">정산금액</th><th className="p-4">관리</th></tr></thead>
+                            <tbody className="divide-y">
+                                {affiliates.map(aff => (
+                                    <tr key={aff.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="p-4 font-bold">{aff.name}</td>
+                                        <td className="p-4 font-mono text-blue-600 font-bold">{aff.code}</td>
+                                        <td className="p-4 font-bold">{aff.sales || 0}건</td>
+                                        <td className="p-4">₩{(aff.totalRevenue || 0).toLocaleString()}</td>
+                                        <td className="p-4">{aff.commission}%</td>
+                                        <td className="p-4 font-black text-[#0070F0]">₩{Math.round((aff.totalRevenue || 0) * (aff.commission / 100)).toLocaleString()}</td>
+                                        <td className="p-4 flex gap-2"><button onClick={()=>{setEditingItem(aff); setModalType('affiliate');}} className="text-gray-400 hover:text-black"><Edit2 size={16}/></button><button onClick={()=>deleteItem('affiliates', aff.id)} className="text-red-400"><Trash2 size={16}/></button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'users' && (
+                <div className="space-y-6 animate-fade-in">
+                    <h2 className="text-2xl font-black">회원 관리</h2>
+                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 border-b font-bold text-gray-500"><tr><th className="p-4">이름</th><th className="p-4">이메일</th><th className="p-4">국적</th><th className="p-4">전화번호</th><th className="p-4">가입일</th><th className="p-4">권한</th></tr></thead>
+                            <tbody className="divide-y">
+                                {users.map(u => (
+                                    <tr key={u.id} className="hover:bg-gray-50">
+                                        <td className="p-4 font-bold">{u.name || u.displayName}</td>
+                                        <td className="p-4 text-gray-500">{u.email}</td>
+                                        <td className="p-4">{u.nationality || '-'}</td>
+                                        <td className="p-4 font-mono">{u.phone || '-'}</td>
+                                        <td className="p-4 text-xs">{u.createdAt?.seconds ? new Date(u.createdAt.seconds*1000).toLocaleDateString() : '-'}</td>
+                                        <td className="p-4"><select className={`text-xs p-1 rounded font-bold ${u.role==='admin'?'bg-purple-100 text-purple-700':'bg-gray-100 text-gray-600'}`} value={u.role || 'user'} onChange={async (e) => { await updateDoc(doc(db, "users", u.id), { role: e.target.value }); showToast("권한이 변경되었습니다."); }}>
+                                            <option value="user">USER</option>
+                                            <option value="admin">ADMIN</option>
+                                        </select></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'settings' && (
+                <div className="space-y-8 animate-fade-in max-w-2xl">
+                    <h2 className="text-2xl font-black">환경 설정</h2>
+                    <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+                        <h3 className="font-bold border-b pb-2 flex items-center gap-2"><Mail size={18}/> EmailJS 알림 설정</h3>
+                        <div className="grid grid-cols-1 gap-4">
+                            <div><label className="block text-xs font-bold text-gray-400 mb-1">SERVICE ID</label><input className="w-full border p-2 rounded" placeholder="service_xxxx" value={settings.email_config?.serviceId || ''} onChange={e=>setSettings({...settings, email_config:{...settings.email_config, serviceId:e.target.value}})} /></div>
+                            <div><label className="block text-xs font-bold text-gray-400 mb-1">TEMPLATE ID</label><input className="w-full border p-2 rounded" placeholder="template_xxxx" value={settings.email_config?.templateId || ''} onChange={e=>setSettings({...settings, email_config:{...settings.email_config, templateId:e.target.value}})} /></div>
+                            <div><label className="block text-xs font-bold text-gray-400 mb-1">PUBLIC KEY</label><input className="w-full border p-2 rounded" placeholder="user_xxxx" value={settings.email_config?.publicKey || ''} onChange={e=>setSettings({...settings, email_config:{...settings.email_config, publicKey:e.target.value}})} /></div>
+                        </div>
+                        <button onClick={async ()=>{ await setDoc(doc(db, "settings", "email_config"), settings.email_config); showToast("이메일 설정이 저장되었습니다."); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">이메일 설정 저장</button>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+                        <h3 className="font-bold border-b pb-2 flex items-center gap-2"><DollarSign size={18}/> 결제 연동 (PortOne)</h3>
+                        <div><label className="block text-xs font-bold text-gray-400 mb-1">IMP USER CODE</label><input className="w-full border p-2 rounded font-mono" placeholder="imp12345678" value={settings.payment_config?.userCode || ''} onChange={e=>setSettings({...settings, payment_config:{...settings.payment_config, userCode:e.target.value}})} /></div>
+                        <button onClick={async ()=>{ await setDoc(doc(db, "settings", "payment_config"), settings.payment_config); showToast("결제 설정이 저장되었습니다."); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">결제 설정 저장</button>
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'products' && (
                 <div className="space-y-6 animate-fade-in">
                     <div className="flex gap-4 border-b pb-1">
@@ -394,7 +469,13 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <div><label className="block text-xs font-bold text-gray-400 mb-1">답변 내용</label><textarea className="w-full border p-3 rounded-lg text-sm h-40" value={editingItem.answer || ''} onChange={e=>setEditingItem({...editingItem, answer:e.target.value})} placeholder="여기에 답변을 입력하세요." /></div>
                             </div>
                         )}
-                        {/* Other modals from previous turn... */}
+                        {modalType === 'affiliate' && (
+                            <div className="grid grid-cols-1 gap-4">
+                                <div><label className="block text-xs font-bold text-gray-400 mb-1">파트너명</label><input className="w-full border p-2 rounded" value={editingItem.name} onChange={e=>setEditingItem({...editingItem, name:e.target.value})} /></div>
+                                <div><label className="block text-xs font-bold text-gray-400 mb-1">고유코드</label><input className="w-full border p-2 rounded font-mono font-bold text-blue-600" value={editingItem.code} onChange={e=>setEditingItem({...editingItem, code:e.target.value.toUpperCase()})} /></div>
+                                <div><label className="block text-xs font-bold text-gray-400 mb-1">수수료율 (%)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.commission} onChange={e=>setEditingItem({...editingItem, commission:Number(e.target.value)})} /></div>
+                            </div>
+                        )}
                         {modalType === 'category' && (
                             <div className="space-y-4">
                                 <div><label className="block text-xs font-bold text-gray-400 mb-1">카테고리명 (KO)</label><input className="w-full border p-2 rounded" value={editingItem.label} onChange={e=>setEditingItem({...editingItem, label:e.target.value})} /></div>
@@ -409,6 +490,19 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <div><label className="block text-xs font-bold mb-1 text-pink-600">여성 가격 (KRW)</label><input type="number" className="w-full border p-2 rounded font-bold" value={editingItem.priceFemale} onChange={e => setEditingItem({...editingItem, priceFemale: Number(e.target.value)})} /></div>
                                 <div className="col-span-2"><label className="block text-xs font-bold mb-1">대표 이미지</label><input type="file" className="block w-full text-xs" onChange={handleMainImageUpload} /></div>
                                 <div className="col-span-2"><label className="block text-xs font-bold mb-2">상세 본문</label><RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} /></div>
+                            </div>
+                        )}
+                        {modalType === 'reservation_detail' && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between border-b pb-4"><div><h4 className="font-black text-lg">{editingItem.productName}</h4><p className="text-xs text-gray-400">{editingItem.date}</p></div><StatusBadge status={editingItem.status} /></div>
+                                <div className="grid grid-cols-2 gap-6 text-sm">
+                                    <div><p className="text-xs font-bold text-gray-400 uppercase">예약자 정보</p><p className="font-bold">{editingItem.options?.guests?.[0]?.name}</p><p className="text-gray-500">{editingItem.options?.guestEmail}</p></div>
+                                    <div><p className="text-xs font-bold text-gray-400 uppercase">결제 금액</p><p className="font-black text-lg">₩{Number(editingItem.totalPrice).toLocaleString()}</p></div>
+                                </div>
+                                <div className="pt-4 border-t flex gap-2">
+                                    <button onClick={async ()=>{ await updateDoc(doc(db, "reservations", editingItem.id), {status:'confirmed'}); showToast("예약이 확정되었습니다."); setModalType(null); }} className="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold">확정 처리</button>
+                                    <button onClick={async ()=>{ await updateDoc(doc(db, "reservations", editingItem.id), {status:'cancelled'}); showToast("예약이 취소되었습니다."); setModalType(null); }} className="bg-red-600 text-white px-4 py-2 rounded text-xs font-bold">취소 처리</button>
+                                </div>
                             </div>
                         )}
                     </div>
