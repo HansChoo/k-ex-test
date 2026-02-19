@@ -2,7 +2,7 @@ import React from 'react';
 import { COMPANY_INFO, COMPANY_INFO_EN } from '../constants';
 
 interface FooterProps {
-  language: 'ko' | 'en';
+  language: 'ko' | 'en' | 'ja' | 'zh';
 }
 
 export const Footer: React.FC<FooterProps> = ({ language }) => {

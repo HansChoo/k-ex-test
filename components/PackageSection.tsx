@@ -5,7 +5,7 @@ import { ScrollReveal } from './ScrollReveal';
 import { Check, ChevronRight, ChevronLeft, Info } from 'lucide-react';
 
 interface PackageSectionProps {
-  language: 'ko' | 'en';
+  language: 'ko' | 'en' | 'ja' | 'zh';
   onBookClick: (pkgId: string) => void;
 }
 

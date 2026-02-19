@@ -5,7 +5,7 @@ import { ScrollReveal } from './ScrollReveal';
 import { Users, Flame, TrendingDown, Sparkles, ChevronRight } from 'lucide-react';
 
 interface PromoSectionProps {
-  language: 'ko' | 'en';
+  language: 'ko' | 'en' | 'ja' | 'zh';
   onGroupBuyClick?: () => void;
 }
 

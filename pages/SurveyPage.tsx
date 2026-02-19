@@ -5,7 +5,7 @@ import { db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { uploadImage } from '../services/imageService';
 import { CheckCircle, Upload, ChevronRight, AlertCircle, Camera, Music, HeartPulse, Sparkles } from 'lucide-react';
 
-interface SurveyPageProps { language: 'ko' | 'en'; }
+interface SurveyPageProps { language: 'ko' | 'en' | 'ja' | 'zh'; }
 
 export const SurveyPage: React.FC<SurveyPageProps> = ({ language }) => {
     const isEn = language !== 'ko';

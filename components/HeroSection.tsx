@@ -5,7 +5,7 @@ import { ScrollReveal } from './ScrollReveal';
 import { Flame } from 'lucide-react';
 
 interface HeroSectionProps {
-  language: 'ko' | 'en'; 
+  language: 'ko' | 'en' | 'ja' | 'zh'; 
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = () => {

@@ -9,7 +9,7 @@ import { COUNTRY_CODES } from '../constants';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  language: 'ko' | 'en';
+  language: 'ko' | 'en' | 'ja' | 'zh';
 }
 
 const TERMS_TEXT = {

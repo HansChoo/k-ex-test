@@ -8,7 +8,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { generateMockReviews } from '../constants';
 
-interface ReservationPremiumProps { language: 'ko' | 'en'; }
+interface ReservationPremiumProps { language: 'ko' | 'en' | 'ja' | 'zh'; }
 
 export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   const { t, convertPrice, language, getLocalizedValue } = useGlobal();

@@ -5,7 +5,7 @@ import { PRODUCTS, PRODUCTS_EN } from '../constants';
 import { Heart, ShoppingBag } from 'lucide-react';
 
 interface WishlistPageProps {
-    language: 'ko' | 'en';
+    language: 'ko' | 'en' | 'ja' | 'zh';
 }
 
 export const WishlistPage: React.FC<WishlistPageProps> = () => {

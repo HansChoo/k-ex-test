@@ -14,7 +14,7 @@ const ProductSkeleton = () => (
 );
 
 interface ProductListProps {
-    language: 'ko' | 'en';
+    language: 'ko' | 'en' | 'ja' | 'zh';
     initialCategory?: { id: string, ts: number } | null;
 }
 

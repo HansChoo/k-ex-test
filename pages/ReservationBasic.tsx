@@ -9,7 +9,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { generateMockReviews } from '../constants';
 
 interface ReservationBasicProps {
-  language: 'ko' | 'en'; 
+  language: 'ko' | 'en' | 'ja' | 'zh'; 
 }
 
 export const ReservationBasic: React.FC<ReservationBasicProps> = () => {

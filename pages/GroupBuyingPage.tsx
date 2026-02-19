@@ -7,7 +7,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { requestPayment } from '../services/paymentService';
 import { COUNTRY_CODES } from '../constants';
 
-interface GroupBuyingPageProps { language: 'ko' | 'en'; }
+interface GroupBuyingPageProps { language: 'ko' | 'en' | 'ja' | 'zh'; }
 
 interface GroupBuyItem { 
     id: string; 

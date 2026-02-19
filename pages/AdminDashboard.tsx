@@ -253,9 +253,12 @@ export const AdminDashboard: React.FC<any> = () => {
       else if (modalType === 'category') col = "cms_categories";
 
       const payload = { ...editingItem };
-      if (modalType === 'product' || modalType === 'magazine') {
+      if (modalType === 'product') {
           payload.images = galleryImages;
           payload.price = parsePrice(editingItem.price);
+      }
+      if (modalType === 'magazine') {
+          payload.images = galleryImages;
       }
       
       // Handle Package Specifics (Persona 1)
@@ -945,6 +948,155 @@ export const AdminDashboard: React.FC<any> = () => {
                     </div>
                 </div>
             )}
+
+            {/* Magazine */}
+            {activeTab === 'magazine' && (
+                <div className="space-y-4">
+                    <div className="flex justify-between">
+                        <h2 className="text-2xl font-black">매거진 관리</h2>
+                        <button onClick={()=>{setEditingItem({title:'', subtitle:'', content:''}); setGalleryImages([]); setModalType('magazine');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 포스트 작성</button>
+                    </div>
+                    <div className="bg-white rounded-xl border shadow-sm">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">제목</th><th className="p-4">작성일</th><th className="p-4">관리</th></tr></thead>
+                            <tbody className="divide-y">
+                                {magazinePosts.length === 0 && (
+                                    <tr><td colSpan={3} className="p-8 text-center text-gray-400">등록된 매거진 포스트가 없습니다.</td></tr>
+                                )}
+                                {magazinePosts.map(post => (
+                                    <tr key={post.id}>
+                                        <td className="p-4 font-bold">{post.title}</td>
+                                        <td className="p-4 text-gray-500">{post.createdAt ? new Date(post.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</td>
+                                        <td className="p-4 flex gap-2">
+                                            <button onClick={()=>{setEditingItem(post); setGalleryImages(post.images||[]); setModalType('magazine');}} className="text-blue-500"><Edit2 size={16}/></button>
+                                            <button onClick={()=>deleteItem('cms_magazine', post.id)} className="text-red-500"><Trash2 size={16}/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Inquiries */}
+            {activeTab === 'inquiries' && (
+                <div className="space-y-4">
+                    <div className="flex justify-between">
+                        <h2 className="text-2xl font-black">1:1 문의 관리</h2>
+                    </div>
+                    <div className="bg-white rounded-xl border shadow-sm">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">제목</th><th className="p-4">작성자</th><th className="p-4">상태</th><th className="p-4">날짜</th><th className="p-4">관리</th></tr></thead>
+                            <tbody className="divide-y">
+                                {inquiries.length === 0 && (
+                                    <tr><td colSpan={5} className="p-8 text-center text-gray-400">접수된 문의가 없습니다.</td></tr>
+                                )}
+                                {inquiries.map(inquiry => (
+                                    <tr key={inquiry.id}>
+                                        <td className="p-4 font-bold">{inquiry.title}</td>
+                                        <td className="p-4 text-gray-500">{inquiry.userName || inquiry.userId}</td>
+                                        <td className="p-4"><StatusBadge status={inquiry.status}/></td>
+                                        <td className="p-4 text-gray-500">{inquiry.createdAt ? new Date(inquiry.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</td>
+                                        <td className="p-4">
+                                            <button onClick={()=>{setEditingItem(inquiry); setModalType('inquiry_detail');}} className="text-blue-500 font-bold text-xs">상세보기</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Users */}
+            {activeTab === 'users' && (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-black">회원 관리 <span className="text-sm font-normal text-gray-400 ml-2">총 {users.length}명</span></h2>
+                    </div>
+                    <div className="bg-white rounded-xl border shadow-sm">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">이메일</th><th className="p-4">이름</th><th className="p-4">가입일</th><th className="p-4">역할</th></tr></thead>
+                            <tbody className="divide-y">
+                                {users.length === 0 && (
+                                    <tr><td colSpan={4} className="p-8 text-center text-gray-400">등록된 회원이 없습니다.</td></tr>
+                                )}
+                                {users.map(user => (
+                                    <tr key={user.id}>
+                                        <td className="p-4">{user.email}</td>
+                                        <td className="p-4">{user.name || user.displayName || '-'}</td>
+                                        <td className="p-4 text-gray-500">{user.createdAt ? new Date(user.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                {user.role === 'admin' ? 'Admin' : 'User'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Affiliates */}
+            {activeTab === 'affiliates' && (
+                <div className="space-y-4">
+                    <div className="flex justify-between">
+                        <h2 className="text-2xl font-black">제휴 파트너 관리</h2>
+                        <button onClick={()=>{setEditingItem({partnerName:'', code:'', commission:10}); setModalType('affiliate');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 파트너 등록</button>
+                    </div>
+                    <div className="bg-white rounded-xl border shadow-sm">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">파트너명</th><th className="p-4">코드</th><th className="p-4">클릭수</th><th className="p-4">판매</th><th className="p-4">수수료율</th><th className="p-4">관리</th></tr></thead>
+                            <tbody className="divide-y">
+                                {affiliates.length === 0 && (
+                                    <tr><td colSpan={6} className="p-8 text-center text-gray-400">등록된 제휴 파트너가 없습니다.</td></tr>
+                                )}
+                                {affiliates.map(a => (
+                                    <tr key={a.id}>
+                                        <td className="p-4 font-bold">{a.partnerName}</td>
+                                        <td className="p-4 font-mono font-bold text-blue-600">{a.code}</td>
+                                        <td className="p-4">{a.clicks || 0}</td>
+                                        <td className="p-4">{a.sales || 0}</td>
+                                        <td className="p-4">{a.commission}%</td>
+                                        <td className="p-4 flex gap-2">
+                                            <button onClick={()=>{setEditingItem(a); setModalType('affiliate');}} className="text-blue-500"><Edit2 size={16}/></button>
+                                            <button onClick={()=>deleteItem('affiliates', a.id)} className="text-red-500"><Trash2 size={16}/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Settings */}
+            {activeTab === 'settings' && (
+                <div className="space-y-4">
+                    <h2 className="text-2xl font-black">환경 설정</h2>
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 flex items-center gap-2">
+                        <AlertCircle size={16}/>
+                        환경 설정은 Firebase Console에서 직접 관리할 수 있습니다.
+                    </div>
+                    <div className="bg-white rounded-xl border shadow-sm p-6">
+                        {Object.keys(settings).length === 0 ? (
+                            <p className="text-center text-gray-400 py-8">저장된 설정이 없습니다.</p>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {Object.entries(settings).map(([key, value]: [string, any]) => (
+                                    <div key={key} className="border rounded-lg p-4 bg-gray-50">
+                                        <div className="text-xs font-bold text-gray-400 mb-1">{key}</div>
+                                        <div className="text-sm font-mono break-all">{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </main>
 
         {/* MODAL */}
@@ -1164,8 +1316,87 @@ export const AdminDashboard: React.FC<any> = () => {
                                 <div><label className="block text-xs font-bold mb-1">최대 수량</label><input type="number" className="w-full border p-2 rounded" value={editingItem.maxUsage} onChange={e=>setEditingItem({...editingItem, maxUsage:Number(e.target.value)})}/></div>
                             </div>
                         )}
+
+                        {/* MAGAZINE EDITOR */}
+                        {modalType === 'magazine' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="block text-xs font-bold mb-1">제목</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e=>setEditingItem({...editingItem, title:e.target.value})}/></div>
+                                    <div><label className="block text-xs font-bold mb-1">부제</label><input className="w-full border p-2 rounded" value={editingItem.subtitle || ''} onChange={e=>setEditingItem({...editingItem, subtitle:e.target.value})}/></div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold mb-2">본문 내용</label>
+                                    <RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} />
+                                </div>
+                                <div className="border p-4 rounded-xl bg-gray-50 relative">
+                                    {uploadingImg && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-xl"><RefreshCw className="animate-spin text-blue-500"/></div>}
+                                    <label className="block text-xs font-bold mb-2">이미지 (갤러리)</label>
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {galleryImages.map((img, idx) => (
+                                            <div key={idx} className="relative w-16 h-16 group">
+                                                <img src={img} className="w-full h-full object-cover rounded-lg border" />
+                                                <button onClick={() => setGalleryImages(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
+                                            </div>
+                                        ))}
+                                        <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                                            <Plus size={20} className="text-gray-400"/>
+                                            <input type="file" className="hidden" multiple onChange={handleGalleryUpload} />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AFFILIATE EDITOR */}
+                        {modalType === 'affiliate' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-bold mb-1">파트너명</label><input className="w-full border p-2 rounded" value={editingItem.partnerName} onChange={e=>setEditingItem({...editingItem, partnerName:e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold mb-1">코드</label><input className="w-full border p-2 rounded bg-gray-50" value={editingItem.code || Math.random().toString(36).substr(2,8).toUpperCase()} onChange={e=>setEditingItem({...editingItem, code:e.target.value})}/></div>
+                                <div><label className="block text-xs font-bold mb-1">수수료율 (%)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.commission} onChange={e=>setEditingItem({...editingItem, commission:Number(e.target.value)})}/></div>
+                            </div>
+                        )}
+
+                        {/* INQUIRY DETAIL */}
+                        {modalType === 'inquiry_detail' && editingItem && (
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="text-xs text-gray-400 mb-1">문의 제목</div>
+                                    <h2 className="text-xl font-black">{editingItem.title}</h2>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2">
+                                    <div className="flex gap-4 text-sm">
+                                        <span><strong>작성자:</strong> {editingItem.userName || editingItem.userId}</span>
+                                        <span><strong>날짜:</strong> {editingItem.createdAt ? new Date(editingItem.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</span>
+                                        <StatusBadge status={editingItem.status}/>
+                                    </div>
+                                    <div className="text-sm mt-2 whitespace-pre-wrap">{editingItem.content}</div>
+                                </div>
+                                {editingItem.answer && (
+                                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                        <div className="text-xs font-bold text-blue-600 mb-1">관리자 답변</div>
+                                        <div className="text-sm whitespace-pre-wrap">{editingItem.answer}</div>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-xs font-bold mb-2">답변 작성</label>
+                                    <textarea className="w-full border p-3 rounded-lg min-h-[120px]" value={editingItem.answer || ''} onChange={e=>setEditingItem({...editingItem, answer:e.target.value})} placeholder="답변을 입력하세요..."/>
+                                </div>
+                                <div className="flex justify-end">
+                                    <button onClick={async ()=>{
+                                        if (!db || !editingItem.answer) return;
+                                        try {
+                                            await updateDoc(doc(db!, "inquiries", editingItem.id), { answer: editingItem.answer, status: 'answered', answeredAt: serverTimestamp() });
+                                            showToast("답변이 저장되었습니다.");
+                                            setModalType(null);
+                                        } catch(e: any) {
+                                            showToast("저장 실패: " + e.message, 'error');
+                                        }
+                                    }} className="bg-black text-white px-6 py-2 rounded font-bold flex items-center gap-2"><Save size={16}/> 답변 저장</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    {modalType !== 'reservation_detail' && (
+                    {modalType !== 'reservation_detail' && modalType !== 'inquiry_detail' && (
                         <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
                             <button onClick={()=>setModalType(null)} className="px-4 py-2 font-bold text-gray-500">취소</button>
                             <button onClick={saveItem} className="bg-black text-white px-6 py-2 rounded font-bold flex items-center gap-2">{uploadingImg?<RefreshCw className="animate-spin" size={16}/>:<Save size={16}/>} 저장하기</button>

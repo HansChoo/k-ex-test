@@ -9,7 +9,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { generateMockReviews } from '../constants';
 
 interface ProductDetailProps {
-  language: 'ko' | 'en';
+  language: 'ko' | 'en' | 'ja' | 'zh';
   product: any;
 }
 
