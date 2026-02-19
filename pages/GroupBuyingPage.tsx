@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Flame, Info, Crown, CheckCircle2, ChevronRight, Timer, Lock, Search, Plus, X, Calendar, CreditCard, UserPlus, Mail, Globe, Phone, Archive } from 'lucide-react';
+import { Users, TrendingDown, Info, Crown, CheckCircle2, ChevronRight, Timer, Lock, Search, Plus, X, Calendar, CreditCard, UserPlus, Mail, Globe, Phone, Archive } from 'lucide-react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion, addDoc, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -39,6 +39,7 @@ const CARD_THEMES = [
 export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const { t, convertPrice, language, products } = useGlobal();
   const isEn = language !== 'ko';
+  const isKo = language === 'ko';
 
   const [activeTab, setActiveTab] = useState<'public' | 'secret' | 'completed'>('public');
   const [groupList, setGroupList] = useState<GroupBuyItem[]>([]);
@@ -92,6 +93,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
           }
       }
   }, [groupList]);
+
+  const activeGroupCount = groupList.filter(g => g.status === 'active').length;
 
   // Filter groups based on tab
   const filteredGroups = groupList.filter(g => {
@@ -303,19 +306,58 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
     <div className="w-full font-sans text-[#1a1a1a] bg-[#F5F7FB] pb-24 min-h-screen">
       
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-[#FF6B6B] to-[#FF8E53] text-white pt-28 pb-16 px-6 relative overflow-hidden text-center">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-white rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
-          <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#FFD700] rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
-          <div className="max-w-[800px] mx-auto relative z-10 flex flex-col items-center">
-              <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-1.5 rounded-full mb-6 shadow-sm animate-bounce">
-                  <Flame size={14} className="fill-white text-white"/> <span className="text-white font-bold text-sm">HOT 공동구매</span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-black text-white mb-2 drop-shadow-sm tracking-tight leading-tight">Your BEST K-experience</h1>
-              <h2 className="text-3xl md:text-4xl font-black text-[#FFE812] mb-8 drop-shadow-md tracking-tight leading-tight">More People, Lower Price!</h2>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/10 shadow-lg max-w-2xl">
-                <p className="text-white font-bold text-base md:text-lg leading-relaxed opacity-95">
-                    {language === 'ko' ? <>친구들과 함께하면 더 저렴하게! 인원별 최대 30% 할인 혜택을 누리세요<br/>K-아이돌 체험부터 뷰티시술, 건강검진까지<br/>친구들과 함께하면 최대 30% 할인!!</> : <>Cheaper together with friends! Get up to 30% discount per person.<br/>From K-IDOL experience to beauty care and health checkups.<br/>Up to 30% off when you join together!!</>}
-                </p>
+      <section className="bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-white pt-28 pb-16 px-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#0070F0]/20 rounded-full blur-[150px] -translate-y-1/3 translate-x-1/4 pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/15 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
+          
+          <div className="max-w-[800px] mx-auto relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center gap-10">
+                  <div className="flex-1">
+                      <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full mb-6">
+                          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                          <span className="text-white/90 font-bold text-sm">
+                              {activeGroupCount > 0 
+                                  ? (isKo ? `${activeGroupCount}건 진행 중` : `${activeGroupCount} groups active`)
+                                  : (isKo ? '공동구매 오픈' : 'Group Buy Open')
+                              }
+                          </span>
+                      </div>
+                      <h1 className="text-3xl md:text-[44px] font-black text-white mb-3 tracking-tight leading-[1.15]">
+                          {isKo ? '함께할수록\n더 저렴하게' : 'More People,\nLower Price'}
+                      </h1>
+                      <p className="text-white/70 text-base md:text-lg font-medium leading-relaxed mb-8 max-w-md whitespace-pre-line">
+                          {isKo 
+                              ? 'K-아이돌 체험, 뷰티시술, 건강검진까지\n인원이 늘어날수록 할인율이 올라갑니다.\n최대 30% 할인!' 
+                              : 'From K-IDOL experience to beauty care & health checkups.\nMore people join, bigger discounts.\nUp to 30% off!'}
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                          <div className="bg-white/10 backdrop-blur border border-white/15 px-4 py-2 rounded-xl flex items-center gap-2">
+                              <TrendingDown size={16} className="text-cyan-400" />
+                              <span className="text-white/90 text-[13px] font-bold">{isKo ? '인당 3% 추가 할인' : '3% off per person'}</span>
+                          </div>
+                          <div className="bg-white/10 backdrop-blur border border-white/15 px-4 py-2 rounded-xl flex items-center gap-2">
+                              <Users size={16} className="text-cyan-400" />
+                              <span className="text-white/90 text-[13px] font-bold">{isKo ? '최대 10명 매칭' : 'Up to 10 people'}</span>
+                          </div>
+                      </div>
+                  </div>
+                  
+                  <div className="hidden md:flex flex-col items-center gap-3">
+                      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-8 text-center min-w-[200px]">
+                          <div className="text-[48px] font-black text-cyan-400 leading-none mb-1">30%</div>
+                          <div className="text-white/60 text-sm font-bold">{isKo ? '최대 할인율' : 'Max Discount'}</div>
+                      </div>
+                      <div className="flex gap-3 w-full">
+                          <div className="flex-1 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
+                              <div className="text-xl font-black text-white">{activeGroupCount}</div>
+                              <div className="text-white/50 text-[11px] font-bold">{isKo ? '진행중' : 'Active'}</div>
+                          </div>
+                          <div className="flex-1 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
+                              <div className="text-xl font-black text-white">20%</div>
+                              <div className="text-white/50 text-[11px] font-bold">{isKo ? '예약금' : 'Deposit'}</div>
+                          </div>
+                      </div>
+                  </div>
               </div>
           </div>
       </section>
