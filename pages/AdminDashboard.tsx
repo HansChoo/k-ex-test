@@ -45,6 +45,13 @@ const CARD_THEMES = [
     { bg: 'bg-gradient-to-r from-emerald-400 to-teal-500', text: 'text-emerald-600', sub: 'bg-emerald-50' }
 ];
 
+const REPLY_TEMPLATES = [
+    { label: '감사 인사', text: '안녕하세요, K-Experience입니다. 문의해 주셔서 감사합니다.\n\n' },
+    { label: '예약 확인', text: '예약이 정상적으로 확인되었습니다. 방문 당일 여권을 지참해 주세요.\n\n감사합니다.' },
+    { label: '환불 안내', text: '환불 요청이 접수되었습니다. 영업일 기준 3~5일 내에 처리됩니다.\n\n추가 문의 사항이 있으시면 말씀해 주세요.' },
+    { label: '일정 변경', text: '일정 변경이 가능합니다. 원하시는 날짜를 알려주시면 확인 후 안내드리겠습니다.\n\n감사합니다.' },
+];
+
 export const AdminDashboard: React.FC<any> = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -69,10 +76,16 @@ export const AdminDashboard: React.FC<any> = () => {
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>('all');
+  const [reservationDateFilter, setReservationDateFilter] = useState<string>('all');
+  const [reservationStatusFilter, setReservationStatusFilter] = useState<string>('all');
+  const [reservationSearch, setReservationSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+  const [userDetailModal, setUserDetailModal] = useState<any>(null);
+  const [magazinePreviewId, setMagazinePreviewId] = useState<string|null>(null);
   
   // Sub-tabs & Views
   const [productSubTab, setProductSubTab] = useState<'categories' | 'items' | 'packages'>('categories'); 
-  const [reservationView, setReservationView] = useState<'list' | 'calendar'>('list'); // Persona 2: Calendar View
+  const [reservationView, setReservationView] = useState<'list' | 'calendar'>('list');
   const [calendarDate, setCalendarDate] = useState(new Date());
 
   // Auth Inputs
@@ -188,6 +201,111 @@ export const AdminDashboard: React.FC<any> = () => {
       };
   }, [reservations, users]);
 
+  const unansweredCount = useMemo(() => inquiries.filter(i => i.status === 'waiting').length, [inquiries]);
+
+  const analytics = useMemo(() => {
+      const now = new Date();
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
+      const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+      const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+      
+      const thisMonthRevenue = reservations.filter(r => {
+          if (!r.createdAt?.seconds) return false;
+          const d = new Date(r.createdAt.seconds * 1000);
+          return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+      }).reduce((sum: number, r: any) => sum + (Number(r.totalPrice) || 0), 0);
+      
+      const lastMonthRevenue = reservations.filter(r => {
+          if (!r.createdAt?.seconds) return false;
+          const d = new Date(r.createdAt.seconds * 1000);
+          return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
+      }).reduce((sum: number, r: any) => sum + (Number(r.totalPrice) || 0), 0);
+      
+      const revenueGrowth = lastMonthRevenue > 0 ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100) : 0;
+      
+      const categoryRevenue: Record<string, number> = {};
+      reservations.forEach((r: any) => {
+          const cat = r.category || r.productCategory || '기타';
+          categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (Number(r.totalPrice) || 0);
+      });
+      
+      const productCounts: Record<string, {name: string, count: number, revenue: number}> = {};
+      reservations.forEach((r: any) => {
+          const name = r.productName || '알 수 없음';
+          if (!productCounts[name]) productCounts[name] = {name, count: 0, revenue: 0};
+          productCounts[name].count++;
+          productCounts[name].revenue += (Number(r.totalPrice) || 0);
+      });
+      const topProducts = Object.values(productCounts).sort((a,b) => b.revenue - a.revenue).slice(0,5);
+      
+      const todayStr = now.toISOString().split('T')[0];
+      const todayReservations = reservations.filter((r: any) => r.date === todayStr);
+      const todayConfirmed = todayReservations.filter((r: any) => r.status === 'confirmed').length;
+      const todayPending = todayReservations.filter((r: any) => r.status === 'pending').length;
+      
+      const monthlyRevenue: {month: string, revenue: number}[] = [];
+      for (let i = 5; i >= 0; i--) {
+          const m = new Date(thisYear, thisMonth - i, 1);
+          const mMonth = m.getMonth();
+          const mYear = m.getFullYear();
+          const rev = reservations.filter((r: any) => {
+              if (!r.createdAt?.seconds) return false;
+              const d = new Date(r.createdAt.seconds * 1000);
+              return d.getMonth() === mMonth && d.getFullYear() === mYear;
+          }).reduce((sum: number, r: any) => sum + (Number(r.totalPrice) || 0), 0);
+          monthlyRevenue.push({ month: `${mMonth + 1}월`, revenue: rev });
+      }
+      const maxMonthlyRevenue = Math.max(...monthlyRevenue.map(m => m.revenue), 1);
+      
+      const productStats: Record<string, {count: number, revenue: number}> = {};
+      reservations.forEach((r: any) => {
+          const pid = r.productId || r.productName;
+          if (pid) {
+              if (!productStats[pid]) productStats[pid] = {count: 0, revenue: 0};
+              productStats[pid].count++;
+              productStats[pid].revenue += (Number(r.totalPrice) || 0);
+          }
+      });
+      
+      return { thisMonthRevenue, lastMonthRevenue, revenueGrowth, categoryRevenue, topProducts, todayReservations, todayConfirmed, todayPending, monthlyRevenue, maxMonthlyRevenue, productStats };
+  }, [reservations]);
+
+  const filteredReservations = useMemo(() => {
+      let data = reservations;
+      if (reservationStatusFilter !== 'all') data = data.filter((r: any) => r.status === reservationStatusFilter);
+      if (reservationDateFilter === 'today') {
+          const today = new Date().toISOString().split('T')[0];
+          data = data.filter((r: any) => r.date === today);
+      } else if (reservationDateFilter === 'week') {
+          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          data = data.filter((r: any) => r.date >= weekAgo);
+      } else if (reservationDateFilter === 'month') {
+          const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+          data = data.filter((r: any) => r.date >= monthStart);
+      }
+      if (reservationSearch) {
+          const q = reservationSearch.toLowerCase();
+          data = data.filter((r: any) => 
+              (r.productName || '').toLowerCase().includes(q) ||
+              (r.options?.guests?.[0]?.name || '').toLowerCase().includes(q) ||
+              (r.options?.guestEmail || '').toLowerCase().includes(q) ||
+              (r.userId || '').toLowerCase().includes(q)
+          );
+      }
+      return data;
+  }, [reservations, reservationStatusFilter, reservationDateFilter, reservationSearch]);
+
+  const filteredUsers = useMemo(() => {
+      if (!userSearch) return users;
+      const q = userSearch.toLowerCase();
+      return users.filter((u: any) => 
+          (u.email || '').toLowerCase().includes(q) ||
+          (u.name || u.displayName || '').toLowerCase().includes(q) ||
+          (u.phone || '').includes(q)
+      );
+  }, [users, userSearch]);
+
   const activeGroupBuys = groupBuys.filter(g => g.status !== 'completed');
   const pastGroupBuys = groupBuys.filter(g => g.status === 'completed');
 
@@ -251,6 +369,18 @@ export const AdminDashboard: React.FC<any> = () => {
       else if (modalType === 'affiliate') col = "affiliates";
       else if (modalType === 'groupbuy') col = "group_buys";
       else if (modalType === 'category') col = "cms_categories";
+
+      if (modalType === 'product') {
+          if (!editingItem.title?.trim()) { showToast('상품명을 입력해주세요.', 'error'); return; }
+          if (!editingItem.category || editingItem.category === '미지정') { showToast('카테고리를 선택해주세요.', 'error'); return; }
+          if (!parsePrice(editingItem.price)) { showToast('가격을 입력해주세요.', 'error'); return; }
+      }
+      if (modalType === 'magazine') {
+          if (!editingItem.title?.trim()) { showToast('제목을 입력해주세요.', 'error'); return; }
+      }
+      if (modalType === 'category') {
+          if (!editingItem.label?.trim()) { showToast('카테고리명을 입력해주세요.', 'error'); return; }
+      }
 
       const payload = { ...editingItem };
       if (modalType === 'product') {
@@ -378,6 +508,28 @@ export const AdminDashboard: React.FC<any> = () => {
           const p = products.find(prod => prod.id === id);
           return sum + (p ? parsePrice(p.price || p.priceVal) : 0);
       }, 0);
+  };
+
+  const exportReservationsCSV = () => {
+      const headers = ['날짜','상품명','예약자','인원','금액','상태'];
+      const rows = filteredReservations.map((r: any) => [
+          r.date, r.productName, r.options?.guests?.[0]?.name || r.userId, r.peopleCount, r.totalPrice, r.status
+      ]);
+      const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+      const blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `reservations_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+  };
+
+  const duplicateProduct = (p: any) => {
+      const copy = { ...p, title: p.title + ' (복사)' };
+      delete copy.id;
+      setEditingItem(copy);
+      setGalleryImages(p.images || []);
+      setModalType(p._coll === 'cms_packages' ? 'package' : 'product');
+      showToast('상품이 복제되었습니다. 수정 후 저장하세요.', 'info');
   };
 
   const handleDeleteGroupBuy = async (group: any) => {
@@ -513,6 +665,9 @@ export const AdminDashboard: React.FC<any> = () => {
                 ].map(item => (
                     <button key={item.id} onClick={()=>setActiveTab(item.id as any)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold ${activeTab===item.id ? 'bg-[#0070F0] text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
                         <item.icon size={18}/> {item.label}
+                        {item.id === 'inquiries' && unansweredCount > 0 && (
+                            <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'inquiries' ? 'bg-white/30 text-white' : 'bg-red-500 text-white'}`}>{unansweredCount}</span>
+                        )}
                     </button>
                 ))}
             </nav>
@@ -531,6 +686,13 @@ export const AdminDashboard: React.FC<any> = () => {
                             <p className="text-2xl font-black">₩ {stats.revenue.toLocaleString()}</p>
                         </div>
                         <div className="bg-white p-6 rounded-xl border shadow-sm">
+                            <h3 className="text-gray-500 text-xs font-bold mb-2">이번 달 매출</h3>
+                            <p className="text-2xl font-black">₩ {analytics.thisMonthRevenue.toLocaleString()}</p>
+                            <p className={`text-xs font-bold mt-1 ${analytics.revenueGrowth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {analytics.revenueGrowth >= 0 ? '▲' : '▼'} {Math.abs(analytics.revenueGrowth).toFixed(1)}% vs 전월
+                            </p>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl border shadow-sm">
                             <h3 className="text-gray-500 text-xs font-bold mb-2">예약 건수</h3>
                             <p className="text-2xl font-black">{stats.orders}건</p>
                         </div>
@@ -538,6 +700,88 @@ export const AdminDashboard: React.FC<any> = () => {
                             <h3 className="text-gray-500 text-xs font-bold mb-2">회원 수</h3>
                             <p className="text-2xl font-black">{stats.users}명</p>
                         </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 text-white">
+                        <h3 className="font-bold text-sm mb-3 opacity-80">오늘의 예약 현황</h3>
+                        <div className="grid grid-cols-3 gap-6">
+                            <div>
+                                <p className="text-3xl font-black">{analytics.todayReservations.length}건</p>
+                                <p className="text-xs opacity-70">오늘 총 예약</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-black">{analytics.todayConfirmed}건</p>
+                                <p className="text-xs opacity-70">확정됨</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-black text-yellow-300">{analytics.todayPending}건</p>
+                                <p className="text-xs opacity-70">대기 중 (확인 필요)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-xl border shadow-sm">
+                            <h3 className="text-sm font-bold mb-4">월별 매출 추이 (최근 6개월)</h3>
+                            <div className="flex items-end gap-3 h-40">
+                                {analytics.monthlyRevenue.map((m: any, i: number) => (
+                                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                        <span className="text-[10px] font-bold text-gray-500">₩{(m.revenue / 10000).toFixed(0)}만</span>
+                                        <div className="w-full rounded-t-lg relative" style={{height: `${Math.max(8, (m.revenue / analytics.maxMonthlyRevenue) * 100)}%`}}>
+                                            <div className="absolute inset-0 bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg"></div>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-gray-400">{m.month}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-xl border shadow-sm">
+                            <h3 className="text-sm font-bold mb-4">인기 상품 TOP 5</h3>
+                            <div className="space-y-3">
+                                {analytics.topProducts.length === 0 && <p className="text-gray-400 text-sm text-center py-8">예약 데이터가 없습니다.</p>}
+                                {analytics.topProducts.map((p: any, i: number) => (
+                                    <div key={i} className="flex items-center gap-3">
+                                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white ${i === 0 ? 'bg-yellow-400' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-orange-400' : 'bg-gray-300'}`}>{i+1}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold truncate">{p.name}</p>
+                                            <div className="h-1.5 bg-gray-100 rounded-full mt-1">
+                                                <div className="h-full bg-blue-400 rounded-full" style={{width: `${(p.revenue / (analytics.topProducts[0]?.revenue || 1)) * 100}%`}}></div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs font-bold">₩{p.revenue.toLocaleString()}</p>
+                                            <p className="text-[10px] text-gray-400">{p.count}건</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl border shadow-sm">
+                        <h3 className="text-sm font-bold mb-4">카테고리별 매출 비중</h3>
+                        {Object.keys(analytics.categoryRevenue).length === 0 ? (
+                            <p className="text-gray-400 text-sm text-center py-8">데이터가 없습니다.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {Object.entries(analytics.categoryRevenue).sort((a: any,b: any) => b[1] - a[1]).map(([cat, rev]: any, i: number) => {
+                                    const total = Object.values(analytics.categoryRevenue as Record<string,number>).reduce((s: number, v: number) => s + v, 0);
+                                    const pct = total > 0 ? (rev / total * 100) : 0;
+                                    const colors = ['bg-blue-500','bg-purple-500','bg-orange-500','bg-emerald-500','bg-pink-500','bg-yellow-500'];
+                                    return (
+                                        <div key={cat} className="flex items-center gap-3">
+                                            <div className={`w-3 h-3 rounded-full ${colors[i % colors.length]}`}></div>
+                                            <span className="text-sm font-bold w-24 truncate">{cat}</span>
+                                            <div className="flex-1 h-2 bg-gray-100 rounded-full">
+                                                <div className={`h-full rounded-full ${colors[i % colors.length]}`} style={{width: `${pct}%`}}></div>
+                                            </div>
+                                            <span className="text-xs font-bold text-gray-500 w-12 text-right">{pct.toFixed(0)}%</span>
+                                            <span className="text-xs font-bold w-28 text-right">₩{Number(rev).toLocaleString()}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -563,12 +807,39 @@ export const AdminDashboard: React.FC<any> = () => {
                         </div>
                     </div>
 
+                    {reservationView === 'list' && (
+                        <div className="flex gap-3 items-center flex-wrap bg-white border rounded-lg p-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500">기간:</span>
+                                <div className="flex gap-1 bg-gray-100 p-0.5 rounded">
+                                    {[{v:'all',l:'전체'},{v:'today',l:'오늘'},{v:'week',l:'이번 주'},{v:'month',l:'이번 달'}].map(f => (
+                                        <button key={f.v} onClick={() => setReservationDateFilter(f.v)} className={`px-2 py-1 rounded text-xs font-bold ${reservationDateFilter === f.v ? 'bg-white shadow text-black' : 'text-gray-500'}`}>{f.l}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500">상태:</span>
+                                <div className="flex gap-1 bg-gray-100 p-0.5 rounded">
+                                    {[{v:'all',l:'전체'},{v:'pending',l:'대기'},{v:'confirmed',l:'확정'},{v:'completed',l:'완료'},{v:'cancelled',l:'취소'}].map(f => (
+                                        <button key={f.v} onClick={() => setReservationStatusFilter(f.v)} className={`px-2 py-1 rounded text-xs font-bold ${reservationStatusFilter === f.v ? 'bg-white shadow text-black' : 'text-gray-500'}`}>{f.l}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex-1 relative">
+                                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"/>
+                                <input className="w-full pl-7 pr-3 py-1.5 border rounded text-xs" placeholder="이름, 상품명, 이메일 검색..." value={reservationSearch} onChange={e => setReservationSearch(e.target.value)}/>
+                            </div>
+                            <button onClick={exportReservationsCSV} className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded text-xs font-bold hover:bg-green-100">CSV 내보내기</button>
+                            <span className="text-xs text-gray-400">{filteredReservations.length}건</span>
+                        </div>
+                    )}
+
                     {reservationView === 'list' ? (
                         <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-50 border-b"><tr><th className="p-4">날짜</th><th className="p-4">상품명</th><th className="p-4">예약자</th><th className="p-4">인원</th><th className="p-4">금액</th><th className="p-4">상태</th><th className="p-4">관리</th></tr></thead>
                                 <tbody className="divide-y">
-                                    {reservations.map(res => (
+                                    {filteredReservations.map(res => (
                                         <tr key={res.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="p-4 font-mono">{res.date}</td>
                                             <td className="p-4 font-bold">{res.productName}</td>
@@ -713,8 +984,16 @@ export const AdminDashboard: React.FC<any> = () => {
                                             <h4 className="font-bold truncate mb-1">{p.title}</h4>
                                             <p className="text-gray-500 text-xs mb-3 truncate">{p.description}</p>
                                             <div className="flex justify-between items-center">
-                                                <span className="font-bold">₩ {p.price.toLocaleString()}</span>
+                                                <div>
+                                                    <span className="font-bold">₩ {p.price.toLocaleString()}</span>
+                                                    {analytics.productStats[p.id] && (
+                                                        <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">
+                                                            예약 {analytics.productStats[p.id].count}건
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="flex gap-2">
+                                                    <button onClick={()=>duplicateProduct(p)} className="text-gray-400 hover:text-green-500" title="복제"><Copy size={16}/></button>
                                                     <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
                                                     <button onClick={()=>deleteItem(p._coll, p.id)} className="text-red-500"><Trash2 size={16}/></button>
                                                 </div>
@@ -939,7 +1218,14 @@ export const AdminDashboard: React.FC<any> = () => {
                                         <td className="p-4">{c.name}</td>
                                         <td className="p-4 font-mono font-bold text-blue-600">{c.code}</td>
                                         <td className="p-4">{c.type==='percent' ? `${c.value}%` : `₩${c.value}`}</td>
-                                        <td className="p-4">{c.currentUsage||0} / {c.maxUsage}</td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-20 h-1.5 bg-gray-200 rounded-full">
+                                                    <div className="h-full bg-blue-500 rounded-full" style={{width: `${Math.min(100, ((c.currentUsage||0) / (c.maxUsage||1)) * 100)}%`}}></div>
+                                                </div>
+                                                <span className="text-xs">{c.currentUsage||0}/{c.maxUsage}</span>
+                                            </div>
+                                        </td>
                                         <td className="p-4"><button onClick={()=>deleteItem('coupons', c.id)} className="text-red-500"><Trash2 size={16}/></button></td>
                                     </tr>
                                 ))}
@@ -954,20 +1240,32 @@ export const AdminDashboard: React.FC<any> = () => {
                 <div className="space-y-4">
                     <div className="flex justify-between">
                         <h2 className="text-2xl font-black">매거진 관리</h2>
-                        <button onClick={()=>{setEditingItem({title:'', subtitle:'', content:''}); setGalleryImages([]); setModalType('magazine');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 포스트 작성</button>
+                        <button onClick={()=>{setEditingItem({title:'', subtitle:'', content:'', status:'draft'}); setGalleryImages([]); setModalType('magazine');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 포스트 작성</button>
                     </div>
                     <div className="bg-white rounded-xl border shadow-sm">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">제목</th><th className="p-4">작성일</th><th className="p-4">관리</th></tr></thead>
+                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">제목</th><th className="p-4">상태</th><th className="p-4">조회수</th><th className="p-4">작성일</th><th className="p-4">관리</th></tr></thead>
                             <tbody className="divide-y">
                                 {magazinePosts.length === 0 && (
-                                    <tr><td colSpan={3} className="p-8 text-center text-gray-400">등록된 매거진 포스트가 없습니다.</td></tr>
+                                    <tr><td colSpan={5} className="p-8 text-center text-gray-400">등록된 매거진 포스트가 없습니다.</td></tr>
                                 )}
                                 {magazinePosts.map(post => (
-                                    <tr key={post.id}>
+                                    <tr key={post.id} className="hover:bg-gray-50">
                                         <td className="p-4 font-bold">{post.title}</td>
+                                        <td className="p-4">
+                                            <button onClick={async () => {
+                                                if (!db) return;
+                                                const newStatus = post.status === 'published' ? 'draft' : 'published';
+                                                await updateDoc(doc(db!, 'cms_magazine', post.id), { status: newStatus });
+                                                showToast(newStatus === 'published' ? '발행되었습니다.' : '임시저장으로 변경되었습니다.');
+                                            }} className={`px-2 py-1 rounded text-xs font-bold ${post.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                {post.status === 'published' ? '발행됨' : '임시저장'}
+                                            </button>
+                                        </td>
+                                        <td className="p-4 text-gray-500">{post.viewCount || 0}회</td>
                                         <td className="p-4 text-gray-500">{post.createdAt ? new Date(post.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</td>
                                         <td className="p-4 flex gap-2">
+                                            <button onClick={()=> setMagazinePreviewId(magazinePreviewId === post.id ? null : post.id)} className="text-gray-400 hover:text-purple-500" title="미리보기"><Globe size={16}/></button>
                                             <button onClick={()=>{setEditingItem(post); setGalleryImages(post.images||[]); setModalType('magazine');}} className="text-blue-500"><Edit2 size={16}/></button>
                                             <button onClick={()=>deleteItem('cms_magazine', post.id)} className="text-red-500"><Trash2 size={16}/></button>
                                         </td>
@@ -976,14 +1274,32 @@ export const AdminDashboard: React.FC<any> = () => {
                             </tbody>
                         </table>
                     </div>
+                    {magazinePreviewId && (() => {
+                        const previewPost = magazinePosts.find((p: any) => p.id === magazinePreviewId);
+                        if (!previewPost) return null;
+                        return (
+                            <div className="bg-white rounded-xl border shadow-sm p-6">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold">미리보기</h3>
+                                    <button onClick={() => setMagazinePreviewId(null)} className="text-gray-400 hover:text-black"><X size={20}/></button>
+                                </div>
+                                <div className="max-w-2xl mx-auto">
+                                    <h1 className="text-2xl font-black mb-2">{previewPost.title}</h1>
+                                    {previewPost.subtitle && <p className="text-gray-500 mb-4">{previewPost.subtitle}</p>}
+                                    {previewPost.images?.[0] && <img src={previewPost.images[0]} className="w-full rounded-xl mb-4 max-h-80 object-cover"/>}
+                                    <div className="tiptap-editor-content prose max-w-none" dangerouslySetInnerHTML={{__html: previewPost.content || ''}}/>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 
             {/* Inquiries */}
             {activeTab === 'inquiries' && (
                 <div className="space-y-4">
-                    <div className="flex justify-between">
-                        <h2 className="text-2xl font-black">1:1 문의 관리</h2>
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-black">1:1 문의 관리 <span className="text-sm font-normal text-gray-400 ml-2">{unansweredCount > 0 ? `미답변 ${unansweredCount}건` : '모두 답변 완료'}</span></h2>
                     </div>
                     <div className="bg-white rounded-xl border shadow-sm">
                         <table className="w-full text-sm text-left">
@@ -1014,29 +1330,87 @@ export const AdminDashboard: React.FC<any> = () => {
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-2xl font-black">회원 관리 <span className="text-sm font-normal text-gray-400 ml-2">총 {users.length}명</span></h2>
+                        <div className="relative">
+                            <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"/>
+                            <input className="pl-7 pr-3 py-1.5 border rounded text-xs w-60" placeholder="이름, 이메일, 전화번호 검색..." value={userSearch} onChange={e => setUserSearch(e.target.value)}/>
+                        </div>
                     </div>
                     <div className="bg-white rounded-xl border shadow-sm">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">이메일</th><th className="p-4">이름</th><th className="p-4">가입일</th><th className="p-4">역할</th></tr></thead>
+                            <thead className="bg-gray-50 border-b"><tr><th className="p-4">이메일</th><th className="p-4">이름</th><th className="p-4">전화번호</th><th className="p-4">가입일</th><th className="p-4">역할</th><th className="p-4">상세</th></tr></thead>
                             <tbody className="divide-y">
-                                {users.length === 0 && (
-                                    <tr><td colSpan={4} className="p-8 text-center text-gray-400">등록된 회원이 없습니다.</td></tr>
+                                {filteredUsers.length === 0 && (
+                                    <tr><td colSpan={6} className="p-8 text-center text-gray-400">등록된 회원이 없습니다.</td></tr>
                                 )}
-                                {users.map(user => (
-                                    <tr key={user.id}>
+                                {filteredUsers.map((user: any) => (
+                                    <tr key={user.id} className="hover:bg-gray-50">
                                         <td className="p-4">{user.email}</td>
                                         <td className="p-4">{user.name || user.displayName || '-'}</td>
+                                        <td className="p-4 text-gray-500">{user.phone || '-'}</td>
                                         <td className="p-4 text-gray-500">{user.createdAt ? new Date(user.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-600'}`}>
                                                 {user.role === 'admin' ? 'Admin' : 'User'}
                                             </span>
                                         </td>
+                                        <td className="p-4">
+                                            <button onClick={() => setUserDetailModal(user)} className="text-blue-500 text-xs font-bold">상세</button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
+                    {userDetailModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
+                                <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                                    <h3 className="font-bold text-lg">회원 상세 정보</h3>
+                                    <button onClick={() => setUserDetailModal(null)}><X/></button>
+                                </div>
+                                <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                                    <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl">
+                                        <div><span className="text-xs text-gray-400 font-bold">이름</span><p className="font-bold">{userDetailModal.name || userDetailModal.displayName || '-'}</p></div>
+                                        <div><span className="text-xs text-gray-400 font-bold">이메일</span><p className="font-bold">{userDetailModal.email}</p></div>
+                                        <div><span className="text-xs text-gray-400 font-bold">전화번호</span><p className="font-bold">{userDetailModal.phone || '-'}</p></div>
+                                        <div><span className="text-xs text-gray-400 font-bold">국적</span><p className="font-bold">{userDetailModal.nationality || '-'}</p></div>
+                                        <div><span className="text-xs text-gray-400 font-bold">가입일</span><p className="font-bold">{userDetailModal.createdAt ? new Date(userDetailModal.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</p></div>
+                                        <div><span className="text-xs text-gray-400 font-bold">역할</span><p className="font-bold">{userDetailModal.role || 'User'}</p></div>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-sm mb-2">예약 이력</h4>
+                                        {reservations.filter((r: any) => r.userId === userDetailModal.id || r.userId === userDetailModal.uid || r.options?.guestEmail === userDetailModal.email).length === 0 ? (
+                                            <p className="text-gray-400 text-sm bg-gray-50 p-4 rounded-lg text-center">예약 이력이 없습니다.</p>
+                                        ) : (
+                                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                {reservations.filter((r: any) => r.userId === userDetailModal.id || r.userId === userDetailModal.uid || r.options?.guestEmail === userDetailModal.email).map((r: any) => (
+                                                    <div key={r.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-sm">
+                                                        <div><span className="font-bold">{r.productName}</span> <span className="text-gray-400 ml-2">{r.date}</span></div>
+                                                        <div className="flex items-center gap-2"><span className="font-bold">₩{Number(r.totalPrice).toLocaleString()}</span><StatusBadge status={r.status}/></div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-sm mb-2">문의 이력</h4>
+                                        {inquiries.filter((inq: any) => inq.userId === userDetailModal.id || inq.userId === userDetailModal.uid).length === 0 ? (
+                                            <p className="text-gray-400 text-sm bg-gray-50 p-4 rounded-lg text-center">문의 이력이 없습니다.</p>
+                                        ) : (
+                                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                {inquiries.filter((inq: any) => inq.userId === userDetailModal.id || inq.userId === userDetailModal.uid).map((inq: any) => (
+                                                    <div key={inq.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg text-sm">
+                                                        <span className="font-bold">{inq.title}</span>
+                                                        <StatusBadge status={inq.status}/>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1223,6 +1597,16 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <div><label className="block text-xs font-bold mb-1">모집 마감일</label><input type="date" className="w-full border p-2 rounded" value={editingItem.deadline} onChange={e=>setEditingItem({...editingItem, deadline:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">리더 이름 (표시용)</label><input className="w-full border p-2 rounded" value={editingItem.leaderName} onChange={e=>setEditingItem({...editingItem, leaderName:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">시작 인원</label><input type="number" className="w-full border p-2 rounded" value={editingItem.currentCount} onChange={e=>setEditingItem({...editingItem, currentCount:Number(e.target.value)})}/></div>
+                                    <div><label className="block text-xs font-bold mb-1">최대 인원 (목표)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.maxCount || 10} onChange={e=>setEditingItem({...editingItem, maxCount:Number(e.target.value)})}/></div>
+                                </div>
+                                <div className="flex items-center gap-3 pt-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={editingItem.isSecret || false} onChange={e => setEditingItem({...editingItem, isSecret: e.target.checked})} className="w-4 h-4"/>
+                                        <span className="text-xs font-bold">비밀 공동구매 (Secret)</span>
+                                    </label>
+                                    {editingItem.isSecret && (
+                                        <input className="border p-1.5 rounded text-xs w-32" placeholder="시크릿 코드" value={editingItem.secretCode || ''} onChange={e=>setEditingItem({...editingItem, secretCode: e.target.value})}/>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -1324,6 +1708,13 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <div><label className="block text-xs font-bold mb-1">제목</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e=>setEditingItem({...editingItem, title:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">부제</label><input className="w-full border p-2 rounded" value={editingItem.subtitle || ''} onChange={e=>setEditingItem({...editingItem, subtitle:e.target.value})}/></div>
                                 </div>
+                                <div className="flex gap-4 items-center">
+                                    <label className="text-xs font-bold">발행 상태:</label>
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => setEditingItem({...editingItem, status: 'draft'})} className={`px-3 py-1 rounded text-xs font-bold ${editingItem.status !== 'published' ? 'bg-yellow-100 text-yellow-700 border border-yellow-300' : 'bg-gray-100 text-gray-500'}`}>임시저장</button>
+                                        <button type="button" onClick={() => setEditingItem({...editingItem, status: 'published'})} className={`px-3 py-1 rounded text-xs font-bold ${editingItem.status === 'published' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-gray-100 text-gray-500'}`}>발행</button>
+                                    </div>
+                                </div>
                                 <div>
                                     <label className="block text-xs font-bold mb-2">본문 내용</label>
                                     <RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} />
@@ -1379,6 +1770,11 @@ export const AdminDashboard: React.FC<any> = () => {
                                 )}
                                 <div>
                                     <label className="block text-xs font-bold mb-2">답변 작성</label>
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {REPLY_TEMPLATES.map((tpl, i) => (
+                                            <button key={i} onClick={() => setEditingItem({...editingItem, answer: (editingItem.answer || '') + tpl.text})} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-bold hover:bg-blue-50 hover:text-blue-600">{tpl.label}</button>
+                                        ))}
+                                    </div>
                                     <textarea className="w-full border p-3 rounded-lg min-h-[120px]" value={editingItem.answer || ''} onChange={e=>setEditingItem({...editingItem, answer:e.target.value})} placeholder="답변을 입력하세요..."/>
                                 </div>
                                 <div className="flex justify-end">
