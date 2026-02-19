@@ -9,6 +9,7 @@ import { PromoSection } from './components/PromoSection';
 import { PackageSection } from './components/PackageSection';
 import { ProductList } from './components/ProductList';
 import { BottomHero } from './components/BottomHero';
+import { MagazinePreview } from './components/MagazinePreview';
 import { Footer } from './components/Footer';
 import { ReservationBasic } from './pages/ReservationBasic';
 import { ReservationPremium } from './pages/ReservationPremium';
@@ -243,6 +244,7 @@ const AppContent: React.FC = () => {
             <PromoSection language={language} onGroupBuyClick={() => navigateTo('group_buying')} />
             <PackageSection language={language} onBookClick={handlePackageBookClick} />
             <ProductList language={language} initialCategory={selectedCategory} />
+            <MagazinePreview />
             <BottomHero language={language} />
           </>
         )}
