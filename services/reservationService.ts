@@ -30,6 +30,7 @@ interface ReservationData {
  * + 제휴 파트너 매출 집계 (Affiliate Revenue Tracking)
  */
 export const createReservation = async (data: ReservationData) => {
+  if (!db) return { success: false, message: "Firebase not configured" };
   const inventoryRef = doc(db, "inventory", data.date); 
   
   try {
@@ -53,7 +54,7 @@ export const createReservation = async (data: ReservationData) => {
 
       // 2. Coupon Validation & Consumption (Atomic)
       if (data.options?.couponId) {
-          const couponRef = doc(db, "coupons", data.options.couponId);
+          const couponRef = doc(db!, "coupons", data.options.couponId);
           const couponDoc = await transaction.get(couponRef);
           
           if (!couponDoc.exists()) throw new Error("Invalid Coupon");
@@ -117,6 +118,7 @@ export const createReservation = async (data: ReservationData) => {
  * [공동구매] 공동구매 참여자 수 업데이트
  */
 export const joinGroupBuy = async (campaignId: string, userId: string) => {
+  if (!db) return false;
   const campaignRef = doc(db, "group_buys", campaignId);
 
   try {
@@ -131,7 +133,7 @@ export const joinGroupBuy = async (campaignId: string, userId: string) => {
 
       transaction.update(campaignRef, { participants: newCount });
       
-      const participantRef = doc(collection(db, `group_buys/${campaignId}/entries`));
+      const participantRef = doc(collection(db!, `group_buys/${campaignId}/entries`));
       transaction.set(participantRef, {
         userId,
         joinedAt: serverTimestamp()
@@ -148,6 +150,7 @@ export const joinGroupBuy = async (campaignId: string, userId: string) => {
  * 특정 날짜의 예약 가능 여부 확인
  */
 export const checkAvailability = async (date: string) => {
+  if (!db) return { available: 50, total: 50 };
   const inventoryRef = doc(db, "inventory", date);
   const snap = await getDoc(inventoryRef);
   
@@ -166,6 +169,7 @@ export const checkAvailability = async (date: string) => {
  * Returns Coupon ID for usage tracking
  */
 export const validateCoupon = async (code: string) => {
+    if (!db) return { valid: false, message: "Firebase not configured" };
     try {
         const q = query(collection(db, "coupons"), where("code", "==", code), where("isActive", "==", true));
         const snapshot = await getDocs(q);

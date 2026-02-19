@@ -19,7 +19,7 @@ import { WishlistPage } from './pages/WishlistPage';
 import { MagazinePage } from './pages/MagazinePage';
 import { SurveyPage } from './pages/SurveyPage';
 import { collection, query, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
-import { db } from './services/firebaseConfig';
+import { db, isFirebaseConfigured } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
 import { subscribeToAuthChanges } from './services/authService';
 import { User } from 'firebase/auth';
@@ -115,6 +115,7 @@ const AppContent: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!isFirebaseConfigured) return;
     const unsubscribe = subscribeToAuthChanges((currentUser) => {
       setUser(currentUser);
     });
@@ -185,6 +186,12 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col relative bg-white font-sans tracking-tight text-[#111]">
       
+      {!isFirebaseConfigured && (
+        <div className="bg-amber-500 text-white py-3 px-4 text-center text-sm font-bold z-[9999] relative">
+          Firebase 연동이 설정되지 않았습니다. 환경 변수(VITE_FIREBASE_API_KEY 등)를 설정해 주세요.
+        </div>
+      )}
+
       {/* Toast UI */}
       <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-2 w-[90%] max-w-sm pointer-events-none">
         {toasts.map(toast => (

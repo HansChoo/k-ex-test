@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { uploadImage } from '../services/imageService';
 import { CheckCircle, Upload, ChevronRight, AlertCircle, Camera, Music, HeartPulse, Sparkles } from 'lucide-react';
 
@@ -30,6 +30,7 @@ export const SurveyPage: React.FC<SurveyPageProps> = ({ language }) => {
     }, []);
 
     const fetchReservation = async (id: string) => {
+        if (!db) { setLoading(false); return; }
         try {
             const docRef = doc(db, "reservations", id);
             const snap = await getDoc(docRef);
@@ -70,6 +71,7 @@ export const SurveyPage: React.FC<SurveyPageProps> = ({ language }) => {
         if (!reservationId) return;
 
         try {
+            if (!db) return;
             await updateDoc(doc(db, "reservations", reservationId), {
                 surveyAnswers: formData,
                 surveySubmittedAt: serverTimestamp()

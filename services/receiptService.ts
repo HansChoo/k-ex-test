@@ -3,7 +3,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 export const printReceipt = async (reservation: any, user: any) => {
-    // Fetch Receipt Settings
+    if (!db) { console.warn("Firebase not configured"); return; }
     const settingsRef = doc(db, "settings", "receipt_config");
     const settingsSnap = await getDoc(settingsRef);
     const config = settingsSnap.exists() ? settingsSnap.data() : {

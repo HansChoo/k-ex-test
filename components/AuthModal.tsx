@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { X, Mail, Lock, User, ChevronDown, CheckSquare, Square, ChevronLeft } from 'lucide-react';
 import { loginWithGoogle, loginWithEmail, registerWithEmail, handleAuthError } from '../services/authService';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../services/firebaseConfig';
+import { auth, isFirebaseConfigured } from '../services/firebaseConfig';
 import { COUNTRY_CODES } from '../constants';
 
 interface AuthModalProps {
@@ -64,6 +64,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language 
         dispatchToast(isEn ? "Account created! Verification email sent." : "가입 완료! 인증 메일이 발송되었습니다.", 'success');
         onClose();
       } else if (mode === 'forgot') {
+        if (!auth) throw new Error("Firebase not configured");
         await sendPasswordResetEmail(auth, email);
         dispatchToast(isEn ? "Password reset email sent!" : "비밀번호 재설정 메일이 발송되었습니다.", 'success');
         setMode('login');

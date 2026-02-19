@@ -143,10 +143,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     const totalAmount = getPrice();
     const merchant_uid = `mid_${new Date().getTime()}`;
 
-    let buyerEmail = auth.currentUser?.email || '';
-    let buyerName = auth.currentUser?.displayName || '';
+    let buyerEmail = auth?.currentUser?.email || '';
+    let buyerName = auth?.currentUser?.displayName || '';
 
-    if (!auth.currentUser) {
+    if (!auth?.currentUser) {
         const guestEmail = prompt(isEn ? "Please enter your email for voucher:" : "바우처를 받을 이메일을 입력해주세요:");
         if (!guestEmail) return;
         buyerEmail = guestEmail;
@@ -160,7 +160,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
 
         if (paymentResult.success) {
             await createReservation({
-                userId: auth.currentUser?.uid || 'guest',
+                userId: auth?.currentUser?.uid || 'guest',
                 productName: title, date: selectedDate, peopleCount: guestList.length, totalPrice: totalAmount,
                 options: { 
                     type: 'general_product', paymentType: selectedPayment, category: product.category,

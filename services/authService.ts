@@ -18,13 +18,8 @@ const googleProvider = new GoogleAuthProvider();
 
 // --- Helper: Check if Phone Number exists ---
 const checkPhoneNumberExists = async (phoneNumber: string) => {
-  // Normalize phone number (remove spaces, dashes)
+  if (!db) return false;
   const cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
-  
-  // Since we store phone numbers with country code/formatting in this app, 
-  // we should check loosely or ensure format consistency. 
-  // Ideally, store a 'cleanPhone' field in DB for searching.
-  // For now, we will query strictly. In production, ensure consistent saving format.
   
   const usersRef = collection(db, "users");
   const q = query(usersRef, where("phone", "==", phoneNumber)); // Exact match check
@@ -35,9 +30,9 @@ const checkPhoneNumberExists = async (phoneNumber: string) => {
 
 // --- Google Login ---
 export const loginWithGoogle = async () => {
+  if (!auth || !db) throw new Error("Firebase not configured");
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    // Check if user profile exists in Firestore, if not create one
     const userRef = doc(db, "users", result.user.uid);
     const userSnap = await getDoc(userRef);
     
@@ -68,24 +63,20 @@ interface SignUpData {
 }
 
 export const registerWithEmail = async (data: SignUpData) => {
+  if (!auth || !db) throw new Error("Firebase not configured");
   try {
-    // 0. Pre-check: Phone Number Duplication
-    // This is crucial for preventing abuse.
     const isPhoneTaken = await checkPhoneNumberExists(data.phone);
     if (isPhoneTaken) {
         throw new Error("PHONE_EXISTS");
     }
 
-    // 1. Create Auth User
     const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
     const user = userCredential.user;
 
-    // 2. Update Display Name
     await updateProfile(user, {
       displayName: data.name
     });
 
-    // 3. Create User Document in Firestore (Store extra fields)
     await setDoc(doc(db, "users", user.uid), {
       uid: user.uid,
       name: data.name,
@@ -95,7 +86,6 @@ export const registerWithEmail = async (data: SignUpData) => {
       createdAt: new Date()
     });
 
-    // 4. Send Verification Email
     await sendEmailVerification(user);
 
     return user;
@@ -109,6 +99,7 @@ export const registerWithEmail = async (data: SignUpData) => {
 
 // --- Email/Password Login ---
 export const loginWithEmail = async (email: string, pass: string) => {
+  if (!auth) throw new Error("Firebase not configured");
   try {
     const result = await signInWithEmailAndPassword(auth, email, pass);
     return result.user;
@@ -119,6 +110,7 @@ export const loginWithEmail = async (email: string, pass: string) => {
 };
 
 export const logoutUser = async () => {
+  if (!auth) return;
   try {
     await signOut(auth);
   } catch (error) {
@@ -128,6 +120,10 @@ export const logoutUser = async () => {
 
 // Hook to track user state
 export const subscribeToAuthChanges = (callback: (user: User | null) => void) => {
+  if (!auth) {
+    callback(null);
+    return () => {};
+  }
   return onAuthStateChanged(auth, (user) => {
     callback(user);
   });

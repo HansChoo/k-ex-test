@@ -10,7 +10,7 @@ declare global {
 
 export const sendEmail = async (templateName: 'confirmation' | 'cancellation', data: any, reservationId?: string) => {
     try {
-        // 1. Fetch Email Config
+        if (!db) { console.warn("Firebase not configured, skipping email"); return false; }
         const settingsRef = doc(db, "settings", "email_config");
         const settingsSnap = await getDoc(settingsRef);
         

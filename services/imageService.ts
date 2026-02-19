@@ -68,6 +68,7 @@ export const uploadImage = async (file: File, pathPrefix: string = 'uploads'): P
 
     // 2. Try Storage Upload
     try {
+        if (!storage) throw new Error("Storage not configured");
         const uniqueName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
         const storageRef = ref(storage, `${pathPrefix}/${uniqueName}`);
         

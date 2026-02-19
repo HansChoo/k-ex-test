@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Check, Heart, MapPin, Copy, Camera, UserPlus, Loader2, Info, MessageCircle, Trash2, Plus } from 'lucide-react';
-import { auth, db } from '../services/firebaseConfig';
+import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { createReservation, checkAvailability } from '../services/reservationService';
 import { initializePayment, requestPayment } from '../services/paymentService';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -30,6 +30,7 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   useEffect(() => { 
       initializePayment('imp19424728'); 
       setReviews(generateMockReviews(50));
+      if (!db) { setLoading(false); return; }
       const unsub = onSnapshot(doc(db, "cms_packages", "package_premium"), (doc) => {
           if (doc.exists()) setCmsData(doc.data());
           setLoading(false);
@@ -87,9 +88,9 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
     const productName = `Premium Package (${selectedDate}) x${guestList.length}`;
     const merchant_uid = `mid_${new Date().getTime()}`;
     
-    let buyerEmail = auth.currentUser?.email || '';
-    let buyerName = auth.currentUser?.displayName || '';
-    if (!auth.currentUser) {
+    let buyerEmail = auth?.currentUser?.email || '';
+    let buyerName = auth?.currentUser?.displayName || '';
+    if (!auth?.currentUser) {
         const guestEmail = prompt(isEn ? "Email:" : "이메일:");
         if(!guestEmail) return;
         buyerEmail = guestEmail;
@@ -103,7 +104,7 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
 
     if (paymentResult.success) {
         await createReservation({
-            userId: auth.currentUser?.uid || 'guest', productName, date: selectedDate, peopleCount: guestList.length, totalPrice: priceNum,
+            userId: auth?.currentUser?.uid || 'guest', productName, date: selectedDate, peopleCount: guestList.length, totalPrice: priceNum,
             options: { payment: selectedPayment, guests: guestList, guestEmail: buyerEmail }
         });
         alert(isEn ? "Confirmed! Survey sent." : "예약 확정! 설문지가 발송되었습니다.");

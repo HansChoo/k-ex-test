@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { useGlobal } from '../contexts/GlobalContext';
 import { BookOpen, Calendar, User, X } from 'lucide-react';
 
@@ -12,6 +12,7 @@ export const MagazinePage: React.FC = () => {
     const [selectedPost, setSelectedPost] = useState<any>(null);
 
     useEffect(() => {
+        if (!db) { setLoading(false); return; }
         const q = query(collection(db, "cms_magazine"), orderBy("createdAt", "desc"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));

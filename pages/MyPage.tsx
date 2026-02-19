@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { auth, db } from '../services/firebaseConfig';
+import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send } from 'lucide-react';
@@ -31,24 +31,25 @@ export const MyPage: React.FC<any> = () => {
     let unsubscribeReservations: (() => void) | undefined;
     let unsubscribeInquiries: (() => void) | undefined;
 
+    if (!auth || !db) { setLoading(false); return; }
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
         // 1. Reservations Sync
-        const qRes = query(collection(db, "reservations"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
+        const qRes = query(collection(db!, "reservations"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
         unsubscribeReservations = onSnapshot(qRes, (snapshot) => {
              setReservations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
 
         // 2. Inquiries Sync
-        const qInq = query(collection(db, "inquiries"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
+        const qInq = query(collection(db!, "inquiries"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
         unsubscribeInquiries = onSnapshot(qInq, (snapshot) => {
             setInquiries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
 
         // 3. User Data
         try {
-            const userSnap = await getDocs(query(collection(db, "users"), where("uid", "==", currentUser.uid)));
+            const userSnap = await getDocs(query(collection(db!, "users"), where("uid", "==", currentUser.uid)));
             if (!userSnap.empty) {
                 const data = userSnap.docs[0].data();
                 setUserData(data);
@@ -71,6 +72,7 @@ export const MyPage: React.FC<any> = () => {
   const handleUpdateProfile = async () => {
       if (!user) return;
       try {
+          if (!db) return;
           await updateDoc(doc(db, "users", user.uid), {
               phone: editForm.phone,
               nationality: editForm.nationality
@@ -85,6 +87,7 @@ export const MyPage: React.FC<any> = () => {
       e.preventDefault();
       if(!inquiryForm.title || !inquiryForm.content) return;
       try {
+          if (!db) return;
           await addDoc(collection(db, "inquiries"), {
               userId: user.uid,
               userName: userData?.name || user.displayName,

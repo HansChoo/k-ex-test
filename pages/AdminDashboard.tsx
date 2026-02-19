@@ -90,10 +90,14 @@ export const AdminDashboard: React.FC<any> = () => {
 
   // --- Effects ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (!isFirebaseConfigured) {
+      setLoading(false);
+      return;
+    }
+    const unsubscribe = onAuthStateChanged(auth!, async (user) => {
       setCurrentUser(user);
       if (user) {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
+          const userDoc = await getDoc(doc(db!, "users", user.uid));
           if (user.email === "admin@k-experience.com" || (userDoc.exists() && userDoc.data().role === 'admin')) {
               setIsAdmin(true);
           }
@@ -107,7 +111,7 @@ export const AdminDashboard: React.FC<any> = () => {
   useEffect(() => {
     if (!isAdmin) return;
 
-    // Real-time listeners
+    if (!db) return;
     const unsubs = [
         onSnapshot(query(collection(db, "reservations"), orderBy("createdAt", "desc")), (s) => setReservations(s.docs.map(d => ({id:d.id, ...d.data()})))),
         onSnapshot(collection(db, "products"), (s) => setProducts(s.docs.map(d => ({id:d.id, ...d.data()})))),
@@ -199,6 +203,7 @@ export const AdminDashboard: React.FC<any> = () => {
   };
 
   const deleteItem = async (col: string, id: string) => {
+      if (!db) return;
       if(!window.confirm("정말 삭제하시겠습니까?")) return;
       await deleteDoc(doc(db, col, id));
       showToast("삭제되었습니다.");
@@ -225,6 +230,7 @@ export const AdminDashboard: React.FC<any> = () => {
 
   // Persona 2: Reservation Operations
   const updateReservationStatus = async (id: string, status: string) => {
+      if (!db) return;
       if (!window.confirm(`예약 상태를 '${status}'(으)로 변경하시겠습니까?`)) return;
       try {
           await updateDoc(doc(db, "reservations", id), { status });
@@ -236,6 +242,7 @@ export const AdminDashboard: React.FC<any> = () => {
   };
 
   const saveItem = async () => {
+      if (!db) return;
       let col = "";
       if (modalType === 'magazine') col = "cms_magazine";
       else if (modalType === 'product') col = "products";
@@ -270,17 +277,17 @@ export const AdminDashboard: React.FC<any> = () => {
               if (modalType === 'category') {
                   const originalCat = categories.find(c => c.id === editingItem.id);
                   if (originalCat && originalCat.label !== payload.label) {
-                      const batch = writeBatch(db);
+                      const batch = writeBatch(db!);
                       const oldLabel = originalCat.label;
                       const newLabel = payload.label;
                       let updatedCount = 0;
 
-                      const catRef = doc(db, "cms_categories", editingItem.id);
+                      const catRef = doc(db!, "cms_categories", editingItem.id);
                       batch.update(catRef, { ...payload, updatedAt: serverTimestamp() });
 
                       products.forEach(p => {
                           if (p.category === oldLabel) {
-                              const pRef = doc(db, "products", p.id);
+                              const pRef = doc(db!, "products", p.id);
                               batch.update(pRef, { category: newLabel });
                               updatedCount++;
                           }
@@ -289,15 +296,15 @@ export const AdminDashboard: React.FC<any> = () => {
                       await batch.commit();
                       showToast(`카테고리 수정 및 연결된 상품 ${updatedCount}건 업데이트 완료!`);
                   } else {
-                      await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
+                      await updateDoc(doc(db!, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
                       showToast("저장되었습니다.");
                   }
               } else {
-                  await updateDoc(doc(db, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
+                  await updateDoc(doc(db!, col, editingItem.id), { ...payload, updatedAt: serverTimestamp() });
                   showToast("저장되었습니다.");
               }
           } else {
-              await addDoc(collection(db, col), { ...payload, createdAt: serverTimestamp() });
+              await addDoc(collection(db!, col), { ...payload, createdAt: serverTimestamp() });
               showToast("저장되었습니다.");
           }
           
@@ -371,6 +378,7 @@ export const AdminDashboard: React.FC<any> = () => {
   };
 
   const handleDeleteGroupBuy = async (group: any) => {
+      if (!db) return;
       if (!window.confirm("정말 이 공동구매를 삭제하시겠습니까?")) return;
       try {
           await deleteDoc(doc(db, "group_buys", group.id));
@@ -470,6 +478,18 @@ export const AdminDashboard: React.FC<any> = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F5F7FB] font-sans text-[#333]">
+        {!isFirebaseConfigured && (
+            <div className="fixed top-0 left-0 right-0 z-[100] bg-red-600 text-white py-2 px-4 text-center font-bold flex items-center justify-center gap-2">
+                <AlertCircle size={20} />
+                <span>Firebase 연결 설정이 완료되지 않았습니다. [환경 변수 설정 필요]</span>
+            </div>
+        )}
+        {isFirebaseConfigured && (
+            <div className="fixed bottom-4 left-4 z-[100] bg-green-500/90 text-white py-1 px-3 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                실시간 데이터 연동 중
+            </div>
+        )}
         {toast && <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg text-white font-bold flex items-center gap-2 ${toast.type==='success'?'bg-black':toast.type==='error'?'bg-red-500':'bg-blue-500'}`}>{toast.type==='success'?<CheckCircle size={16}/>:toast.type==='error'?<AlertCircle size={16}/>:<RefreshCw size={16} className="animate-spin"/>} {toast.msg}</div>}
 
         {/* SIDEBAR */}

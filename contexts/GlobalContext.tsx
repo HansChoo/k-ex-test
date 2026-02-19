@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { db, isFirebaseConfigured } from '../services/firebaseConfig';
 
 type Currency = 'KRW' | 'USD' | 'JPY' | 'CNY';
 type Language = 'ko' | 'en' | 'ja' | 'zh';
@@ -200,30 +200,36 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (savedCurr) setCurrency(savedCurr);
   }, []);
 
-  // Fetch Products from Firestore Real-time
   useEffect(() => {
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc")); 
+    if (!isFirebaseConfigured) return;
+    const q = query(collection(db!, "products"), orderBy("createdAt", "desc")); 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setRealtimeProducts(products);
+    }, (error) => {
+        console.warn("Products listener error:", error.message);
     });
     return () => unsubscribe();
   }, []);
 
-  // Fetch Packages from Firestore Real-time
   useEffect(() => {
-    const q = query(collection(db, "cms_packages"), orderBy("createdAt", "asc"));
+    if (!isFirebaseConfigured) return;
+    const q = query(collection(db!, "cms_packages"), orderBy("createdAt", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         setPackages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'package' })));
+    }, (error) => {
+        console.warn("Packages listener error:", error.message);
     });
     return () => unsubscribe();
   }, []);
 
-  // Fetch Categories from Firestore Real-time
   useEffect(() => {
-    const q = query(collection(db, "cms_categories"), orderBy("createdAt", "asc"));
+    if (!isFirebaseConfigured) return;
+    const q = query(collection(db!, "cms_categories"), orderBy("createdAt", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+    }, (error) => {
+        console.warn("Categories listener error:", error.message);
     });
     return () => unsubscribe();
   }, []);

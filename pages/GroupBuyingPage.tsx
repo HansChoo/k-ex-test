@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Flame, Info, Crown, CheckCircle2, ChevronRight, Timer, Lock, Search, Plus, X, Calendar, CreditCard, UserPlus, Mail, Globe, Phone, Archive } from 'lucide-react';
-import { auth, db } from '../services/firebaseConfig';
+import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion, addDoc, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
 import { useGlobal } from '../contexts/GlobalContext';
 import { requestPayment } from '../services/paymentService';
@@ -57,7 +57,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
   // Fetch Groups & Packages
   useEffect(() => {
-    // 1. Fetch Groups
+    if (!db) { setLoading(false); return; }
     const q = query(collection(db, "group_buys"), orderBy("createdAt", "desc"));
     const unsubGroup = onSnapshot(q, (snapshot) => {
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GroupBuyItem));
@@ -65,8 +65,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
         setLoading(false);
     });
 
-    // 2. Fetch Packages (for selection)
     const fetchPkgs = async () => {
+        if (!db) return;
         const snap = await getDocs(collection(db, "cms_packages"));
         setPackages(snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'package' })));
     };
@@ -79,12 +79,13 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   useEffect(() => {
       if (groupList.length > 0) {
           const today = new Date().toISOString().split('T')[0];
-          const expiredGroups = groupList.filter(g => g.status !== 'completed' && g.visitDate < today);
+          const expiredGroups = groupList.filter(g => g.status !== 'completed' && g.visitDate && g.visitDate < today);
           
           if (expiredGroups.length > 0) {
+              if (!db) return;
               const batch = writeBatch(db);
               expiredGroups.forEach(g => {
-                  const ref = doc(db, "group_buys", g.id);
+                  const ref = doc(db!, "group_buys", g.id);
                   batch.update(ref, { status: 'completed' });
               });
               batch.commit().catch(err => console.error("Error updating expired groups:", err));
@@ -105,13 +106,13 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   // --- Actions ---
 
   const handleJoin = async (group: GroupBuyItem) => {
-      if (!auth.currentUser) {
+      if (!auth?.currentUser) {
           alert(isEn ? "Please login first." : "로그인이 필요합니다.");
           return;
       }
       
       const participants = group.participants || [];
-      if (participants.includes(auth.currentUser.uid)) {
+      if (participants.includes(auth!.currentUser!.uid)) {
           alert(isEn ? "You already joined." : "이미 참여중인 공동구매입니다.");
           return;
       }
@@ -144,22 +145,23 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
           merchant_uid: `gb_${group.id}_${Date.now()}`,
           name: `GB Join: ${productName}`,
           amount: deposit,
-          buyer_email: auth.currentUser.email || '',
-          buyer_name: auth.currentUser.displayName || ''
+          buyer_email: auth!.currentUser!.email || '',
+          buyer_name: auth!.currentUser!.displayName || ''
       });
 
       if (payment.success) {
+          if (!db) return;
           const groupRef = doc(db, "group_buys", group.id);
           await updateDoc(groupRef, {
               currentCount: increment(1),
-              participants: arrayUnion(auth.currentUser.uid)
+              participants: arrayUnion(auth!.currentUser!.uid)
           });
           alert(isEn ? "Joined successfully!" : "참여가 완료되었습니다!");
       }
   };
 
   const handleOpenCreateModal = (type: 'public' | 'secret') => {
-      if (!auth.currentUser) {
+      if (!auth?.currentUser) {
           alert(isEn ? "Please login to create a group." : "공동구매를 생성하려면 로그인이 필요합니다.");
           return;
       }
@@ -172,8 +174,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
           productId: '',
           visitDate: '',
           participants: [{ 
-              name: auth.currentUser.displayName || '', 
-              email: auth.currentUser.email || '',
+              name: auth!.currentUser!.displayName || '', 
+              email: auth!.currentUser!.email || '',
               nationality: defaultNationality.code,
               dialCode: defaultNationality.dial,
               phone: '',
@@ -230,12 +232,13 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
           merchant_uid: `gb_new_${Date.now()}`,
           name: `New Group: ${selectedItem.title || selectedItem.productName}`,
           amount: totalDeposit,
-          buyer_email: auth.currentUser?.email || '',
-          buyer_name: auth.currentUser?.displayName || ''
+          buyer_email: auth?.currentUser?.email || '',
+          buyer_name: auth?.currentUser?.displayName || ''
       });
 
       if (payment.success) {
           try {
+            if (!db) return;
             await addDoc(collection(db, "group_buys"), {
                 productId: selectedItem.id,
                 productName: selectedItem.title || selectedItem.productName || 'Group Buy',
@@ -244,9 +247,9 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                 currentCount: peopleCount,
                 maxCount: 10,
                 visitDate: newGroupData.visitDate,
-                leaderName: auth.currentUser?.displayName || 'Leader',
-                leaderId: auth.currentUser?.uid,
-                participants: [auth.currentUser?.uid], // Simplified: storing just IDs for now
+                leaderName: auth?.currentUser?.displayName || 'Leader',
+                leaderId: auth?.currentUser?.uid,
+                participants: [auth?.currentUser?.uid], // Simplified: storing just IDs for now
                 participantDetails: newGroupData.participants, // Store detailed info
                 description: selectedItem.description || '',
                 items: selectedItem.items || [],
