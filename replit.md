@@ -12,9 +12,9 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 
 ## Project Structure
 - `/styles/` - CSS files (tiptap-editor.css for rich text editor styling)
-- `/components/` - Reusable React components (Navbar, Hero, Footer, AuthModal, RichTextEditor, etc.)
-- `/pages/` - Page-level components (Admin, Product Detail, Reservations, etc.)
-- `/services/` - Service layer (auth, payments, email, Firebase, Gemini AI)
+- `/components/` - Reusable React components (Navbar, Hero, Footer, AuthModal, RichTextEditor, MagazinePreview, etc.)
+- `/pages/` - Page-level components (Admin, Product Detail, Reservations, MagazinePage, etc.)
+- `/services/` - Service layer (auth, payments, email, Firebase, Gemini AI, seoService)
 - `/contexts/` - React context providers (GlobalContext with real-time Firestore listeners)
 - `App.tsx` - Main application component with auth state management
 - `index.tsx` - Entry point
