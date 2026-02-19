@@ -10,6 +10,7 @@ import { printReceipt } from '../services/receiptService';
 export const MyPage: React.FC<any> = () => {
   const { t, language } = useGlobal();
   const isEn = language !== 'ko';
+  const isKo = language === 'ko';
   const [reservations, setReservations] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,8 +116,8 @@ export const MyPage: React.FC<any> = () => {
       <h1 className="text-3xl font-bold mb-8 text-[#111] border-b pb-4 flex items-center justify-between">
           {t('mypage')}
           <div className="flex gap-4 text-base font-normal">
-              <button onClick={() => setActiveTab('reservations')} className={`pb-1 ${activeTab === 'reservations' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>Reservations</button>
-              <button onClick={() => setActiveTab('inquiries')} className={`pb-1 ${activeTab === 'inquiries' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>1:1 Inquiries</button>
+              <button onClick={() => setActiveTab('reservations')} className={`pb-1 ${activeTab === 'reservations' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>{isKo ? '예약 내역' : 'Reservations'}</button>
+              <button onClick={() => setActiveTab('inquiries')} className={`pb-1 ${activeTab === 'inquiries' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>{isKo ? '1:1 문의' : '1:1 Inquiries'}</button>
           </div>
       </h1>
       
@@ -156,7 +157,7 @@ export const MyPage: React.FC<any> = () => {
           <>
             <h2 className="text-xl font-bold mb-4">{isEn ? "My Reservations" : "예약 내역"}</h2>
             {reservations.length === 0 ? (
-                <div className="text-center py-20 bg-gray-50 rounded-xl"><p className="text-gray-500">No Reservations.</p></div>
+                <div className="text-center py-20 bg-gray-50 rounded-xl"><p className="text-gray-500">{isKo ? '예약 내역이 없습니다.' : 'No Reservations.'}</p></div>
             ) : (
                 <div className="space-y-6">
                     {reservations.map((res) => (
@@ -201,15 +202,15 @@ export const MyPage: React.FC<any> = () => {
                     <form onSubmit={handleSubmitInquiry} className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">{t('inquiry_title')}</label>
-                            <input type="text" value={inquiryForm.title} onChange={e => setInquiryForm({...inquiryForm, title: e.target.value})} className="w-full border p-2 rounded bg-white" placeholder="제목을 입력하세요" required/>
+                            <input type="text" value={inquiryForm.title} onChange={e => setInquiryForm({...inquiryForm, title: e.target.value})} className="w-full border p-2 rounded bg-white" placeholder={isKo ? '제목을 입력하세요' : 'Enter title'} required/>
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">{t('inquiry_content')}</label>
-                            <textarea value={inquiryForm.content} onChange={e => setInquiryForm({...inquiryForm, content: e.target.value})} className="w-full border p-2 rounded bg-white h-32" placeholder="문의 내용을 자세히 적어주세요. (비공개 처리됩니다)" required/>
+                            <textarea value={inquiryForm.content} onChange={e => setInquiryForm({...inquiryForm, content: e.target.value})} className="w-full border p-2 rounded bg-white h-32" placeholder={isKo ? '문의 내용을 자세히 적어주세요. (비공개 처리됩니다)' : 'Please describe your inquiry in detail. (Private)'} required/>
                         </div>
                         <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setShowInquiryForm(false)} className="px-4 py-2 text-gray-500 text-sm font-bold">Cancel</button>
-                            <button type="submit" className="px-6 py-2 bg-[#0070F0] text-white rounded text-sm font-bold flex items-center gap-2"><Send size={14}/> Submit</button>
+                            <button type="button" onClick={() => setShowInquiryForm(false)} className="px-4 py-2 text-gray-500 text-sm font-bold">{isKo ? '취소' : 'Cancel'}</button>
+                            <button type="submit" className="px-6 py-2 bg-[#0070F0] text-white rounded text-sm font-bold flex items-center gap-2"><Send size={14}/> {isKo ? '접수하기' : 'Submit'}</button>
                         </div>
                     </form>
                 </div>
@@ -217,7 +218,7 @@ export const MyPage: React.FC<any> = () => {
 
             <div className="space-y-4">
                 {inquiries.length === 0 ? (
-                    <div className="text-center py-20 bg-gray-50 rounded-xl text-gray-500">No inquiries yet.</div>
+                    <div className="text-center py-20 bg-gray-50 rounded-xl text-gray-500">{isKo ? '접수된 문의가 없습니다.' : 'No inquiries yet.'}</div>
                 ) : (
                     inquiries.map(inq => (
                         <div key={inq.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
@@ -243,8 +244,8 @@ export const MyPage: React.FC<any> = () => {
                                             <div className="absolute top-4 left-4 w-1 h-full bg-blue-500 rounded-full h-[calc(100%-32px)]"></div>
                                             <div className="pl-4">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <span className="font-bold text-blue-600">Admin</span>
-                                                    <span className="text-xs text-gray-400">{inq.answeredAt ? new Date(inq.answeredAt.seconds*1000).toLocaleDateString() : ''}</span>
+                                                    <span className="font-bold text-blue-600">{isKo ? '관리자' : 'Admin'}</span>
+                                                    <span className="text-xs text-gray-400">{inq.answeredAt?.seconds ? new Date(inq.answeredAt.seconds*1000).toLocaleDateString() : ''}</span>
                                                 </div>
                                                 <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{inq.answer}</p>
                                             </div>

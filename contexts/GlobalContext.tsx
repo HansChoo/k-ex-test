@@ -20,8 +20,8 @@ interface GlobalContextType {
   currency: Currency;
   setGlobalMode: (countryCode: string) => void;
   convertPrice: (krwPrice: number) => string;
-  wishlist: number[];
-  toggleWishlist: (id: number) => void;
+  wishlist: (number | string)[];
+  toggleWishlist: (id: number | string) => void;
   t: (key: string) => string;
   products: any[];
   packages: any[]; // Added packages
@@ -184,7 +184,7 @@ const TRANSLATIONS: any = {
 export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('ko');
   const [currency, setCurrency] = useState<Currency>('KRW');
-  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [wishlist, setWishlist] = useState<(number | string)[]>([]);
   const [realtimeProducts, setRealtimeProducts] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]); // New State
   const [categories, setCategories] = useState<Category[]>([]);
@@ -261,14 +261,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return `${SYMBOLS[currency]}${converted.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   };
 
-  const toggleWishlist = (id: number) => {
+  const toggleWishlist = (id: number | string) => {
+    const isInWishlist = wishlist.some(item => String(item) === String(id));
     let newWishlist;
-    if (wishlist.includes(id)) newWishlist = wishlist.filter(item => item !== id);
+    if (isInWishlist) newWishlist = wishlist.filter(item => String(item) !== String(id));
     else newWishlist = [...wishlist, id];
     setWishlist(newWishlist);
     localStorage.setItem('k_exp_wishlist', JSON.stringify(newWishlist));
     window.dispatchEvent(new CustomEvent('show-toast', { 
-        detail: { message: wishlist.includes(id) ? 'Removed from Wishlist' : 'Added to Wishlist', type: 'info' } 
+        detail: { message: isInWishlist ? (language === 'ko' ? '위시리스트에서 삭제됨' : 'Removed from Wishlist') : (language === 'ko' ? '위시리스트에 추가됨' : 'Added to Wishlist'), type: 'info' } 
     }));
   };
 

@@ -127,7 +127,7 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory }) => 
                                         onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
                                         className="absolute top-2 right-2 w-8 h-8 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"
                                     >
-                                        <Heart size={14} className={`transition-colors ${wishlist.includes(product.id) ? "fill-red-500 text-red-500" : "text-white"}`} />
+                                        <Heart size={14} className={`transition-colors ${wishlist.some(w => String(w) === String(product.id)) ? "fill-red-500 text-red-500" : "text-white"}`} />
                                     </button>
                                 </div>
                                 <div className="p-4 flex flex-col flex-1">
