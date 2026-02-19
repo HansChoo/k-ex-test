@@ -8,7 +8,7 @@ import {
     List, ChevronLeft, ChevronRight, MoreHorizontal, Mail
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { db, auth } from '../services/firebaseConfig';
+import { db, auth, isFirebaseConfigured } from '../services/firebaseConfig';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { loginWithEmail, logoutUser } from '../services/authService';
 import { RichTextEditor } from '../components/RichTextEditor';

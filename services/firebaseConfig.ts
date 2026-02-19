@@ -1,22 +1,25 @@
-
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// ------------------------------------------------------------------
-// [사장님 필독] 4단계에서 복사한 내용을 아래 firebaseConfig 안에 덮어씌우세요!
-// 아래 내용은 예시일 뿐, 사장님 프로젝트의 키가 아니면 작동하지 않습니다.
-// ------------------------------------------------------------------
+// 환경 변수에서 설정을 가져옵니다. (VITE_ 접두사 필요)
 const firebaseConfig = {
-  apiKey: "AIzaSyD3yvDRNufjfF7-rk6UXSpulmR1wHIcTh8",
-  authDomain: "k-ex-test.firebaseapp.com",
-  projectId: "k-ex-test",
-  storageBucket: "k-ex-test.firebasestorage.app",
-  messagingSenderId: "1033561493192",
-  appId: "1:1033561493192:web:1b668a15d19623702d9ffd"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
+
+// 연결 상태 확인을 위한 플래그
+export const isFirebaseConfigured = !!(
+  firebaseConfig.apiKey && 
+  firebaseConfig.projectId && 
+  firebaseConfig.appId
+);
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
