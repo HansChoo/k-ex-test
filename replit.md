@@ -7,10 +7,12 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 - **Frontend**: React 18, TypeScript, Tailwind CSS (via CDN)
 - **Build Tool**: Vite 5
 - **External Services**: Firebase (Auth, Firestore, Storage), Google Gemini AI, PortOne (payments), EmailJS
+- **Rich Text Editor**: Tiptap (ProseMirror-based) with extensions
 - **Styling**: Tailwind CSS CDN + Pretendard font
 
 ## Project Structure
-- `/components/` - Reusable React components (Navbar, Hero, Footer, AuthModal, etc.)
+- `/styles/` - CSS files (tiptap-editor.css for rich text editor styling)
+- `/components/` - Reusable React components (Navbar, Hero, Footer, AuthModal, RichTextEditor, etc.)
 - `/pages/` - Page-level components (Admin, Product Detail, Reservations, etc.)
 - `/services/` - Service layer (auth, payments, email, Firebase, Gemini AI)
 - `/contexts/` - React context providers (GlobalContext with real-time Firestore listeners)
