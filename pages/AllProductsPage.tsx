@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
-import { Heart, Star, Plus, ArrowLeft } from 'lucide-react';
+import { Heart, Star, Plus, ArrowLeft, Check, ChevronRight } from 'lucide-react';
 
 interface AllProductsPageProps {
     language: 'ko' | 'en' | 'ja' | 'zh';
@@ -35,18 +35,10 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
       return label.includes('올인원') || label.includes('패키지');
   })();
 
-  const packagesAsProducts = packages.map(pkg => ({
-      ...pkg,
-      category: '올인원 패키지',
-      image: pkg.image || pkg.thumbnail || '',
-      priceVal: pkg.price,
-      _isPackage: true,
-  }));
-
   const filteredProducts = activeFilter === 'all' 
-    ? [...products, ...packagesAsProducts]
+    ? products
     : isPackageCategory
-    ? packagesAsProducts
+    ? []
     : products.filter(p => {
         const activeCat = categories.find(c => c.id === activeFilter);
         if (!activeCat) return false;
@@ -77,7 +69,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
             <div className="flex items-center gap-1 mb-4">
                 <Star className="fill-yellow-400 text-yellow-400 w-5 h-5"/>
                 <h2 className="text-[22px] font-bold text-[#111]">{language === 'ko' ? '전체 상품' : 'All Products'}</h2>
-                <span className="text-sm text-gray-400 ml-2">{filteredProducts.length}{language === 'ko' ? '개' : ' items'}</span>
+                <span className="text-sm text-gray-400 ml-2">{isPackageCategory ? packages.length : filteredProducts.length}{language === 'ko' ? '개' : ' items'}</span>
             </div>
             
             <div className="flex flex-wrap gap-2">
@@ -118,6 +110,58 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                      </div>
                  ))}
              </div>
+        ) : isPackageCategory ? (
+            packages.length === 0 ? (
+                <div className="py-20 text-center text-gray-500 bg-gray-50 rounded-xl mx-2">
+                    {isEn ? 'No packages available.' : '등록된 패키지가 없습니다.'}
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-2">
+                    {packages.map((pkg: any, idx: number) => {
+                        const themeColors: any = {
+                            mint: { bg: 'bg-[#40E0D0]', badge: 'BASIC', icon: '💪' },
+                            yellow: { bg: 'bg-[#FFD700]', badge: 'PREMIUM', icon: '🎤' },
+                            orange: { bg: 'bg-[#FFB800]', badge: 'PREMIUM', icon: '✨' }
+                        };
+                        const theme = themeColors[pkg.theme] || themeColors.mint;
+                        return (
+                            <div key={pkg.id || idx} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-lg flex flex-col cursor-pointer hover:shadow-xl transition-all" onClick={() => handleProductClick(pkg)}>
+                                <div className={`h-[140px] ${theme.bg} relative flex flex-col items-center justify-center text-center p-4`}>
+                                    <span className="absolute top-4 left-4 bg-white/30 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded">{theme.badge}</span>
+                                    <div className="text-4xl mb-2 drop-shadow-sm">{theme.icon}</div>
+                                    <h3 className="text-white font-black text-[20px] leading-none drop-shadow-md px-2 break-keep">
+                                        {isEn ? (pkg.title_en || pkg.title) : pkg.title}
+                                    </h3>
+                                </div>
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <p className="text-[13px] text-gray-500 font-medium mb-4 text-center min-h-[40px] flex items-center justify-center break-keep">
+                                        {pkg.description}
+                                    </p>
+                                    <ul className="space-y-2 mb-6 flex-1">
+                                        {pkg.items?.map((item: string, i: number) => (
+                                            <li key={i} className="flex items-start gap-2 text-[13px] text-[#333] font-medium">
+                                                <div className="w-4 h-4 rounded-full bg-[#00C7AE] flex items-center justify-center text-white shrink-0 mt-0.5">
+                                                    <Check size={10} strokeWidth={4} />
+                                                </div>
+                                                <span className="leading-tight">{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div className="border-t border-gray-100 pt-4 mb-4">
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-[11px] font-bold text-gray-400">{isEn ? 'Per Person' : '1인 기준'}</span>
+                                            <span className="font-black text-xl text-[#111]">{convertPrice(pkg.price)}</span>
+                                        </div>
+                                    </div>
+                                    <button className="w-full py-3 bg-[#111] text-white font-bold rounded-lg hover:bg-gray-800 transition-all text-sm shadow-md flex items-center justify-center gap-1">
+                                        {t('detail')} <ChevronRight size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )
         ) : filteredProducts.length === 0 ? (
              <div className="py-20 text-center text-gray-500 bg-gray-50 rounded-xl mx-2">
                  {t('no_products')}
@@ -141,7 +185,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                             </div>
                             <div className="p-4 flex flex-col flex-1">
                                 <div className="flex items-center gap-1 text-[10px] text-gray-500 mb-1">
-                                    {product.category?.includes('올인원') || product.category?.includes('패키지') ? '🎁' : product.category?.includes('건강') ? '🏥' : product.category?.includes('뷰티') ? '💄' : '🎤'} 
+                                    {product.category?.includes('건강') ? '🏥' : product.category?.includes('뷰티') ? '💄' : '🎤'} 
                                     <span>{product.category}</span>
                                 </div>
                                 <h3 className="text-[14px] font-bold text-[#111] leading-tight mb-4 line-clamp-2">{title}</h3>
