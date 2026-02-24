@@ -41,8 +41,19 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 
 ## Real-Time Sync
 - Uses Firestore `onSnapshot` listeners in `GlobalContext.tsx` for: products, packages, categories, reservations
-- Admin dashboard uses separate real-time listeners for admin-specific data
+- Admin dashboard uses separate real-time listeners for admin-specific data (reviews, faqs, etc.)
+- ProductDetail uses per-product onSnapshot listeners for reviews and FAQs
 - All listeners are guarded by `isFirebaseConfigured` flag
+
+## Product Detail Tabs
+- **Detail**: Rich text content (from admin editor)
+- **Reviews**: Firebase `reviews` collection, filtered by productId, real-time sync
+- **FAQ**: Firebase `faqs` collection, filtered by productId, accordion UI, real-time sync
+- **MAP**: Google Maps embed from `mapLocations` array on product document
+
+## Admin Product Sub-tabs
+- Categories, Items, Packages, Reviews (CRUD per product), FAQ (CRUD per product)
+- Product modal includes MAP location editor (multiple locations per product)
 
 ## Admin Access
 - Email: admin@k-experience.com or users with `role: 'admin'` in Firestore `users` collection

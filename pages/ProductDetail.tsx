@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus, Box } from 'lucide-react';
-import { auth } from '../services/firebaseConfig';
+import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus, Box, ChevronUp } from 'lucide-react';
+import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { createReservation, checkAvailability, validateCoupon } from '../services/reservationService';
 import { initializePayment, requestPayment } from '../services/paymentService';
 import { loginWithGoogle, handleAuthError } from '../services/authService';
 import { useGlobal } from '../contexts/GlobalContext';
-import { generateMockReviews } from '../constants';
 
 interface ProductDetailProps {
   language: 'ko' | 'en' | 'ja' | 'zh';
@@ -16,13 +16,13 @@ interface ProductDetailProps {
 export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const { language, t, convertPrice, wishlist, toggleWishlist, getLocalizedValue, products } = useGlobal();
   const isEn = language !== 'ko';
+  const isKo = language === 'ko';
   
-  const [activeTab, setActiveTab] = useState<'detail' | 'info' | 'faq' | 'reviews'>('detail');
+  const [activeTab, setActiveTab] = useState<'detail' | 'faq' | 'reviews' | 'map'>('detail');
   const [openSection, setOpenSection] = useState<'date' | 'options' | null>('date');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'full' | 'deposit'>('full');
   
-  // Multi-Guest
   const [guestList, setGuestList] = useState([
       { id: Date.now(), name: '', dob: '', nationality: '', gender: 'Female', messengerApp: 'WhatsApp', messengerId: '' }
   ]);
@@ -31,21 +31,18 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponMessage, setCouponMessage] = useState('');
   const [reviews, setReviews] = useState<any[]>([]);
+  const [faqs, setFaqs] = useState<any[]>([]);
+  const [openFaqId, setOpenFaqId] = useState<string | null>(null);
 
   const title = getLocalizedValue(product, 'title');
   const description = getLocalizedValue(product, 'description');
   const introContent = getLocalizedValue(product, 'content');
-  const infoText = getLocalizedValue(product, 'infoText');
-  const faqText = getLocalizedValue(product, 'faqText');
 
-  // Logic to merge content for Packages
   const isPackage = product.type === 'package' || (product.selectedProductIds && product.selectedProductIds.length > 0);
   
   const renderCombinedContent = () => {
-      // 1. Package Intro
       let html = introContent ? `<div class="mb-10 text-lg leading-relaxed">${introContent}</div>` : '';
       
-      // 2. Append Child Products
       if (isPackage && product.selectedProductIds) {
           html += `<div class="package-break mb-8 text-center"><span class="bg-gray-100 px-4 py-1 rounded-full text-xs font-bold text-gray-500 uppercase tracking-widest">Included Items</span></div>`;
           
@@ -70,7 +67,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
               }
           });
       } else if (!introContent) {
-          // Fallback for normal products if no content
           return <img src={product.detailTopImage || product.image} className="w-full max-w-full h-auto rounded-xl" />;
       }
 
@@ -80,8 +76,26 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   useEffect(() => {
     initializePayment('imp19424728');
     window.scrollTo(0,0);
-    setReviews(generateMockReviews(50));
   }, [product]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db || !product.id) return;
+    const productId = product.id;
+    
+    const unsubReviews = onSnapshot(
+      query(collection(db, "reviews"), where("productId", "==", productId), orderBy("createdAt", "desc")),
+      (snap) => setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      () => setReviews([])
+    );
+
+    const unsubFaqs = onSnapshot(
+      query(collection(db, "faqs"), where("productId", "==", productId), orderBy("order", "asc")),
+      (snap) => setFaqs(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      () => setFaqs([])
+    );
+
+    return () => { unsubReviews(); unsubFaqs(); };
+  }, [product.id]);
 
   const handleWishlistToggle = () => toggleWishlist(product.id || 999);
 
@@ -119,7 +133,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       let total = 0;
       guestList.forEach(guest => {
           let p = basePrice;
-          if (guest.gender === 'Female' && product.category === '건강검진') p *= 1.05; // Mock logic
+          if (guest.gender === 'Female' && product.category === '건강검진') p *= 1.05;
           total += p;
       });
 
@@ -181,11 +195,18 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const CALENDAR_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
+  const mapLocations = product.mapLocations || [];
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star key={i} size={12} className={i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+    ));
+  };
+
   return (
     <div className="w-full bg-white relative font-sans tracking-tight text-[#111] overflow-x-hidden">
       <div className="max-w-[1360px] mx-auto lg:px-4 lg:py-10 flex flex-col lg:flex-row gap-10 relative">
         <div className="flex-1 w-full min-w-0">
-            {/* Same Left Column as before */}
             <div className="px-4 lg:px-0 mb-8">
                 <button onClick={() => window.location.href='/'} className="text-gray-400 mb-2 flex items-center gap-1 text-sm hover:text-black transition-colors"><ChevronLeft size={14}/> Back to list</button>
                 <div className="text-sm font-bold text-blue-600 mb-1 flex items-center gap-1">
@@ -196,16 +217,114 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{description}</p>
                 <div className="flex items-center justify-between"><div className="flex items-baseline gap-2"><span className="text-[32px] font-black text-[#111]">{convertPrice(getPrice() / (selectedPayment === 'deposit' ? 0.2 : 1))}</span></div><div className="flex gap-4"><button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group"><Heart size={20} className={`transition-all duration-300 ${wishlist.some(w => String(w) === String(product.id || 999)) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"}`} /><span>Wishlist</span></button><button className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95"><Share2 size={20} /><span>{t('share')}</span></button></div></div>
             </div>
-            {/* Package uses default image or specific hero image */}
             <div className="mb-12 overflow-x-auto no-scrollbar flex gap-4 px-4 lg:px-0 snap-x"><div className="relative w-[80vw] lg:w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg shrink-0 snap-center"><img src={product.image} className="w-full h-full object-cover" alt={title} /></div></div>
             
-            <div className="sticky top-[50px] lg:top-[90px] bg-white z-30 border-b border-gray-200 mb-8"><div className="flex text-center">{['detail', 'reviews', 'info', 'faq', 'map'].map((tab) => (<button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 font-bold relative transition-colors ${activeTab === tab ? 'text-[#111]' : 'text-[#888] hover:text-[#555]'}`}>{tab.toUpperCase()}{activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#111]"></div>}</button>))}</div></div>
+            <div className="sticky top-[50px] lg:top-[90px] bg-white z-30 border-b border-gray-200 mb-8"><div className="flex text-center">{['detail', 'reviews', 'faq', 'map'].map((tab) => (<button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 font-bold relative transition-colors ${activeTab === tab ? 'text-[#111]' : 'text-[#888] hover:text-[#555]'}`}>{tab === 'reviews' ? `REVIEWS (${reviews.length})` : tab.toUpperCase()}{activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#111]"></div>}</button>))}</div></div>
             
             <div className="px-4 lg:px-0 min-h-[400px] pb-20 animate-fade-in">
                 {activeTab === 'detail' && renderCombinedContent()}
-                {activeTab === 'reviews' && (<div className="space-y-6">{reviews.map((rev, i) => (<div key={i} className="border-b border-gray-100 pb-6"><div className="flex justify-between items-start mb-2"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs">{rev.user.charAt(0)}</div><div><div className="font-bold text-sm">{rev.user}</div><div className="text-yellow-400 text-xs">★★★★★</div></div></div><span className="text-xs text-gray-400">{rev.date}</span></div><p className="text-sm text-gray-600">{rev.text}</p></div>))}</div>)}
-                {activeTab === 'info' && <div className="bg-gray-50 p-6 rounded-xl text-sm leading-7">{infoText}</div>}
-                {activeTab === 'faq' && <div className="bg-gray-50 p-6 rounded-xl text-sm leading-7">{faqText}</div>}
+                
+                {activeTab === 'reviews' && (
+                  <div>
+                    {reviews.length === 0 ? (
+                      <div className="text-center py-20 text-gray-400">
+                        <Star size={40} className="mx-auto mb-3 text-gray-200"/>
+                        <p className="font-bold">{isKo ? '아직 등록된 리뷰가 없습니다.' : 'No reviews yet.'}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="bg-gray-50 rounded-xl p-4 mb-6 flex items-center gap-4">
+                          <div className="text-center">
+                            <p className="text-3xl font-black text-[#111]">{(reviews.reduce((a, r) => a + (r.rating || 5), 0) / reviews.length).toFixed(1)}</p>
+                            <div className="flex gap-0.5 justify-center mt-1">{renderStars(Math.round(reviews.reduce((a, r) => a + (r.rating || 5), 0) / reviews.length))}</div>
+                            <p className="text-xs text-gray-400 mt-1">{reviews.length}{isKo ? '개 리뷰' : ' reviews'}</p>
+                          </div>
+                        </div>
+                        {reviews.map((rev) => (
+                          <div key={rev.id} className="border-b border-gray-100 pb-6">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs">{(rev.userName || 'U').charAt(0)}</div>
+                                <div>
+                                  <div className="font-bold text-sm">{rev.userName || 'Anonymous'}</div>
+                                  <div className="flex gap-0.5">{renderStars(rev.rating || 5)}</div>
+                                </div>
+                              </div>
+                              <span className="text-xs text-gray-400">{rev.createdAt?.seconds ? new Date(rev.createdAt.seconds * 1000).toLocaleDateString('ko-KR') : rev.date || ''}</span>
+                            </div>
+                            <p className="text-sm text-gray-600 whitespace-pre-wrap">{rev.content || rev.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {activeTab === 'faq' && (
+                  <div>
+                    {faqs.length === 0 ? (
+                      <div className="text-center py-20 text-gray-400">
+                        <MessageCircle size={40} className="mx-auto mb-3 text-gray-200"/>
+                        <p className="font-bold">{isKo ? '등록된 FAQ가 없습니다.' : 'No FAQs available.'}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {faqs.map((faq) => (
+                          <div key={faq.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                            <button 
+                              onClick={() => setOpenFaqId(openFaqId === faq.id ? null : faq.id)}
+                              className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
+                            >
+                              <span className="font-bold text-sm flex items-center gap-2">
+                                <span className="text-blue-500 font-black">Q.</span> {faq.question}
+                              </span>
+                              {openFaqId === faq.id ? <ChevronUp size={16} className="text-gray-400 shrink-0"/> : <ChevronDown size={16} className="text-gray-400 shrink-0"/>}
+                            </button>
+                            {openFaqId === faq.id && (
+                              <div className="px-4 pb-4 pt-0 border-t border-gray-100 bg-gray-50">
+                                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap pt-3">
+                                  <span className="text-orange-500 font-black mr-1">A.</span> {faq.answer}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'map' && (
+                  <div>
+                    {mapLocations.length === 0 ? (
+                      <div className="text-center py-20 text-gray-400">
+                        <MapPin size={40} className="mx-auto mb-3 text-gray-200"/>
+                        <p className="font-bold">{isKo ? '등록된 방문지 정보가 없습니다.' : 'No location information available.'}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {mapLocations.map((loc: any, idx: number) => (
+                          <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden">
+                            <div className="bg-gray-50 p-4 border-b border-gray-100">
+                              <h3 className="font-bold flex items-center gap-2"><MapPin size={16} className="text-red-500"/> {loc.name}</h3>
+                              {loc.address && <p className="text-xs text-gray-500 mt-1">{loc.address}</p>}
+                            </div>
+                            <div className="aspect-video bg-gray-100">
+                              <iframe
+                                src={`https://www.google.com/maps?q=${encodeURIComponent(loc.address || loc.name)}&output=embed`}
+                                className="w-full h-full border-0"
+                                allowFullScreen
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                              />
+                            </div>
+                            {loc.description && <p className="p-4 text-sm text-gray-600">{loc.description}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
             </div>
         </div>
 
@@ -260,7 +379,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 </div>
 
                 <div className="bg-[#f9f9f9] p-5">
-                    {/* Coupon */}
                     <div className="bg-white p-3 rounded-lg border border-gray-200 mb-4 shadow-sm"><label className="block text-xs font-bold text-gray-500 mb-1">{t('coupon_code')}</label><div className="flex gap-2"><input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="flex-1 border border-gray-200 rounded px-2 text-sm uppercase bg-white" placeholder="CODE"/><button onClick={handleApplyCoupon} className="bg-black text-white px-3 py-1 rounded text-xs font-bold">{t('apply')}</button></div>{couponMessage && <p className={`text-[10px] mt-1 font-bold ${appliedCoupon ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}</div>
                     <div className="flex justify-between items-center mb-4"><span className="text-[14px] font-bold text-[#555]">{t('total')}</span><div className="text-right"><span className="text-[20px] font-black text-[#111]">{convertPrice(getPrice())}</span></div></div>
                     <button onClick={handleReservation} className="w-full bg-[#0070F0] text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-600 active:scale-95 transition-all">{t('book_now')}</button>
