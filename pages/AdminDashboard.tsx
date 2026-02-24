@@ -71,6 +71,7 @@ export const AdminDashboard: React.FC<any> = () => {
   const [settings, setSettings] = useState<any>({});
   const [allReviews, setAllReviews] = useState<any[]>([]);
   const [allFaqs, setAllFaqs] = useState<any[]>([]);
+  const [allUserData, setAllUserData] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [rates, setRates] = useState<any>(null);
@@ -148,7 +149,8 @@ export const AdminDashboard: React.FC<any> = () => {
             setSettings(temp);
         }),
         onSnapshot(query(collection(db, "reviews"), orderBy("createdAt", "desc")), (s) => setAllReviews(s.docs.map(d => ({id:d.id, ...d.data()})))),
-        onSnapshot(query(collection(db, "faqs"), orderBy("order", "asc")), (s) => setAllFaqs(s.docs.map(d => ({id:d.id, ...d.data()}))))
+        onSnapshot(query(collection(db, "faqs"), orderBy("order", "asc")), (s) => setAllFaqs(s.docs.map(d => ({id:d.id, ...d.data()})))),
+        onSnapshot(collection(db, "user_data"), (s) => setAllUserData(s.docs.map(d => ({id:d.id, ...d.data()}))))
     ];
     return () => unsubs.forEach(u => u());
   }, [isAdmin]);
@@ -278,6 +280,25 @@ export const AdminDashboard: React.FC<any> = () => {
       
       return { thisMonthRevenue, lastMonthRevenue, revenueGrowth, categoryRevenue, topProducts, todayReservations, todayConfirmed, todayPending, monthlyRevenue, maxMonthlyRevenue, productStats };
   }, [reservations]);
+
+  const wishlistCartAnalytics = useMemo(() => {
+      const wishlistCounts: Record<string, number> = {};
+      const cartCounts: Record<string, number> = {};
+      allUserData.forEach((ud: any) => {
+          (ud.wishlist || []).forEach((pid: string) => { wishlistCounts[String(pid)] = (wishlistCounts[String(pid)] || 0) + 1; });
+          (ud.cart || []).forEach((item: any) => { const pid = item.productId || String(item); cartCounts[String(pid)] = (cartCounts[String(pid)] || 0) + (item.quantity || 1); });
+      });
+      const allItems = [...products, ...packages];
+      const topWishlist = Object.entries(wishlistCounts).sort((a,b) => b[1] - a[1]).slice(0, 5).map(([pid, count]) => {
+          const p = allItems.find(item => String(item.id) === pid);
+          return { id: pid, name: p?.title || pid, image: p?.image, count };
+      });
+      const topCart = Object.entries(cartCounts).sort((a,b) => b[1] - a[1]).slice(0, 5).map(([pid, count]) => {
+          const p = allItems.find(item => String(item.id) === pid);
+          return { id: pid, name: p?.title || pid, image: p?.image, count };
+      });
+      return { topWishlist, topCart, totalWishlistUsers: allUserData.filter(u => (u.wishlist || []).length > 0).length, totalCartUsers: allUserData.filter(u => (u.cart || []).length > 0).length };
+  }, [allUserData, products, packages]);
 
   const filteredReservations = useMemo(() => {
       let data = reservations;
@@ -826,6 +847,45 @@ export const AdminDashboard: React.FC<any> = () => {
                                 })}
                             </div>
                         )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-xl border shadow-sm">
+                            <h3 className="text-sm font-bold mb-1 flex items-center gap-2">❤️ 위시리스트 인기 상품 TOP 5</h3>
+                            <p className="text-[10px] text-gray-400 mb-4">{wishlistCartAnalytics.totalWishlistUsers}명의 회원이 위시리스트 사용 중</p>
+                            {wishlistCartAnalytics.topWishlist.length === 0 ? (
+                                <p className="text-gray-400 text-sm text-center py-8">위시리스트 데이터가 없습니다.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {wishlistCartAnalytics.topWishlist.map((p: any, i: number) => (
+                                        <div key={p.id} className="flex items-center gap-3">
+                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white ${i === 0 ? 'bg-red-400' : i === 1 ? 'bg-red-300' : i === 2 ? 'bg-red-200 text-red-600' : 'bg-gray-200 text-gray-600'}`}>{i+1}</span>
+                                            {p.image && <img src={p.image} className="w-8 h-8 rounded-lg object-cover" alt=""/>}
+                                            <span className="text-sm font-bold flex-1 truncate">{p.name}</span>
+                                            <span className="text-xs font-bold text-red-500">{p.count}명</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="bg-white p-6 rounded-xl border shadow-sm">
+                            <h3 className="text-sm font-bold mb-1 flex items-center gap-2">🛒 장바구니 인기 상품 TOP 5</h3>
+                            <p className="text-[10px] text-gray-400 mb-4">{wishlistCartAnalytics.totalCartUsers}명의 회원이 장바구니 사용 중</p>
+                            {wishlistCartAnalytics.topCart.length === 0 ? (
+                                <p className="text-gray-400 text-sm text-center py-8">장바구니 데이터가 없습니다.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {wishlistCartAnalytics.topCart.map((p: any, i: number) => (
+                                        <div key={p.id} className="flex items-center gap-3">
+                                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white ${i === 0 ? 'bg-blue-500' : i === 1 ? 'bg-blue-400' : i === 2 ? 'bg-blue-300 text-blue-700' : 'bg-gray-200 text-gray-600'}`}>{i+1}</span>
+                                            {p.image && <img src={p.image} className="w-8 h-8 rounded-lg object-cover" alt=""/>}
+                                            <span className="text-sm font-bold flex-1 truncate">{p.name}</span>
+                                            <span className="text-xs font-bold text-blue-500">{p.count}개</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -1440,6 +1500,51 @@ export const AdminDashboard: React.FC<any> = () => {
                                             </div>
                                         )}
                                     </div>
+                                    {(() => {
+                                        const ud = allUserData.find((d: any) => d.id === userDetailModal.id || d.id === userDetailModal.uid);
+                                        const userWishlist = ud?.wishlist || [];
+                                        const userCart = ud?.cart || [];
+                                        const allItems = [...products, ...packages];
+                                        return (
+                                            <>
+                                                <div>
+                                                    <h4 className="font-bold text-sm mb-2">❤️ 위시리스트 ({userWishlist.length})</h4>
+                                                    {userWishlist.length === 0 ? (
+                                                        <p className="text-gray-400 text-sm bg-gray-50 p-4 rounded-lg text-center">위시리스트가 비어있습니다.</p>
+                                                    ) : (
+                                                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                            {userWishlist.map((wId: any) => {
+                                                                const p = allItems.find(item => String(item.id) === String(wId));
+                                                                return (
+                                                                    <div key={String(wId)} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg text-sm">
+                                                                        {p?.image && <img src={p.image} className="w-8 h-8 rounded object-cover" alt=""/>}
+                                                                        <span className="font-bold flex-1 truncate">{p?.title || String(wId)}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-sm mb-2">🛒 장바구니 ({userCart.length})</h4>
+                                                    {userCart.length === 0 ? (
+                                                        <p className="text-gray-400 text-sm bg-gray-50 p-4 rounded-lg text-center">장바구니가 비어있습니다.</p>
+                                                    ) : (
+                                                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                            {userCart.map((item: any, idx: number) => (
+                                                                <div key={idx} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg text-sm">
+                                                                    {item.image && <img src={item.image} className="w-8 h-8 rounded object-cover" alt=""/>}
+                                                                    <span className="font-bold flex-1 truncate">{item.title || item.productId}</span>
+                                                                    <span className="text-xs text-gray-500">{item.quantity}개</span>
+                                                                    <span className="text-xs font-bold">₩{(item.price * item.quantity).toLocaleString()}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
