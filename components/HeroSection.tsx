@@ -12,7 +12,7 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
   const { t } = useGlobal();
 
   return (
-    <section className="w-full bg-gradient-to-b from-[#dce8f5] to-[#eef3f9] pt-[40px] pb-[60px] text-center font-sans tracking-tight relative overflow-hidden">
+    <section className="w-full bg-gradient-to-b from-[#b8d4f0] to-[#e8eff7] pt-[40px] pb-[60px] text-center font-sans tracking-tight relative overflow-hidden">
 
       <div className="max-w-[1280px] mx-auto px-6 relative z-10 flex flex-col items-center">
         
