@@ -56,7 +56,7 @@ const TRANSLATIONS: any = {
     pkg_prem: '올인원 패키지 - 프리미엄',
     prod_title: '모든 K-체험 상품을 한눈에!',
     bottom_title: '나만의 K-체험을 즐겨보세요',
-    bottom_desc: '건강검진부터 뷰티 케어, K-아이돌 체험까지!\n당신이 원하는 모든 한국 체험이 이곳에 있습니다.',
+    bottom_desc: 'K-뷰티부터 K-POP, 건강검진까지!\n당신이 원하는 모든 한국 체험이 이곳에 있습니다.',
     tab_all: '전체 상품', tab_health: '건강검진', tab_idol: 'K-IDOL', tab_beauty: '뷰티시술',
     detail: '상세보기', notice: '안내사항', faq: 'FAQ',
     step1: 'STEP 1', step1_label: '이용 날짜',
