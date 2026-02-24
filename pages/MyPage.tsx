@@ -3,12 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment, arrayRemove } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send, Users, TrendingDown } from 'lucide-react';
+import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send, Users, TrendingDown, Heart, ShoppingCart, Trash2, Minus } from 'lucide-react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { printReceipt } from '../services/receiptService';
 
 export const MyPage: React.FC<any> = () => {
-  const { t, language, convertPrice } = useGlobal();
+  const { t, language, convertPrice, wishlist, toggleWishlist, products, packages, getLocalizedValue, cart, removeFromCart, updateCartQuantity } = useGlobal();
   const isEn = language !== 'ko';
   const isKo = language === 'ko';
   const [reservations, setReservations] = useState<any[]>([]);
@@ -18,7 +18,7 @@ export const MyPage: React.FC<any> = () => {
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
   const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'reservations' | 'inquiries'>('reservations');
+  const [activeTab, setActiveTab] = useState<'reservations' | 'inquiries' | 'wishlist' | 'cart'>('reservations');
   
   // Edit Profile Mode
   const [isEditing, setIsEditing] = useState(false);
@@ -156,8 +156,10 @@ export const MyPage: React.FC<any> = () => {
     <div className="max-w-4xl mx-auto px-4 py-16 min-h-[60vh]">
       <h1 className="text-3xl font-bold mb-8 text-[#111] border-b pb-4 flex items-center justify-between">
           {t('mypage')}
-          <div className="flex gap-4 text-base font-normal">
+          <div className="flex gap-3 text-sm font-normal flex-wrap">
               <button onClick={() => setActiveTab('reservations')} className={`pb-1 ${activeTab === 'reservations' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>{isKo ? '예약 내역' : 'Reservations'}</button>
+              <button onClick={() => setActiveTab('wishlist')} className={`pb-1 flex items-center gap-1 ${activeTab === 'wishlist' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}><Heart size={14}/> {isKo ? '위시리스트' : 'Wishlist'}{wishlist.length > 0 && ` (${wishlist.length})`}</button>
+              <button onClick={() => setActiveTab('cart')} className={`pb-1 flex items-center gap-1 ${activeTab === 'cart' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}><ShoppingCart size={14}/> {isKo ? '장바구니' : 'Cart'}{cart.length > 0 && ` (${cart.length})`}</button>
               <button onClick={() => setActiveTab('inquiries')} className={`pb-1 ${activeTab === 'inquiries' ? 'text-[#0070F0] font-bold border-b-2 border-[#0070F0]' : 'text-gray-400'}`}>{isKo ? '1:1 문의' : '1:1 Inquiries'}</button>
           </div>
       </h1>
@@ -383,6 +385,78 @@ export const MyPage: React.FC<any> = () => {
                     ))
                 )}
             </div>
+          </>
+      )}
+
+      {activeTab === 'wishlist' && (
+          <>
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Heart size={20} className="text-red-500"/> {isKo ? '위시리스트' : 'Wishlist'}</h2>
+            {wishlist.length === 0 ? (
+                <div className="text-center py-20 bg-gray-50 rounded-xl"><p className="text-gray-500">{isKo ? '위시리스트가 비어있습니다.' : 'Your wishlist is empty.'}</p></div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {wishlist.map((wId) => {
+                        const allItems = [...products, ...packages];
+                        const product = allItems.find(p => String(p.id) === String(wId));
+                        if (!product) return null;
+                        const title = getLocalizedValue(product, 'title');
+                        const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price);
+                        return (
+                            <div key={String(wId)} className="bg-white border rounded-xl p-4 flex gap-4 items-center shadow-sm hover:shadow-md transition-shadow">
+                                <img src={product.image} alt={title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0"/>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-sm text-[#111] truncate">{title}</h3>
+                                    <p className="text-xs text-gray-500 mt-1">{product.category}</p>
+                                    <p className="font-black text-sm mt-1">{convertPrice(numericPrice)}</p>
+                                </div>
+                                <div className="flex flex-col gap-2 flex-shrink-0">
+                                    <button onClick={() => { window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product })); }} className="bg-[#0070F0] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-600">{isKo ? '상세보기' : 'View'}</button>
+                                    <button onClick={() => toggleWishlist(wId)} className="text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"><Trash2 size={12}/> {isKo ? '삭제' : 'Remove'}</button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+          </>
+      )}
+
+      {activeTab === 'cart' && (
+          <>
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><ShoppingCart size={20} className="text-blue-500"/> {isKo ? '장바구니' : 'Shopping Cart'}</h2>
+            {cart.length === 0 ? (
+                <div className="text-center py-20 bg-gray-50 rounded-xl"><p className="text-gray-500">{isKo ? '장바구니가 비어있습니다.' : 'Your cart is empty.'}</p></div>
+            ) : (
+                <>
+                    <div className="space-y-4 mb-6">
+                        {cart.map((item) => (
+                            <div key={item.productId} className="bg-white border rounded-xl p-4 flex gap-4 items-center shadow-sm">
+                                <img src={item.image} alt={item.title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0"/>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-bold text-sm text-[#111] truncate">{item.title}</h3>
+                                    <p className="font-black text-sm mt-1">{convertPrice(item.price)}</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)} className="w-8 h-8 border rounded-lg flex items-center justify-center hover:bg-gray-100"><Minus size={14}/></button>
+                                    <span className="font-bold text-sm w-8 text-center">{item.quantity}</span>
+                                    <button onClick={() => updateCartQuantity(item.productId, item.quantity + 1)} className="w-8 h-8 border rounded-lg flex items-center justify-center hover:bg-gray-100"><Plus size={14}/></button>
+                                </div>
+                                <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg flex-shrink-0"><Trash2 size={16}/></button>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="bg-gray-50 border rounded-xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="font-bold text-gray-600">{isKo ? '총 상품' : 'Total Items'}</span>
+                            <span className="font-bold">{cart.reduce((a, b) => a + b.quantity, 0)}{isKo ? '개' : ' items'}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t pt-4">
+                            <span className="font-black text-lg">{isKo ? '합계' : 'Total'}</span>
+                            <span className="font-black text-xl text-[#0070F0]">{convertPrice(cart.reduce((a, b) => a + b.price * b.quantity, 0))}</span>
+                        </div>
+                    </div>
+                </>
+            )}
           </>
       )}
 

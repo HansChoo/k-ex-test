@@ -135,8 +135,10 @@ const AppContent: React.FC = () => {
       setToasts(prev => [...prev, newToast]);
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== newToast.id)), 3000);
     };
+    const handleOpenAuth = () => setIsAuthModalOpen(true);
     window.addEventListener('show-toast', handleToast);
-    return () => window.removeEventListener('show-toast', handleToast);
+    window.addEventListener('open-auth-modal', handleOpenAuth);
+    return () => { window.removeEventListener('show-toast', handleToast); window.removeEventListener('open-auth-modal', handleOpenAuth); };
   }, []);
 
   const removeToast = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));

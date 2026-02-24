@@ -55,6 +55,13 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - Categories, Items, Packages
 - Product edit modal includes inline management for: MAP locations, Reviews, FAQ (all per-product, Firebase CRUD)
 
+## Wishlist & Cart
+- **Wishlist**: Stored in localStorage (`k_exp_wishlist`), managed via GlobalContext (`toggleWishlist`)
+- **Cart**: Stored in localStorage (`k_exp_cart`), managed via GlobalContext (`addToCart`, `removeFromCart`, `updateCartQuantity`, `clearCart`)
+- **Auth Check**: Heart (wishlist) and Plus (cart) buttons on product cards check `auth.currentUser`; if not logged in, dispatches `open-auth-modal` event to show AuthModal
+- **MyPage Tabs**: Reservations, Wishlist, Cart, 1:1 Inquiries — wishlist shows products with view/remove actions, cart shows items with quantity controls and total summary
+- **Toast Notifications**: Adding to cart triggers a success toast via `show-toast` custom event
+
 ## Admin Access
 - Email: admin@k-experience.com or users with `role: 'admin'` in Firestore `users` collection
 

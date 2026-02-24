@@ -15,6 +15,14 @@ export interface Category {
     order?: number;
 }
 
+export interface CartItem {
+  productId: string;
+  title: string;
+  image: string;
+  price: number;
+  quantity: number;
+}
+
 interface GlobalContextType {
   language: Language;
   currency: Currency;
@@ -22,10 +30,15 @@ interface GlobalContextType {
   convertPrice: (krwPrice: number) => string;
   wishlist: (number | string)[];
   toggleWishlist: (id: number | string) => void;
+  cart: CartItem[];
+  addToCart: (product: any) => void;
+  removeFromCart: (productId: string) => void;
+  updateCartQuantity: (productId: string, quantity: number) => void;
+  clearCart: () => void;
   t: (key: string) => string;
   products: any[];
-  packages: any[]; // Added packages
-  categories: Category[]; // Added categories
+  packages: any[];
+  categories: Category[];
   getLocalizedValue: (data: any, field: string) => string;
 }
 
@@ -185,14 +198,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [language, setLanguage] = useState<Language>('ko');
   const [currency, setCurrency] = useState<Currency>('KRW');
   const [wishlist, setWishlist] = useState<(number | string)[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [realtimeProducts, setRealtimeProducts] = useState<any[]>([]);
-  const [packages, setPackages] = useState<any[]>([]); // New State
+  const [packages, setPackages] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // Init from Local Storage
   useEffect(() => {
     const savedWishlist = localStorage.getItem('k_exp_wishlist');
     if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
+
+    const savedCart = localStorage.getItem('k_exp_cart');
+    if (savedCart) setCart(JSON.parse(savedCart));
 
     const savedLang = localStorage.getItem('k_exp_lang') as Language;
     const savedCurr = localStorage.getItem('k_exp_curr') as Currency;
@@ -273,6 +289,46 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   };
 
+  const addToCart = (product: any) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.productId === String(product.id));
+      let newCart;
+      if (existing) {
+        newCart = prev.map(item => item.productId === String(product.id) ? { ...item, quantity: item.quantity + 1 } : item);
+      } else {
+        const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price) || 0;
+        newCart = [...prev, { productId: String(product.id), title: product.title || '', image: product.image || '', price: numericPrice, quantity: 1 }];
+      }
+      localStorage.setItem('k_exp_cart', JSON.stringify(newCart));
+      return newCart;
+    });
+    window.dispatchEvent(new CustomEvent('show-toast', { 
+      detail: { message: language === 'ko' ? '장바구니에 추가됨' : 'Added to Cart', type: 'success' } 
+    }));
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prev => {
+      const newCart = prev.filter(item => item.productId !== productId);
+      localStorage.setItem('k_exp_cart', JSON.stringify(newCart));
+      return newCart;
+    });
+  };
+
+  const updateCartQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) { removeFromCart(productId); return; }
+    setCart(prev => {
+      const newCart = prev.map(item => item.productId === productId ? { ...item, quantity } : item);
+      localStorage.setItem('k_exp_cart', JSON.stringify(newCart));
+      return newCart;
+    });
+  };
+
+  const clearCart = () => {
+    setCart([]);
+    localStorage.setItem('k_exp_cart', JSON.stringify([]));
+  };
+
   const t = (key: string) => TRANSLATIONS[language][key] || TRANSLATIONS['en'][key] || key;
 
   // Helper to fetch localized content from DB objects
@@ -287,7 +343,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const displayProducts = realtimeProducts; 
 
   return (
-    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, t, products: displayProducts, packages, categories, getLocalizedValue }}>
+    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, cart, addToCart, removeFromCart, updateCartQuantity, clearCart, t, products: displayProducts, packages, categories, getLocalizedValue }}>
       {children}
     </GlobalContext.Provider>
   );

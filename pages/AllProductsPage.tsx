@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { Heart, Star, Plus, ArrowLeft, Check, ChevronRight } from 'lucide-react';
+import { auth } from '../services/firebaseConfig';
 
 interface AllProductsPageProps {
     language: 'ko' | 'en' | 'ja' | 'zh';
@@ -9,7 +10,7 @@ interface AllProductsPageProps {
 }
 
 export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategoryLabel }) => {
-  const { t, products, packages, wishlist, toggleWishlist, getLocalizedValue, convertPrice, categories, language } = useGlobal();
+  const { t, products, packages, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, categories, language } = useGlobal();
   const isEn = language !== 'ko';
 
   const [activeFilter, setActiveFilter] = useState('all');
@@ -177,7 +178,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                             <div className="relative aspect-square bg-gray-50 overflow-hidden">
                                 <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                                 <button 
-                                    onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
+                                    onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } toggleWishlist(product.id); }}
                                     className="absolute top-2 right-2 w-8 h-8 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"
                                 >
                                     <Heart size={14} className={`transition-colors ${wishlist.some(w => String(w) === String(product.id)) ? "fill-red-500 text-red-500" : "text-white"}`} />
@@ -191,9 +192,9 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                                 <h3 className="text-[14px] font-bold text-[#111] leading-tight mb-4 line-clamp-2">{title}</h3>
                                 <div className="mt-auto flex items-center justify-between">
                                     <span className="font-black text-[16px] text-[#111]">{convertPrice(numericPrice)}</span>
-                                    <div className="bg-[#0070F0] text-white rounded-lg p-1.5 hover:bg-blue-600 transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } addToCart(product); }} className="bg-[#0070F0] text-white rounded-lg p-1.5 hover:bg-blue-600 transition-colors">
                                         <Plus size={16}/>
-                                    </div>
+                                    </button>
                                 </div>
                             </div>
                         </div>

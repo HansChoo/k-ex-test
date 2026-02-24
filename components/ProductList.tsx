@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
 import { Heart, Star, Plus } from 'lucide-react';
+import { auth } from '../services/firebaseConfig';
 
 const ProductSkeleton = () => (
     <div className="flex flex-col">
@@ -20,7 +21,7 @@ interface ProductListProps {
 }
 
 export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onViewAll }) => {
-  const { t, products, wishlist, toggleWishlist, getLocalizedValue, convertPrice, language } = useGlobal();
+  const { t, products, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, language } = useGlobal();
 
   const [loading, setLoading] = useState(true);
 
@@ -71,7 +72,7 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
                                 <div className="relative aspect-[3/2] bg-gray-50 overflow-hidden">
                                     <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
+                                        onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } toggleWishlist(product.id); }}
                                         className="absolute top-2 right-2 w-7 h-7 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"
                                     >
                                         <Heart size={12} className={`transition-colors ${wishlist.some(w => String(w) === String(product.id)) ? "fill-red-500 text-red-500" : "text-white"}`} />
@@ -81,9 +82,9 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
                                     <h3 className="text-[13px] font-bold text-[#111] leading-tight mb-2 line-clamp-2">{title}</h3>
                                     <div className="mt-auto flex items-center justify-between">
                                         <span className="font-black text-[14px] text-[#111]">{convertPrice(numericPrice)}</span>
-                                        <div className="bg-[#0070F0] text-white rounded-md p-1 hover:bg-blue-600 transition-colors">
+                                        <button onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } addToCart(product); }} className="bg-[#0070F0] text-white rounded-md p-1 hover:bg-blue-600 transition-colors">
                                             <Plus size={14}/>
-                                        </div>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
