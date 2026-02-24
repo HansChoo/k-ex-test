@@ -1024,7 +1024,7 @@ export const AdminDashboard: React.FC<any> = () => {
                             </div>
                             <div className="grid grid-cols-3 gap-6">
                                 {packages.map((pkg) => {
-                                    const themeColors: any = { mint: 'bg-[#40E0D0]', yellow: 'bg-[#FFD700]', orange: 'bg-[#FFB800]' };
+                                    const themeColors: any = { mint: 'bg-[#00BFAE]', yellow: 'bg-[#FFC200]', orange: 'bg-[#FF8C00]' };
                                     const bgClass = themeColors[pkg.theme] || 'bg-gray-400';
                                     
                                     return (
@@ -1651,7 +1651,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                                  <button 
                                                     key={theme} 
                                                     onClick={() => setEditingItem({...editingItem, theme})} 
-                                                    className={`w-8 h-8 rounded-full border-2 ${editingItem.theme === theme ? 'border-black scale-110' : 'border-transparent'} ${theme === 'mint' ? 'bg-[#40E0D0]' : theme === 'yellow' ? 'bg-[#FFD700]' : 'bg-[#FFB800]'}`}
+                                                    className={`w-8 h-8 rounded-full border-2 ${editingItem.theme === theme ? 'border-black scale-110' : 'border-transparent'} ${theme === 'mint' ? 'bg-[#00BFAE]' : theme === 'yellow' ? 'bg-[#FFC200]' : 'bg-[#FF8C00]'}`}
                                                  />
                                              ))}
                                          </div>

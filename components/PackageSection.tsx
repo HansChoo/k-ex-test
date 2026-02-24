@@ -27,9 +27,9 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
 
   // Theme configuration: Determine background color and icon based on the selected theme in Admin
   const themeColors: any = {
-    mint: { bg: 'bg-[#40E0D0]', badge: 'BASIC', icon: '💪' },
-    yellow: { bg: 'bg-[#FFD700]', badge: 'PREMIUM', icon: '🎤' },
-    orange: { bg: 'bg-[#FFB800]', badge: 'PREMIUM', icon: '✨' }
+    mint: { bg: 'bg-[#00BFAE]', badge: 'BASIC', icon: '💪' },
+    yellow: { bg: 'bg-[#FFC200]', badge: 'PREMIUM', icon: '🎤' },
+    orange: { bg: 'bg-[#FF8C00]', badge: 'PREMIUM', icon: '✨' }
   };
 
   return (

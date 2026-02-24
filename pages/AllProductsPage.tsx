@@ -119,9 +119,9 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-2">
                     {packages.map((pkg: any, idx: number) => {
                         const themeColors: any = {
-                            mint: { bg: 'bg-[#40E0D0]', badge: 'BASIC', icon: '💪' },
-                            yellow: { bg: 'bg-[#FFD700]', badge: 'PREMIUM', icon: '🎤' },
-                            orange: { bg: 'bg-[#FFB800]', badge: 'PREMIUM', icon: '✨' }
+                            mint: { bg: 'bg-[#00BFAE]', badge: 'BASIC', icon: '💪' },
+                            yellow: { bg: 'bg-[#FFC200]', badge: 'PREMIUM', icon: '🎤' },
+                            orange: { bg: 'bg-[#FF8C00]', badge: 'PREMIUM', icon: '✨' }
                         };
                         const theme = themeColors[pkg.theme] || themeColors.mint;
                         return (
