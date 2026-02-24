@@ -52,8 +52,8 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - **MAP**: Google Maps embed from `mapLocations` array on product document
 
 ## Admin Product Sub-tabs
-- Categories, Items, Packages, Reviews (CRUD per product), FAQ (CRUD per product)
-- Product modal includes MAP location editor (multiple locations per product)
+- Categories, Items, Packages
+- Product edit modal includes inline management for: MAP locations, Reviews, FAQ (all per-product, Firebase CRUD)
 
 ## Admin Access
 - Email: admin@k-experience.com or users with `role: 'admin'` in Firestore `users` collection

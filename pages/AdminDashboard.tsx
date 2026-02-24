@@ -71,8 +71,6 @@ export const AdminDashboard: React.FC<any> = () => {
   const [settings, setSettings] = useState<any>({});
   const [allReviews, setAllReviews] = useState<any[]>([]);
   const [allFaqs, setAllFaqs] = useState<any[]>([]);
-  const [reviewProductFilter, setReviewProductFilter] = useState<string>('all');
-  const [faqProductFilter, setFaqProductFilter] = useState<string>('all');
   
   const [loading, setLoading] = useState(true);
   const [rates, setRates] = useState<any>(null);
@@ -88,7 +86,7 @@ export const AdminDashboard: React.FC<any> = () => {
   const [magazinePreviewId, setMagazinePreviewId] = useState<string|null>(null);
   
   // Sub-tabs & Views
-  const [productSubTab, setProductSubTab] = useState<'categories' | 'items' | 'packages' | 'reviews' | 'faqs'>('categories'); 
+  const [productSubTab, setProductSubTab] = useState<'categories' | 'items' | 'packages'>('categories'); 
   const [reservationView, setReservationView] = useState<'list' | 'calendar'>('list');
   const [calendarDate, setCalendarDate] = useState(new Date());
 
@@ -104,6 +102,10 @@ export const AdminDashboard: React.FC<any> = () => {
 
   // Images for Editor
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
+
+  // Inline Review/FAQ editing inside product modal
+  const [inlineReviewEdit, setInlineReviewEdit] = useState<any>(null);
+  const [inlineFaqEdit, setInlineFaqEdit] = useState<any>(null);
 
   // --- Effects ---
   useEffect(() => {
@@ -333,6 +335,40 @@ export const AdminDashboard: React.FC<any> = () => {
       showToast("삭제되었습니다.");
   };
 
+  const saveInlineReview = async (productId: string, productName: string) => {
+      if (!db || !inlineReviewEdit) return;
+      if (!inlineReviewEdit.userName?.trim()) { showToast('작성자명을 입력해주세요.', 'error'); return; }
+      if (!inlineReviewEdit.content?.trim()) { showToast('리뷰 내용을 입력해주세요.', 'error'); return; }
+      try {
+          const payload = { ...inlineReviewEdit, productId, productName };
+          delete payload.id;
+          if (inlineReviewEdit.id) {
+              await updateDoc(doc(db, 'reviews', inlineReviewEdit.id), { ...payload, updatedAt: serverTimestamp() });
+          } else {
+              await addDoc(collection(db, 'reviews'), { ...payload, createdAt: serverTimestamp() });
+          }
+          setInlineReviewEdit(null);
+          showToast('리뷰가 저장되었습니다.');
+      } catch (e: any) { showToast('저장 실패: ' + e.message, 'error'); }
+  };
+
+  const saveInlineFaq = async (productId: string, productName: string) => {
+      if (!db || !inlineFaqEdit) return;
+      if (!inlineFaqEdit.question?.trim()) { showToast('질문을 입력해주세요.', 'error'); return; }
+      if (!inlineFaqEdit.answer?.trim()) { showToast('답변을 입력해주세요.', 'error'); return; }
+      try {
+          const payload = { ...inlineFaqEdit, productId, productName };
+          delete payload.id;
+          if (inlineFaqEdit.id) {
+              await updateDoc(doc(db, 'faqs', inlineFaqEdit.id), { ...payload, updatedAt: serverTimestamp() });
+          } else {
+              await addDoc(collection(db, 'faqs'), { ...payload, createdAt: serverTimestamp() });
+          }
+          setInlineFaqEdit(null);
+          showToast('FAQ가 저장되었습니다.');
+      } catch (e: any) { showToast('저장 실패: ' + e.message, 'error'); }
+  };
+
   // Safe Delete for Categories
   const handleDeleteCategory = async (cat: any) => {
       // Logic: If any product is using this category (by exact label matching), block deletion.
@@ -375,8 +411,6 @@ export const AdminDashboard: React.FC<any> = () => {
       else if (modalType === 'affiliate') col = "affiliates";
       else if (modalType === 'groupbuy') col = "group_buys";
       else if (modalType === 'category') col = "cms_categories";
-      else if (modalType === 'review') col = "reviews";
-      else if (modalType === 'faq') col = "faqs";
 
       if (modalType === 'product') {
           if (!editingItem.title?.trim()) { showToast('상품명을 입력해주세요.', 'error'); return; }
@@ -388,16 +422,6 @@ export const AdminDashboard: React.FC<any> = () => {
       }
       if (modalType === 'category') {
           if (!editingItem.label?.trim()) { showToast('카테고리명을 입력해주세요.', 'error'); return; }
-      }
-      if (modalType === 'review') {
-          if (!editingItem.productId) { showToast('상품을 선택해주세요.', 'error'); return; }
-          if (!editingItem.userName?.trim()) { showToast('작성자명을 입력해주세요.', 'error'); return; }
-          if (!editingItem.content?.trim()) { showToast('리뷰 내용을 입력해주세요.', 'error'); return; }
-      }
-      if (modalType === 'faq') {
-          if (!editingItem.productId) { showToast('상품을 선택해주세요.', 'error'); return; }
-          if (!editingItem.question?.trim()) { showToast('질문을 입력해주세요.', 'error'); return; }
-          if (!editingItem.answer?.trim()) { showToast('답변을 입력해주세요.', 'error'); return; }
       }
 
       const payload = { ...editingItem };
@@ -459,6 +483,8 @@ export const AdminDashboard: React.FC<any> = () => {
               showToast("저장되었습니다.");
           }
           
+          setInlineReviewEdit(null);
+          setInlineFaqEdit(null);
           setModalType(null);
       } catch(e: any) { 
           showToast("저장 실패: " + e.message, 'error'); 
@@ -919,18 +945,6 @@ export const AdminDashboard: React.FC<any> = () => {
                         >
                             <Layers size={18}/> 패키지 구성 (MD)
                         </button>
-                        <button 
-                            onClick={() => setProductSubTab('reviews')} 
-                            className={`px-4 py-2 font-bold text-sm flex items-center gap-2 transition-colors ${productSubTab === 'reviews' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            <Star size={18}/> 리뷰 관리
-                        </button>
-                        <button 
-                            onClick={() => setProductSubTab('faqs')} 
-                            className={`px-4 py-2 font-bold text-sm flex items-center gap-2 transition-colors ${productSubTab === 'faqs' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            <MessageCircle size={18}/> FAQ 관리
-                        </button>
                     </div>
 
                     {/* SUB-TAB: CATEGORIES */}
@@ -993,7 +1007,7 @@ export const AdminDashboard: React.FC<any> = () => {
                         <div className="space-y-4 animate-fade-in">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-xl font-black">상품 목록</h2>
-                                <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
+                                <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setInlineReviewEdit(null); setInlineFaqEdit(null); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
                             </div>
                             <div className="flex gap-2 mb-4 bg-gray-100 p-2 rounded-lg inline-flex">
                                 <button onClick={()=>setProductCategoryFilter('all')} className={`px-3 py-1 rounded text-xs font-bold transition-all ${productCategoryFilter==='all'?'bg-white shadow-sm text-black':'text-gray-500 hover:text-black'}`}>전체 보기</button>
@@ -1024,7 +1038,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <button onClick={()=>duplicateProduct(p)} className="text-gray-400 hover:text-green-500" title="복제"><Copy size={16}/></button>
-                                                    <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
+                                                    <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setInlineReviewEdit(null); setInlineFaqEdit(null); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
                                                     <button onClick={()=>deleteItem(p._coll, p.id)} className="text-red-500"><Trash2 size={16}/></button>
                                                 </div>
                                             </div>
@@ -1091,107 +1105,6 @@ export const AdminDashboard: React.FC<any> = () => {
                         </div>
                     )}
 
-                    {/* SUB-TAB: REVIEWS */}
-                    {productSubTab === 'reviews' && (
-                        <div className="space-y-4 animate-fade-in">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-xl font-black flex items-center gap-2"><Star size={20} className="text-yellow-500"/> 리뷰 관리</h2>
-                                <button onClick={() => { setEditingItem({ productId: '', productName: '', userName: '', rating: 5, content: '', date: new Date().toISOString().split('T')[0] }); setModalType('review'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 리뷰 등록</button>
-                            </div>
-                            <div className="flex gap-2 mb-4 bg-gray-100 p-2 rounded-lg inline-flex flex-wrap">
-                                <button onClick={() => setReviewProductFilter('all')} className={`px-3 py-1 rounded text-xs font-bold transition-all ${reviewProductFilter === 'all' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}>전체</button>
-                                {allProducts.map(p => {
-                                    const cnt = allReviews.filter(r => r.productId === p.id).length;
-                                    if (cnt === 0 && reviewProductFilter !== p.id) return null;
-                                    return <button key={p.id} onClick={() => setReviewProductFilter(p.id)} className={`px-3 py-1 rounded text-xs font-bold transition-all ${reviewProductFilter === p.id ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}>{p.title} ({cnt})</button>;
-                                })}
-                            </div>
-                            <div className="bg-white border rounded-xl overflow-hidden">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50 border-b">
-                                        <tr>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">상품명</th>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">작성자</th>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">평점</th>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">내용</th>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">날짜</th>
-                                            <th className="text-right px-4 py-3 font-bold text-xs text-gray-500">관리</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {allReviews.filter(r => reviewProductFilter === 'all' || r.productId === reviewProductFilter).map((rev) => (
-                                            <tr key={rev.id} className="border-b border-gray-50 hover:bg-gray-50">
-                                                <td className="px-4 py-3 font-bold text-xs">{rev.productName || allProducts.find(p => p.id === rev.productId)?.title || '-'}</td>
-                                                <td className="px-4 py-3 text-xs">{rev.userName}</td>
-                                                <td className="px-4 py-3"><div className="flex gap-0.5">{Array.from({length:5},(_,i) => <Star key={i} size={10} className={i < (rev.rating||5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}</div></td>
-                                                <td className="px-4 py-3 text-xs text-gray-600 max-w-[300px] truncate">{rev.content}</td>
-                                                <td className="px-4 py-3 text-xs text-gray-400">{rev.createdAt?.seconds ? new Date(rev.createdAt.seconds * 1000).toLocaleDateString('ko-KR') : rev.date || '-'}</td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <button onClick={() => { setEditingItem({...rev, productName: rev.productName || allProducts.find(p => p.id === rev.productId)?.title || ''}); setModalType('review'); }} className="text-blue-500"><Edit2 size={14}/></button>
-                                                        <button onClick={() => deleteItem('reviews', rev.id)} className="text-red-500"><Trash2 size={14}/></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {allReviews.filter(r => reviewProductFilter === 'all' || r.productId === reviewProductFilter).length === 0 && (
-                                            <tr><td colSpan={6} className="text-center py-12 text-gray-400">등록된 리뷰가 없습니다.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* SUB-TAB: FAQS */}
-                    {productSubTab === 'faqs' && (
-                        <div className="space-y-4 animate-fade-in">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-xl font-black flex items-center gap-2"><MessageCircle size={20} className="text-blue-500"/> FAQ 관리</h2>
-                                <button onClick={() => { setEditingItem({ productId: '', productName: '', question: '', answer: '', order: allFaqs.length }); setModalType('faq'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> FAQ 등록</button>
-                            </div>
-                            <div className="flex gap-2 mb-4 bg-gray-100 p-2 rounded-lg inline-flex flex-wrap">
-                                <button onClick={() => setFaqProductFilter('all')} className={`px-3 py-1 rounded text-xs font-bold transition-all ${faqProductFilter === 'all' ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}>전체</button>
-                                {allProducts.map(p => {
-                                    const cnt = allFaqs.filter(f => f.productId === p.id).length;
-                                    if (cnt === 0 && faqProductFilter !== p.id) return null;
-                                    return <button key={p.id} onClick={() => setFaqProductFilter(p.id)} className={`px-3 py-1 rounded text-xs font-bold transition-all ${faqProductFilter === p.id ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}>{p.title} ({cnt})</button>;
-                                })}
-                            </div>
-                            <div className="bg-white border rounded-xl overflow-hidden">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-gray-50 border-b">
-                                        <tr>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">상품명</th>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">질문</th>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">답변</th>
-                                            <th className="text-left px-4 py-3 font-bold text-xs text-gray-500">순서</th>
-                                            <th className="text-right px-4 py-3 font-bold text-xs text-gray-500">관리</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {allFaqs.filter(f => faqProductFilter === 'all' || f.productId === faqProductFilter).map((faq) => (
-                                            <tr key={faq.id} className="border-b border-gray-50 hover:bg-gray-50">
-                                                <td className="px-4 py-3 font-bold text-xs">{faq.productName || allProducts.find(p => p.id === faq.productId)?.title || '-'}</td>
-                                                <td className="px-4 py-3 text-xs max-w-[250px] truncate">{faq.question}</td>
-                                                <td className="px-4 py-3 text-xs text-gray-600 max-w-[250px] truncate">{faq.answer}</td>
-                                                <td className="px-4 py-3 text-xs text-gray-400">{faq.order ?? 0}</td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <button onClick={() => { setEditingItem({...faq, productName: faq.productName || allProducts.find(p => p.id === faq.productId)?.title || ''}); setModalType('faq'); }} className="text-blue-500"><Edit2 size={14}/></button>
-                                                        <button onClick={() => deleteItem('faqs', faq.id)} className="text-red-500"><Trash2 size={14}/></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {allFaqs.filter(f => faqProductFilter === 'all' || f.productId === faqProductFilter).length === 0 && (
-                                            <tr><td colSpan={5} className="text-center py-12 text-gray-400">등록된 FAQ가 없습니다.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -1599,7 +1512,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                     <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                         <h3 className="font-bold text-lg">{modalType === 'reservation_detail' ? '예약 상세 정보' : modalType.toUpperCase() + ' EDITOR'}</h3>
-                        <button onClick={()=>setModalType(null)}><X/></button>
+                        <button onClick={()=>{setInlineReviewEdit(null); setInlineFaqEdit(null); setModalType(null);}}><X/></button>
                     </div>
                     <div className="p-8 overflow-y-auto flex-1 space-y-6">
                         
@@ -1762,57 +1675,138 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </button>
                                     </div>
                                 </div>
+
+                                {editingItem.id && (
+                                <div className="border p-4 rounded-xl bg-gray-50">
+                                    <label className="block text-xs font-bold mb-2 flex items-center gap-2"><Star size={14} className="text-yellow-500"/> 리뷰 관리</label>
+                                    <p className="text-[10px] text-gray-400 mb-3">상세페이지 Reviews 탭에 표시됩니다.</p>
+                                    <div className="space-y-2 mb-3">
+                                        {allReviews.filter(r => r.productId === editingItem.id).map((rev) => (
+                                            <div key={rev.id} className="bg-white p-3 rounded-lg border border-gray-200">
+                                                {inlineReviewEdit?.id === rev.id ? (
+                                                    <div className="space-y-2">
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <input className="border p-2 rounded text-xs" placeholder="작성자명" value={inlineReviewEdit.userName || ''} onChange={e => setInlineReviewEdit({...inlineReviewEdit, userName: e.target.value})}/>
+                                                            <div className="flex gap-1 items-center">
+                                                                {[1,2,3,4,5].map(n => (
+                                                                    <button key={n} onClick={() => setInlineReviewEdit({...inlineReviewEdit, rating: n})} className="p-0.5">
+                                                                        <Star size={16} className={n <= (inlineReviewEdit.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}/>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <textarea className="w-full border p-2 rounded text-xs min-h-[60px]" placeholder="리뷰 내용" value={inlineReviewEdit.content || ''} onChange={e => setInlineReviewEdit({...inlineReviewEdit, content: e.target.value})}/>
+                                                        <div className="flex gap-2 justify-end">
+                                                            <button onClick={() => setInlineReviewEdit(null)} className="px-3 py-1 text-xs text-gray-500 border rounded hover:bg-gray-100">취소</button>
+                                                            <button onClick={() => saveInlineReview(editingItem.id, editingItem.title)} className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">저장</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="text-xs font-bold">{rev.userName}</span>
+                                                                <div className="flex gap-0.5">{Array.from({length:5},(_,i) => <Star key={i} size={10} className={i < (rev.rating||5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}/>)}</div>
+                                                            </div>
+                                                            <p className="text-xs text-gray-600 truncate">{rev.content}</p>
+                                                        </div>
+                                                        <div className="flex gap-1 ml-2 flex-shrink-0">
+                                                            <button onClick={() => setInlineReviewEdit({...rev})} className="text-blue-500 p-1 hover:bg-blue-50 rounded"><Edit2 size={12}/></button>
+                                                            <button onClick={() => deleteItem('reviews', rev.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={12}/></button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {allReviews.filter(r => r.productId === editingItem.id).length === 0 && !inlineReviewEdit && (
+                                            <p className="text-xs text-gray-400 text-center py-4">등록된 리뷰가 없습니다.</p>
+                                        )}
+                                    </div>
+                                    {inlineReviewEdit && !inlineReviewEdit.id ? (
+                                        <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input className="border p-2 rounded text-xs" placeholder="작성자명" value={inlineReviewEdit.userName || ''} onChange={e => setInlineReviewEdit({...inlineReviewEdit, userName: e.target.value})}/>
+                                                <div className="flex gap-1 items-center">
+                                                    {[1,2,3,4,5].map(n => (
+                                                        <button key={n} onClick={() => setInlineReviewEdit({...inlineReviewEdit, rating: n})} className="p-0.5">
+                                                            <Star size={16} className={n <= (inlineReviewEdit.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}/>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <textarea className="w-full border p-2 rounded text-xs min-h-[60px]" placeholder="리뷰 내용" value={inlineReviewEdit.content || ''} onChange={e => setInlineReviewEdit({...inlineReviewEdit, content: e.target.value})}/>
+                                            <div className="flex gap-2 justify-end">
+                                                <button onClick={() => setInlineReviewEdit(null)} className="px-3 py-1 text-xs text-gray-500 border rounded hover:bg-gray-100">취소</button>
+                                                <button onClick={() => saveInlineReview(editingItem.id, editingItem.title)} className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">저장</button>
+                                            </div>
+                                        </div>
+                                    ) : !inlineReviewEdit && (
+                                        <button onClick={() => setInlineReviewEdit({ userName: '', rating: 5, content: '' })} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-bold text-xs flex items-center justify-center gap-2 hover:border-yellow-400 hover:text-yellow-600">
+                                            <Plus size={14}/> 리뷰 추가
+                                        </button>
+                                    )}
+                                </div>
+                                )}
+
+                                {editingItem.id && (
+                                <div className="border p-4 rounded-xl bg-gray-50">
+                                    <label className="block text-xs font-bold mb-2 flex items-center gap-2"><MessageCircle size={14} className="text-blue-500"/> FAQ 관리</label>
+                                    <p className="text-[10px] text-gray-400 mb-3">상세페이지 FAQ 탭에 표시됩니다.</p>
+                                    <div className="space-y-2 mb-3">
+                                        {allFaqs.filter(f => f.productId === editingItem.id).map((faq) => (
+                                            <div key={faq.id} className="bg-white p-3 rounded-lg border border-gray-200">
+                                                {inlineFaqEdit?.id === faq.id ? (
+                                                    <div className="space-y-2">
+                                                        <input className="w-full border p-2 rounded text-xs" placeholder="질문 (Q)" value={inlineFaqEdit.question || ''} onChange={e => setInlineFaqEdit({...inlineFaqEdit, question: e.target.value})}/>
+                                                        <textarea className="w-full border p-2 rounded text-xs min-h-[60px]" placeholder="답변 (A)" value={inlineFaqEdit.answer || ''} onChange={e => setInlineFaqEdit({...inlineFaqEdit, answer: e.target.value})}/>
+                                                        <div className="flex items-center gap-2">
+                                                            <label className="text-[10px] text-gray-500">순서:</label>
+                                                            <input type="number" className="border p-1 rounded text-xs w-16" value={inlineFaqEdit.order ?? 0} onChange={e => setInlineFaqEdit({...inlineFaqEdit, order: Number(e.target.value)})}/>
+                                                            <div className="flex-1"/>
+                                                            <button onClick={() => setInlineFaqEdit(null)} className="px-3 py-1 text-xs text-gray-500 border rounded hover:bg-gray-100">취소</button>
+                                                            <button onClick={() => saveInlineFaq(editingItem.id, editingItem.title)} className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">저장</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-bold mb-1">Q. {faq.question}</p>
+                                                            <p className="text-xs text-gray-600 truncate">A. {faq.answer}</p>
+                                                        </div>
+                                                        <div className="flex gap-1 ml-2 flex-shrink-0">
+                                                            <button onClick={() => setInlineFaqEdit({...faq})} className="text-blue-500 p-1 hover:bg-blue-50 rounded"><Edit2 size={12}/></button>
+                                                            <button onClick={() => deleteItem('faqs', faq.id)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={12}/></button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {allFaqs.filter(f => f.productId === editingItem.id).length === 0 && !inlineFaqEdit && (
+                                            <p className="text-xs text-gray-400 text-center py-4">등록된 FAQ가 없습니다.</p>
+                                        )}
+                                    </div>
+                                    {inlineFaqEdit && !inlineFaqEdit.id ? (
+                                        <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2">
+                                            <input className="w-full border p-2 rounded text-xs" placeholder="질문 (Q)" value={inlineFaqEdit.question || ''} onChange={e => setInlineFaqEdit({...inlineFaqEdit, question: e.target.value})}/>
+                                            <textarea className="w-full border p-2 rounded text-xs min-h-[60px]" placeholder="답변 (A)" value={inlineFaqEdit.answer || ''} onChange={e => setInlineFaqEdit({...inlineFaqEdit, answer: e.target.value})}/>
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-[10px] text-gray-500">순서:</label>
+                                                <input type="number" className="border p-1 rounded text-xs w-16" value={inlineFaqEdit.order ?? 0} onChange={e => setInlineFaqEdit({...inlineFaqEdit, order: Number(e.target.value)})}/>
+                                                <div className="flex-1"/>
+                                                <button onClick={() => setInlineFaqEdit(null)} className="px-3 py-1 text-xs text-gray-500 border rounded hover:bg-gray-100">취소</button>
+                                                <button onClick={() => saveInlineFaq(editingItem.id, editingItem.title)} className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">저장</button>
+                                            </div>
+                                        </div>
+                                    ) : !inlineFaqEdit && (
+                                        <button onClick={() => setInlineFaqEdit({ question: '', answer: '', order: allFaqs.filter(f => f.productId === editingItem.id).length })} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-bold text-xs flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-500">
+                                            <Plus size={14}/> FAQ 추가
+                                        </button>
+                                    )}
+                                </div>
+                                )}
                              </div>
                          )}
 
-                         {/* REVIEW EDITOR */}
-                         {modalType === 'review' && (
-                             <div className="space-y-4">
-                                 <div>
-                                     <label className="block text-xs font-bold mb-1">상품 선택</label>
-                                     <select className="w-full border p-2 rounded" value={editingItem.productId} onChange={e => {
-                                         const prod = allProducts.find(p => p.id === e.target.value);
-                                         setEditingItem({...editingItem, productId: e.target.value, productName: prod?.title || ''});
-                                     }}>
-                                         <option value="">상품을 선택하세요</option>
-                                         {allProducts.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                                     </select>
-                                 </div>
-                                 <div className="grid grid-cols-2 gap-4">
-                                     <div><label className="block text-xs font-bold mb-1">작성자명</label><input className="w-full border p-2 rounded" value={editingItem.userName || ''} onChange={e => setEditingItem({...editingItem, userName: e.target.value})}/></div>
-                                     <div>
-                                         <label className="block text-xs font-bold mb-1">평점</label>
-                                         <div className="flex gap-1 mt-1">
-                                             {[1,2,3,4,5].map(n => (
-                                                 <button key={n} onClick={() => setEditingItem({...editingItem, rating: n})} className="p-1">
-                                                     <Star size={20} className={n <= (editingItem.rating || 5) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}/>
-                                                 </button>
-                                             ))}
-                                         </div>
-                                     </div>
-                                 </div>
-                                 <div><label className="block text-xs font-bold mb-1">리뷰 내용</label><textarea className="w-full border p-2 rounded min-h-[100px]" value={editingItem.content || ''} onChange={e => setEditingItem({...editingItem, content: e.target.value})} placeholder="리뷰 내용을 입력하세요"/></div>
-                             </div>
-                         )}
-
-                         {/* FAQ EDITOR */}
-                         {modalType === 'faq' && (
-                             <div className="space-y-4">
-                                 <div>
-                                     <label className="block text-xs font-bold mb-1">상품 선택</label>
-                                     <select className="w-full border p-2 rounded" value={editingItem.productId} onChange={e => {
-                                         const prod = allProducts.find(p => p.id === e.target.value);
-                                         setEditingItem({...editingItem, productId: e.target.value, productName: prod?.title || ''});
-                                     }}>
-                                         <option value="">상품을 선택하세요</option>
-                                         {allProducts.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                                     </select>
-                                 </div>
-                                 <div><label className="block text-xs font-bold mb-1">질문 (Q)</label><input className="w-full border p-2 rounded" value={editingItem.question || ''} onChange={e => setEditingItem({...editingItem, question: e.target.value})} placeholder="자주 묻는 질문"/></div>
-                                 <div><label className="block text-xs font-bold mb-1">답변 (A)</label><textarea className="w-full border p-2 rounded min-h-[100px]" value={editingItem.answer || ''} onChange={e => setEditingItem({...editingItem, answer: e.target.value})} placeholder="답변 내용을 입력하세요"/></div>
-                                 <div><label className="block text-xs font-bold mb-1">표시 순서</label><input type="number" className="w-full border p-2 rounded" value={editingItem.order ?? 0} onChange={e => setEditingItem({...editingItem, order: Number(e.target.value)})}/></div>
-                             </div>
-                         )}
 
                          {/* PACKAGE EDITOR */}
                          {modalType === 'package' && (
@@ -1977,7 +1971,7 @@ export const AdminDashboard: React.FC<any> = () => {
                     </div>
                     {modalType !== 'reservation_detail' && modalType !== 'inquiry_detail' && (
                         <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
-                            <button onClick={()=>setModalType(null)} className="px-4 py-2 font-bold text-gray-500">취소</button>
+                            <button onClick={()=>{setInlineReviewEdit(null); setInlineFaqEdit(null); setModalType(null);}} className="px-4 py-2 font-bold text-gray-500">취소</button>
                             <button onClick={saveItem} className="bg-black text-white px-6 py-2 rounded font-bold flex items-center gap-2">{uploadingImg?<RefreshCw className="animate-spin" size={16}/>:<Save size={16}/>} 저장하기</button>
                         </div>
                     )}
