@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus, Box, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus, Box, ChevronUp, CreditCard, CheckCircle } from 'lucide-react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { createReservation, checkAvailability, validateCoupon } from '../services/reservationService';
-import { initializePayment, requestPayment } from '../services/paymentService';
 import { loginWithGoogle, handleAuthError } from '../services/authService';
 import { useGlobal } from '../contexts/GlobalContext';
+import { PayPalCheckout } from '../components/PayPalCheckout';
 
 interface ProductDetailProps {
   language: 'ko' | 'en' | 'ja' | 'zh';
@@ -33,6 +33,8 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [faqs, setFaqs] = useState<any[]>([]);
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
+  const [showPayPal, setShowPayPal] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const title = getLocalizedValue(product, 'title');
   const description = getLocalizedValue(product, 'description');
@@ -74,8 +76,9 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   };
 
   useEffect(() => {
-    initializePayment('imp19424728');
     window.scrollTo(0,0);
+    setShowPayPal(false);
+    setPaymentSuccess(false);
   }, [product]);
 
   useEffect(() => {
@@ -161,41 +164,37 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
 
   const handleReservation = async () => {
     if (!selectedDate) return alert(t('select_date'));
-    if (!guestList[0].name || !guestList[0].messengerId) return alert("Please enter name and messenger ID.");
+    if (!guestList[0].name || !guestList[0].messengerId) return alert(isKo ? "이름과 메신저 ID를 입력해주세요." : "Please enter name and messenger ID.");
 
     const { available } = await checkAvailability(selectedDate);
     if (available < guestList.length) return alert("Sold Out");
 
-    const totalAmount = getPrice();
-    const merchant_uid = `mid_${new Date().getTime()}`;
+    setShowPayPal(true);
+  };
 
+  const handlePayPalSuccess = async (details: any) => {
+    const totalAmount = getPrice();
     let buyerEmail = auth?.currentUser?.email || '';
-    let buyerName = auth?.currentUser?.displayName || '';
+    const buyerName = auth?.currentUser?.displayName || guestList[0].name;
 
     if (!auth?.currentUser) {
-        const guestEmail = prompt(isEn ? "Please enter your email for voucher:" : "바우처를 받을 이메일을 입력해주세요:");
-        if (!guestEmail) return;
-        buyerEmail = guestEmail;
-        buyerName = guestList[0].name;
+        buyerEmail = guestList[0].messengerId || 'guest@k-experience.com';
     }
 
     try {
-        const paymentResult = await requestPayment({
-            merchant_uid, name: title, amount: totalAmount, buyer_email: buyerEmail, buyer_name: buyerName
+        await createReservation({
+            userId: auth?.currentUser?.uid || 'guest',
+            productName: title, date: selectedDate!, peopleCount: guestList.length, totalPrice: totalAmount,
+            options: { 
+                type: 'general_product', paymentType: selectedPayment, category: product.category,
+                guests: guestList, guestEmail: buyerEmail,
+                paypalOrderId: details.id,
+                paypalStatus: details.status,
+                payerEmail: details.payer?.email_address,
+            }
         });
-
-        if (paymentResult.success) {
-            await createReservation({
-                userId: auth?.currentUser?.uid || 'guest',
-                productName: title, date: selectedDate, peopleCount: guestList.length, totalPrice: totalAmount,
-                options: { 
-                    type: 'general_product', paymentType: selectedPayment, category: product.category,
-                    guests: guestList, guestEmail: buyerEmail
-                }
-            });
-            alert(isEn ? "Confirmed! Survey sent." : "예약이 확정되었습니다!");
-            window.location.href = "/";
-        }
+        setPaymentSuccess(true);
+        setShowPayPal(false);
     } catch (e: any) { alert(e); }
   };
 
@@ -391,9 +390,38 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 </div>
 
                 <div className="bg-[#f9f9f9] p-5">
-                    <div className="bg-white p-3 rounded-lg border border-gray-200 mb-4 shadow-sm"><label className="block text-xs font-bold text-gray-500 mb-1">{t('coupon_code')}</label><div className="flex gap-2"><input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="flex-1 border border-gray-200 rounded px-2 text-sm uppercase bg-white" placeholder="CODE"/><button onClick={handleApplyCoupon} className="bg-black text-white px-3 py-1 rounded text-xs font-bold">{t('apply')}</button></div>{couponMessage && <p className={`text-[10px] mt-1 font-bold ${appliedCoupon ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}</div>
-                    <div className="flex justify-between items-center mb-4"><span className="text-[14px] font-bold text-[#555]">{t('total')}</span><div className="text-right"><span className="text-[20px] font-black text-[#111]">{convertPrice(getPrice())}</span></div></div>
-                    <button onClick={handleReservation} className="w-full bg-[#0070F0] text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-600 active:scale-95 transition-all">{t('book_now')}</button>
+                    {paymentSuccess ? (
+                        <div className="text-center py-6 animate-fade-in">
+                            <CheckCircle size={48} className="text-green-500 mx-auto mb-3"/>
+                            <h3 className="text-lg font-black text-[#111] mb-2">{isKo ? '결제 완료!' : 'Payment Complete!'}</h3>
+                            <p className="text-sm text-gray-500 mb-4">{isKo ? '예약이 확정되었습니다. 마이페이지에서 확인하세요.' : 'Your reservation is confirmed. Check My Page for details.'}</p>
+                            <button onClick={() => window.location.href = '/'} className="bg-[#0070F0] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-600">{isKo ? '홈으로' : 'Go Home'}</button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 mb-4 shadow-sm"><label className="block text-xs font-bold text-gray-500 mb-1">{t('coupon_code')}</label><div className="flex gap-2"><input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="flex-1 border border-gray-200 rounded px-2 text-sm uppercase bg-white" placeholder="CODE"/><button onClick={handleApplyCoupon} className="bg-black text-white px-3 py-1 rounded text-xs font-bold">{t('apply')}</button></div>{couponMessage && <p className={`text-[10px] mt-1 font-bold ${appliedCoupon ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}</div>
+                            <div className="flex justify-between items-center mb-4"><span className="text-[14px] font-bold text-[#555]">{t('total')}</span><div className="text-right"><span className="text-[20px] font-black text-[#111]">{convertPrice(getPrice())}</span></div></div>
+                            {!showPayPal ? (
+                                <button onClick={handleReservation} className="w-full bg-[#0070F0] text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-600 active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <CreditCard size={18}/> {t('book_now')}
+                                </button>
+                            ) : (
+                                <div className="space-y-3 animate-fade-in">
+                                    <p className="text-xs text-gray-500 text-center font-bold">{isKo ? 'PayPal로 안전하게 결제하세요' : 'Pay securely with PayPal'}</p>
+                                    <PayPalCheckout
+                                        amount={getPrice() / 1400}
+                                        description={`${title} - ${selectedDate}`}
+                                        items={[{ name: title.substring(0, 127), price: Number((getPrice() / 1400).toFixed(2)), quantity: guestList.length }]}
+                                        onSuccess={handlePayPalSuccess}
+                                        onError={(err) => { alert(isKo ? '결제 중 오류가 발생했습니다. 다시 시도해주세요.' : 'Payment error. Please try again.'); console.error(err); }}
+                                        onCancel={() => { setShowPayPal(false); }}
+                                        language={language}
+                                    />
+                                    <button onClick={() => setShowPayPal(false)} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2">{isKo ? '다른 결제 방법 선택' : 'Choose another payment method'}</button>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
         </div>

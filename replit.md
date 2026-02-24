@@ -6,7 +6,8 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 ## Tech Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS (via CDN)
 - **Build Tool**: Vite 5
-- **External Services**: Firebase (Auth, Firestore, Storage), Google Gemini AI, PortOne (payments), EmailJS
+- **External Services**: Firebase (Auth, Firestore, Storage), Google Gemini AI, PayPal (payments), EmailJS
+- **Backend**: Express.js (PayPal API server on port 3001)
 - **Rich Text Editor**: Tiptap (ProseMirror-based) with extensions
 - **Styling**: Tailwind CSS CDN + Pretendard font
 
@@ -14,7 +15,8 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 - `/styles/` - CSS files (tiptap-editor.css for rich text editor styling)
 - `/components/` - Reusable React components (Navbar, Hero, Footer, AuthModal, RichTextEditor, MagazinePreview, etc.)
 - `/pages/` - Page-level components (Admin, Product Detail, Reservations, MagazinePage, etc.)
-- `/services/` - Service layer (auth, payments, email, Firebase, Gemini AI, seoService)
+- `/server/` - Express backend (PayPal order creation, capture API)
+- `/services/` - Service layer (auth, paypal, email, Firebase, Gemini AI, seoService)
 - `/contexts/` - React context providers (GlobalContext with real-time Firestore listeners)
 - `App.tsx` - Main application component with auth state management
 - `index.tsx` - Entry point
@@ -66,10 +68,21 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 ## Admin Access
 - Email: admin@k-experience.com or users with `role: 'admin'` in Firestore `users` collection
 
+## PayPal Payment Integration
+- **Secrets**: `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET` (Sandbox mode)
+- **Backend**: Express server on port 3001, handles order creation and capture
+- **Frontend**: PayPal JS SDK loaded dynamically, Smart Payment Buttons
+- **Flow**: User fills booking form → clicks "Book Now" → PayPal buttons appear → payment → reservation created in Firestore
+- **Currency**: KRW prices converted to USD (÷1400) for PayPal processing
+- **Pages**: ProductDetail, ReservationBasic, ReservationPremium all use PayPal
+- **Vite Proxy**: `/api` routes proxied to backend server (port 3001)
+
 ## Running the App
-- **Dev**: `npm run dev` (runs on port 5000)
+- **Dev**: `npm run dev` (starts Express backend + Vite frontend)
 - **Build**: `npm run build` (outputs to `dist/`)
 - **Preview**: `npm run preview`
 
 ## Deployment
-- Static deployment using Vite build output in `dist/` directory
+- Backend: Express server for PayPal API (port 3001)
+- Frontend: Vite build output in `dist/` directory
+- Deployment type: VM (needs backend server running)

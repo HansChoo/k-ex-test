@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Check, Heart, MapPin, Copy, Camera, UserPlus, Loader2, Info, MessageCircle, Trash2, Plus } from 'lucide-react';
+import { ChevronDown, Check, Heart, MapPin, Copy, Camera, UserPlus, Loader2, Info, MessageCircle, Trash2, Plus, CreditCard, CheckCircle } from 'lucide-react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { createReservation, checkAvailability } from '../services/reservationService';
-import { initializePayment, requestPayment } from '../services/paymentService';
 import { useGlobal } from '../contexts/GlobalContext';
+import { PayPalCheckout } from '../components/PayPalCheckout';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { generateMockReviews } from '../constants';
 
@@ -28,7 +28,6 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   const [cmsData, setCmsData] = useState<any>(null);
 
   useEffect(() => { 
-      initializePayment('imp19424728'); 
       setReviews(generateMockReviews(50));
       if (!db) { setLoading(false); return; }
       const unsub = onSnapshot(doc(db, "cms_packages", "package_premium"), (doc) => {
@@ -70,46 +69,36 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
     return Math.round(total);
   };
 
+  const [showPayPal, setShowPayPal] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   const handleReservation = async () => {
     if (!selectedDate) { alert(t('select_options')); return; }
-    
     for (let i = 0; i < guestList.length; i++) {
         if (!guestList[i].name || !guestList[i].dob) {
             alert(isEn ? `Please fill in details for Guest ${i+1}` : `방문자 ${i+1}의 정보를 모두 입력해주세요.`);
             return;
         }
     }
-    if (!guestList[0].messengerId) { alert("Enter Messenger ID"); return; }
-
+    if (!guestList[0].messengerId) { alert(isEn ? "Enter Messenger ID" : "메신저 ID를 입력해주세요."); return; }
     const { available } = await checkAvailability(selectedDate);
     if (available < guestList.length) { alert(t('sold_out')); return; }
+    setShowPayPal(true);
+  };
 
+  const handlePayPalSuccess = async (details: any) => {
     const priceNum = getPrice();
     const productName = `Premium Package (${selectedDate}) x${guestList.length}`;
-    const merchant_uid = `mid_${new Date().getTime()}`;
-    
-    let buyerEmail = auth?.currentUser?.email || '';
-    let buyerName = auth?.currentUser?.displayName || '';
-    if (!auth?.currentUser) {
-        const guestEmail = prompt(isEn ? "Email:" : "이메일:");
-        if(!guestEmail) return;
-        buyerEmail = guestEmail;
-        buyerName = guestList[0].name;
-    }
-
-    const paymentResult = await requestPayment({
-        merchant_uid, name: productName, amount: priceNum,
-        buyer_email: buyerEmail, buyer_name: buyerName
-    });
-
-    if (paymentResult.success) {
+    const buyerEmail = auth?.currentUser?.email || guestList[0].messengerId || 'guest@k-experience.com';
+    try {
         await createReservation({
-            userId: auth?.currentUser?.uid || 'guest', productName, date: selectedDate, peopleCount: guestList.length, totalPrice: priceNum,
-            options: { payment: selectedPayment, guests: guestList, guestEmail: buyerEmail }
+            userId: auth?.currentUser?.uid || 'guest', productName, date: selectedDate!, peopleCount: guestList.length, totalPrice: priceNum,
+            options: { payment: selectedPayment, guests: guestList, guestEmail: buyerEmail,
+                paypalOrderId: details.id, paypalStatus: details.status, payerEmail: details.payer?.email_address }
         });
-        alert(isEn ? "Confirmed! Survey sent." : "예약 확정! 설문지가 발송되었습니다.");
-        window.location.href = "/";
-    }
+        setPaymentSuccess(true);
+        setShowPayPal(false);
+    } catch (e: any) { alert(e); }
   };
 
   const title = getLocalizedValue(cmsData, 'title');
@@ -223,8 +212,27 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
                 </div>
 
                 <div className="bg-[#f9f9f9] p-5">
-                    <div className="flex justify-between items-center mb-4"><span className="text-[14px] font-bold text-[#555]">{t('total')} ({guestList.length} Guests)</span><div className="text-right"><span className="text-[20px] font-black text-[#111]">{convertPrice(getPrice())}</span></div></div>
-                    <button onClick={handleReservation} className={`w-full py-4 rounded-lg font-bold text-[16px] text-white transition-colors bg-[#C8A32B] hover:bg-[#B38F20]`}>{t('book_now')}</button>
+                    {paymentSuccess ? (
+                        <div className="text-center py-6 animate-fade-in">
+                            <CheckCircle size={48} className="text-green-500 mx-auto mb-3"/>
+                            <h3 className="text-lg font-black text-[#111] mb-2">{isEn ? 'Payment Complete!' : '결제 완료!'}</h3>
+                            <p className="text-sm text-gray-500 mb-4">{isEn ? 'Your reservation is confirmed.' : '예약이 확정되었습니다.'}</p>
+                            <button onClick={() => window.location.href = '/'} className="bg-[#C8A32B] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-[#B38F20]">{isEn ? 'Go Home' : '홈으로'}</button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex justify-between items-center mb-4"><span className="text-[14px] font-bold text-[#555]">{t('total')} ({guestList.length} Guests)</span><div className="text-right"><span className="text-[20px] font-black text-[#111]">{convertPrice(getPrice())}</span></div></div>
+                            {!showPayPal ? (
+                                <button onClick={handleReservation} className="w-full py-4 rounded-lg font-bold text-[16px] text-white transition-colors bg-[#C8A32B] hover:bg-[#B38F20] flex items-center justify-center gap-2"><CreditCard size={18}/> {t('book_now')}</button>
+                            ) : (
+                                <div className="space-y-3 animate-fade-in">
+                                    <p className="text-xs text-gray-500 text-center font-bold">{isEn ? 'Pay securely with PayPal' : 'PayPal로 안전하게 결제하세요'}</p>
+                                    <PayPalCheckout amount={getPrice() / 1400} description={`Premium Package - ${selectedDate}`} items={[{ name: 'Premium Health Checkup Package', price: Number((getPrice() / 1400).toFixed(2)), quantity: guestList.length }]} onSuccess={handlePayPalSuccess} onError={(err) => { alert(isEn ? 'Payment error.' : '결제 오류가 발생했습니다.'); console.error(err); }} onCancel={() => setShowPayPal(false)} language={language}/>
+                                    <button onClick={() => setShowPayPal(false)} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2">{isEn ? 'Cancel' : '취소'}</button>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
         </div>
