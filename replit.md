@@ -56,8 +56,9 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - Product edit modal includes inline management for: MAP locations, Reviews, FAQ (all per-product, Firebase CRUD)
 
 ## Wishlist & Cart
-- **Wishlist**: Stored in localStorage (`k_exp_wishlist`), managed via GlobalContext (`toggleWishlist`)
-- **Cart**: Stored in localStorage (`k_exp_cart`), managed via GlobalContext (`addToCart`, `removeFromCart`, `updateCartQuantity`, `clearCart`)
+- **Wishlist**: Stored in Firestore `user_data/{uid}` document, synced across devices via `onSnapshot` listener
+- **Cart**: Stored in Firestore `user_data/{uid}` document, synced across devices via `onSnapshot` listener
+- **Data Sync**: On login, wishlist/cart loaded from Firestore; on logout, local state cleared; real-time listener keeps data in sync across tabs/devices
 - **Auth Check**: Heart (wishlist) and Plus (cart) buttons on product cards check `auth.currentUser`; if not logged in, dispatches `open-auth-modal` event to show AuthModal
 - **MyPage Tabs**: Reservations, Wishlist, Cart, 1:1 Inquiries — wishlist shows products with view/remove actions, cart shows items with quantity controls and total summary
 - **Toast Notifications**: Adding to cart triggers a success toast via `show-toast` custom event

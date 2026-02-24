@@ -1,7 +1,8 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from '../services/firebaseConfig';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { collection, query, orderBy, onSnapshot, doc, setDoc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth, isFirebaseConfigured } from '../services/firebaseConfig';
 
 type Currency = 'KRW' | 'USD' | 'JPY' | 'CNY';
 type Language = 'ko' | 'en' | 'ja' | 'zh';
@@ -202,14 +203,55 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [realtimeProducts, setRealtimeProducts] = useState<any[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
+  const savingRef = useRef(false);
+
+  const saveToFirestore = useCallback(async (uid: string, newWishlist: (number | string)[], newCart: CartItem[]) => {
+    if (!isFirebaseConfigured || !db || !uid) return;
+    savingRef.current = true;
+    try {
+      await setDoc(doc(db, 'user_data', uid), { wishlist: newWishlist, cart: newCart }, { merge: true });
+    } catch (e) { console.warn('Failed to save user data:', e); } finally {
+      savingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    const savedWishlist = localStorage.getItem('k_exp_wishlist');
-    if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
+    if (!isFirebaseConfigured || !auth) return;
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUid(user.uid);
+        try {
+          const snap = await getDoc(doc(db!, 'user_data', user.uid));
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data.wishlist) setWishlist(data.wishlist);
+            if (data.cart) setCart(data.cart);
+          }
+        } catch (e) { console.warn('Failed to load user data:', e); }
+      } else {
+        setCurrentUid(null);
+        setWishlist([]);
+        setCart([]);
+      }
+    });
+    return () => unsubAuth();
+  }, []);
 
-    const savedCart = localStorage.getItem('k_exp_cart');
-    if (savedCart) setCart(JSON.parse(savedCart));
+  useEffect(() => {
+    if (!currentUid || !isFirebaseConfigured || !db) return;
+    const unsubSnap = onSnapshot(doc(db, 'user_data', currentUid), (snap) => {
+      if (savingRef.current) return;
+      if (snap.exists()) {
+        const data = snap.data();
+        setWishlist(data.wishlist || []);
+        setCart(data.cart || []);
+      }
+    }, (err) => console.warn('User data listener error:', err));
+    return () => unsubSnap();
+  }, [currentUid]);
 
+  useEffect(() => {
     const savedLang = localStorage.getItem('k_exp_lang') as Language;
     const savedCurr = localStorage.getItem('k_exp_curr') as Currency;
     if (savedLang) setLanguage(savedLang);
@@ -279,11 +321,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const toggleWishlist = (id: number | string) => {
     const isInWishlist = wishlist.some(item => String(item) === String(id));
-    let newWishlist;
+    let newWishlist: (number | string)[];
     if (isInWishlist) newWishlist = wishlist.filter(item => String(item) !== String(id));
     else newWishlist = [...wishlist, id];
     setWishlist(newWishlist);
-    localStorage.setItem('k_exp_wishlist', JSON.stringify(newWishlist));
+    if (currentUid) saveToFirestore(currentUid, newWishlist, cart);
     window.dispatchEvent(new CustomEvent('show-toast', { 
         detail: { message: isInWishlist ? (language === 'ko' ? '위시리스트에서 삭제됨' : 'Removed from Wishlist') : (language === 'ko' ? '위시리스트에 추가됨' : 'Added to Wishlist'), type: 'info' } 
     }));
@@ -292,14 +334,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const addToCart = (product: any) => {
     setCart(prev => {
       const existing = prev.find(item => item.productId === String(product.id));
-      let newCart;
+      let newCart: CartItem[];
       if (existing) {
         newCart = prev.map(item => item.productId === String(product.id) ? { ...item, quantity: item.quantity + 1 } : item);
       } else {
         const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price) || 0;
         newCart = [...prev, { productId: String(product.id), title: product.title || '', image: product.image || '', price: numericPrice, quantity: 1 }];
       }
-      localStorage.setItem('k_exp_cart', JSON.stringify(newCart));
+      if (currentUid) saveToFirestore(currentUid, wishlist, newCart);
       return newCart;
     });
     window.dispatchEvent(new CustomEvent('show-toast', { 
@@ -310,7 +352,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const removeFromCart = (productId: string) => {
     setCart(prev => {
       const newCart = prev.filter(item => item.productId !== productId);
-      localStorage.setItem('k_exp_cart', JSON.stringify(newCart));
+      if (currentUid) saveToFirestore(currentUid, wishlist, newCart);
       return newCart;
     });
   };
@@ -319,14 +361,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (quantity <= 0) { removeFromCart(productId); return; }
     setCart(prev => {
       const newCart = prev.map(item => item.productId === productId ? { ...item, quantity } : item);
-      localStorage.setItem('k_exp_cart', JSON.stringify(newCart));
+      if (currentUid) saveToFirestore(currentUid, wishlist, newCart);
       return newCart;
     });
   };
 
   const clearCart = () => {
     setCart([]);
-    localStorage.setItem('k_exp_cart', JSON.stringify([]));
+    if (currentUid) saveToFirestore(currentUid, wishlist, []);
   };
 
   const t = (key: string) => TRANSLATIONS[language][key] || TRANSLATIONS['en'][key] || key;
