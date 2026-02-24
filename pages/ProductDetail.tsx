@@ -83,15 +83,27 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     const productId = product.id;
     
     const unsubReviews = onSnapshot(
-      query(collection(db, "reviews"), where("productId", "==", productId), orderBy("createdAt", "desc")),
-      (snap) => setReviews(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      () => setReviews([])
+      query(collection(db, "reviews"), where("productId", "==", productId)),
+      (snap) => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        data.sort((a: any, b: any) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
+        setReviews(data);
+      },
+      (err) => { console.error("Reviews listener error:", err); setReviews([]); }
     );
 
     const unsubFaqs = onSnapshot(
-      query(collection(db, "faqs"), where("productId", "==", productId), orderBy("order", "asc")),
-      (snap) => setFaqs(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      () => setFaqs([])
+      query(collection(db, "faqs"), where("productId", "==", productId)),
+      (snap) => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        data.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+        setFaqs(data);
+      },
+      (err) => { console.error("FAQs listener error:", err); setFaqs([]); }
     );
 
     return () => { unsubReviews(); unsubFaqs(); };
