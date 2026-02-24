@@ -19,6 +19,7 @@ import { ProductDetail } from './pages/ProductDetail';
 import { WishlistPage } from './pages/WishlistPage';
 import { MagazinePage } from './pages/MagazinePage';
 import { SurveyPage } from './pages/SurveyPage';
+import { AllProductsPage } from './pages/AllProductsPage';
 import { collection, query, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './services/firebaseConfig';
 import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
@@ -28,7 +29,7 @@ import { AuthModal } from './components/AuthModal';
 
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 
-export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine' | 'survey';
+export type PageView = 'home' | 'reservation_basic' | 'reservation_premium' | 'mypage' | 'group_buying' | 'admin' | 'product_detail' | 'wishlist' | 'magazine' | 'survey' | 'all_products';
 
 interface ToastMsg {
   id: number;
@@ -240,10 +241,9 @@ const AppContent: React.FC = () => {
         {currentView === 'home' && (
           <>
             <HeroSection language={language} />
-            <CategorySection onCategoryClick={handleCategoryClick} />
+            <ProductList language={language} initialCategory={selectedCategory} onViewAll={() => navigateTo('all_products')} />
             <PromoSection language={language} onGroupBuyClick={() => navigateTo('group_buying')} />
             <PackageSection language={language} onBookClick={handlePackageBookClick} />
-            <ProductList language={language} initialCategory={selectedCategory} />
             <MagazinePreview />
             <BottomHero language={language} />
           </>
@@ -256,6 +256,7 @@ const AppContent: React.FC = () => {
         {currentView === 'magazine' && <MagazinePage />}
         {currentView === 'wishlist' && <WishlistPage language={language} />}
         {currentView === 'survey' && <SurveyPage language={language} />}
+        {currentView === 'all_products' && <AllProductsPage language={language} />}
         
         {currentView === 'admin' && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>}>
