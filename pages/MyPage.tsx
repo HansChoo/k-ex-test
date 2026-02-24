@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment, arrayRemove } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send, Users, TrendingDown } from 'lucide-react';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -115,6 +115,38 @@ export const MyPage: React.FC<any> = () => {
 
   const handlePrint = (res: any) => {
       printReceipt(res, { ...user, ...userData });
+  };
+
+  const handleCancelGroupBuy = async (gb: any) => {
+      if (!user || !db) return;
+
+      const visitDate = gb.visitDate ? new Date(gb.visitDate) : null;
+      const now = new Date();
+      const daysUntilVisit = visitDate ? Math.ceil((visitDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+
+      if (daysUntilVisit <= 3) {
+          alert(isKo ? '방문 예정일 3일 이내에는 참여를 취소할 수 없습니다.' : 'Cannot cancel within 3 days of the visit date.');
+          return;
+      }
+
+      const confirmed = window.confirm(
+          isKo 
+              ? '정말 공동구매 참여를 취소하시겠습니까?\n예약금은 영업일 기준 3~5일 이내 환불됩니다.' 
+              : 'Are you sure you want to cancel?\nDeposit will be refunded within 3-5 business days.'
+      );
+      if (!confirmed) return;
+
+      try {
+          const gbRef = doc(db, "group_buys", gb.id);
+          await updateDoc(gbRef, {
+              participants: arrayRemove(user.uid),
+              currentCount: increment(-1)
+          });
+          alert(isKo ? '참여가 취소되었습니다. 예약금은 영업일 기준 3~5일 이내 환불됩니다.' : 'Cancelled. Deposit will be refunded within 3-5 business days.');
+      } catch (e) {
+          console.error(e);
+          alert(isKo ? '취소 처리 중 오류가 발생했습니다.' : 'Error cancelling participation.');
+      }
   };
 
   if (loading) return <div className="p-20 text-center">Loading...</div>;
@@ -252,9 +284,28 @@ export const MyPage: React.FC<any> = () => {
                                             </div>
                                         </div>
 
-                                        {gb.visitDate && (
-                                            <p className="text-xs text-gray-400 mt-3 text-right">{isKo ? '방문 예정일' : 'Visit Date'}: <strong>{gb.visitDate}</strong></p>
-                                        )}
+                                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                                            {gb.visitDate && (
+                                                <p className="text-xs text-gray-400">{isKo ? '방문 예정일' : 'Visit Date'}: <strong>{gb.visitDate}</strong></p>
+                                            )}
+                                            {!isCompleted ? (() => {
+                                                const visitD = gb.visitDate ? new Date(gb.visitDate) : null;
+                                                const daysLeft = visitD ? Math.ceil((visitD.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 999;
+                                                const canCancel = daysLeft > 3;
+                                                return (
+                                                    <button 
+                                                        onClick={() => handleCancelGroupBuy(gb)} 
+                                                        disabled={!canCancel}
+                                                        className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors ${canCancel ? 'text-red-500 hover:bg-red-50 border border-red-200' : 'text-gray-400 bg-gray-100 cursor-not-allowed border border-gray-200'}`}
+                                                        title={!canCancel ? (isKo ? '방문 3일 이내 취소 불가' : 'Cannot cancel within 3 days') : ''}
+                                                    >
+                                                        <XCircle size={12}/> {isKo ? '참여 취소' : 'Cancel'}
+                                                    </button>
+                                                );
+                                            })() : (
+                                                <span className="text-xs text-gray-400 font-bold">{isKo ? '마감됨' : 'Closed'}</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             );
