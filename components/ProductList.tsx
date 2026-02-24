@@ -68,7 +68,7 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
                     return (
                         <ScrollReveal key={idx} delay={idx * 30}>
                             <div className="bg-white rounded-[12px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col h-full cursor-pointer group relative" onClick={() => handleProductClick(product)}>
-                                <div className="relative aspect-[4/3] bg-gray-50 overflow-hidden">
+                                <div className="relative aspect-[3/2] bg-gray-50 overflow-hidden">
                                     <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
