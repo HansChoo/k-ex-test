@@ -48,7 +48,7 @@ const TRANSLATIONS: any = {
     popular_products: '인기 체험',
     promo_badge: '공동구매 프로모션',
     promo_title: '함께할수록\n더 커지는 할인!',
-    promo_desc: '친구들과 함께하면 더 저렴하게! 공구 인원수에 따라 최대 30% 할인\nK-아이돌 체험부터 뷰티 케어, 건강검진까지',
+    promo_desc: '친구들과 함께하면 더 저렴해진다!\n10명이 모이면 최대 30% 할인!',
     promo_btn: '공동구매 보기',
     pkg_title: '올인원 패키지',
     pkg_desc_sub: '한번에 모든 것을 경험하세요',
