@@ -3,12 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc, onSnapshot, addDoc, serverTimestamp, increment, arrayRemove } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send, Users, TrendingDown, Heart, ShoppingCart, Trash2, Minus } from 'lucide-react';
+import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send, Users, TrendingDown, Heart, ShoppingCart, Trash2, Minus, ArrowRight, CheckSquare, Square, CreditCard } from 'lucide-react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { printReceipt } from '../services/receiptService';
 
 export const MyPage: React.FC<any> = () => {
-  const { t, language, convertPrice, wishlist, toggleWishlist, products, packages, getLocalizedValue, cart, removeFromCart, updateCartQuantity } = useGlobal();
+  const { t, language, convertPrice, wishlist, toggleWishlist, products, packages, getLocalizedValue, cart, addToCart, removeFromCart, updateCartQuantity } = useGlobal();
   const isEn = language !== 'ko';
   const isKo = language === 'ko';
   const [reservations, setReservations] = useState<any[]>([]);
@@ -23,6 +23,10 @@ export const MyPage: React.FC<any> = () => {
   // Edit Profile Mode
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ phone: '', nationality: '' });
+
+  // Selection states
+  const [selectedWishlistItems, setSelectedWishlistItems] = useState<string[]>([]);
+  const [selectedCartItems, setSelectedCartItems] = useState<string[]>([]);
 
   // Inquiry Form
   const [showInquiryForm, setShowInquiryForm] = useState(false);
@@ -390,7 +394,29 @@ export const MyPage: React.FC<any> = () => {
 
       {activeTab === 'wishlist' && (
           <>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Heart size={20} className="text-red-500"/> {isKo ? '위시리스트' : 'Wishlist'}</h2>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold flex items-center gap-2"><Heart size={20} className="text-red-500"/> {isKo ? '위시리스트' : 'Wishlist'}</h2>
+                {wishlist.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <button onClick={() => setSelectedWishlistItems(prev => prev.length === wishlist.length ? [] : wishlist.map(String))} className="text-xs font-bold text-gray-500 hover:text-gray-800 px-3 py-1.5 rounded-lg border hover:bg-gray-50 transition-colors flex items-center gap-1">
+                            {selectedWishlistItems.length === wishlist.length ? <CheckSquare size={14}/> : <Square size={14}/>} {isKo ? '전체선택' : 'Select All'}
+                        </button>
+                        {selectedWishlistItems.length > 0 && (
+                            <button onClick={() => {
+                                const allItems = [...products, ...packages];
+                                selectedWishlistItems.forEach(wId => {
+                                    const product = allItems.find(p => String(p.id) === String(wId));
+                                    if (product) { addToCart(product); toggleWishlist(wId); }
+                                });
+                                setSelectedWishlistItems([]);
+                                setActiveTab('cart');
+                            }} className="bg-[#0070F0] text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-600 transition-colors flex items-center gap-1.5">
+                                <ShoppingCart size={14}/> {isKo ? `선택 장바구니 담기 (${selectedWishlistItems.length})` : `Add to Cart (${selectedWishlistItems.length})`} <ArrowRight size={14}/>
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
             {wishlist.length === 0 ? (
                 <div className="text-center py-20 bg-gray-50 rounded-xl"><p className="text-gray-500">{isKo ? '위시리스트가 비어있습니다.' : 'Your wishlist is empty.'}</p></div>
             ) : (
@@ -401,17 +427,21 @@ export const MyPage: React.FC<any> = () => {
                         if (!product) return null;
                         const title = getLocalizedValue(product, 'title');
                         const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price);
+                        const isSelected = selectedWishlistItems.includes(String(wId));
                         return (
-                            <div key={String(wId)} className="bg-white border rounded-xl p-4 flex gap-4 items-center shadow-sm hover:shadow-md transition-shadow">
-                                <img src={product.image} alt={title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0"/>
+                            <div key={String(wId)} className={`bg-white border rounded-xl p-4 flex gap-4 items-center shadow-sm hover:shadow-md transition-all ${isSelected ? 'border-[#0070F0] ring-2 ring-blue-100' : ''}`}>
+                                <button onClick={() => setSelectedWishlistItems(prev => isSelected ? prev.filter(id => id !== String(wId)) : [...prev, String(wId)])} className="flex-shrink-0">
+                                    {isSelected ? <CheckSquare size={20} className="text-[#0070F0]"/> : <Square size={20} className="text-gray-300"/>}
+                                </button>
+                                <img src={product.image} alt={title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0 cursor-pointer" onClick={() => window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product }))}/>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-bold text-sm text-[#111] truncate">{title}</h3>
                                     <p className="text-xs text-gray-500 mt-1">{product.category}</p>
                                     <p className="font-black text-sm mt-1">{convertPrice(numericPrice)}</p>
                                 </div>
                                 <div className="flex flex-col gap-2 flex-shrink-0">
-                                    <button onClick={() => { window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product })); }} className="bg-[#0070F0] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-600">{isKo ? '상세보기' : 'View'}</button>
-                                    <button onClick={() => toggleWishlist(wId)} className="text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"><Trash2 size={12}/> {isKo ? '삭제' : 'Remove'}</button>
+                                    <button onClick={() => { addToCart(product); toggleWishlist(wId); }} className="bg-[#0070F0] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-600 flex items-center gap-1"><ShoppingCart size={12}/> {isKo ? '담기' : 'Cart'}</button>
+                                    <button onClick={() => { toggleWishlist(wId); setSelectedWishlistItems(prev => prev.filter(id => id !== String(wId))); }} className="text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"><Trash2 size={12}/> {isKo ? '삭제' : 'Remove'}</button>
                                 </div>
                             </div>
                         );
@@ -423,37 +453,95 @@ export const MyPage: React.FC<any> = () => {
 
       {activeTab === 'cart' && (
           <>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><ShoppingCart size={20} className="text-blue-500"/> {isKo ? '장바구니' : 'Shopping Cart'}</h2>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold flex items-center gap-2"><ShoppingCart size={20} className="text-blue-500"/> {isKo ? '장바구니' : 'Shopping Cart'}</h2>
+                {cart.length > 0 && (
+                    <button onClick={() => setSelectedCartItems(prev => prev.length === cart.length ? [] : cart.map(i => i.productId))} className="text-xs font-bold text-gray-500 hover:text-gray-800 px-3 py-1.5 rounded-lg border hover:bg-gray-50 transition-colors flex items-center gap-1">
+                        {selectedCartItems.length === cart.length ? <CheckSquare size={14}/> : <Square size={14}/>} {isKo ? '전체선택' : 'Select All'}
+                    </button>
+                )}
+            </div>
             {cart.length === 0 ? (
                 <div className="text-center py-20 bg-gray-50 rounded-xl"><p className="text-gray-500">{isKo ? '장바구니가 비어있습니다.' : 'Your cart is empty.'}</p></div>
             ) : (
                 <>
                     <div className="space-y-4 mb-6">
-                        {cart.map((item) => (
-                            <div key={item.productId} className="bg-white border rounded-xl p-4 flex gap-4 items-center shadow-sm">
-                                <img src={item.image} alt={item.title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0"/>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-bold text-sm text-[#111] truncate">{item.title}</h3>
-                                    <p className="font-black text-sm mt-1">{convertPrice(item.price)}</p>
+                        {cart.map((item) => {
+                            const isSelected = selectedCartItems.includes(item.productId);
+                            return (
+                                <div key={item.productId} className={`bg-white border rounded-xl p-4 flex gap-4 items-center shadow-sm transition-all ${isSelected ? 'border-[#0070F0] ring-2 ring-blue-100' : ''}`}>
+                                    <button onClick={() => setSelectedCartItems(prev => isSelected ? prev.filter(id => id !== item.productId) : [...prev, item.productId])} className="flex-shrink-0">
+                                        {isSelected ? <CheckSquare size={20} className="text-[#0070F0]"/> : <Square size={20} className="text-gray-300"/>}
+                                    </button>
+                                    <img src={item.image} alt={item.title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0"/>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold text-sm text-[#111] truncate">{item.title}</h3>
+                                        <p className="font-black text-sm mt-1">{convertPrice(item.price)}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)} className="w-8 h-8 border rounded-lg flex items-center justify-center hover:bg-gray-100"><Minus size={14}/></button>
+                                        <span className="font-bold text-sm w-8 text-center">{item.quantity}</span>
+                                        <button onClick={() => updateCartQuantity(item.productId, item.quantity + 1)} className="w-8 h-8 border rounded-lg flex items-center justify-center hover:bg-gray-100"><Plus size={14}/></button>
+                                    </div>
+                                    <button onClick={() => { removeFromCart(item.productId); setSelectedCartItems(prev => prev.filter(id => id !== item.productId)); }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg flex-shrink-0"><Trash2 size={16}/></button>
                                 </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <button onClick={() => updateCartQuantity(item.productId, item.quantity - 1)} className="w-8 h-8 border rounded-lg flex items-center justify-center hover:bg-gray-100"><Minus size={14}/></button>
-                                    <span className="font-bold text-sm w-8 text-center">{item.quantity}</span>
-                                    <button onClick={() => updateCartQuantity(item.productId, item.quantity + 1)} className="w-8 h-8 border rounded-lg flex items-center justify-center hover:bg-gray-100"><Plus size={14}/></button>
-                                </div>
-                                <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg flex-shrink-0"><Trash2 size={16}/></button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                     <div className="bg-gray-50 border rounded-xl p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <span className="font-bold text-gray-600">{isKo ? '총 상품' : 'Total Items'}</span>
-                            <span className="font-bold">{cart.reduce((a, b) => a + b.quantity, 0)}{isKo ? '개' : ' items'}</span>
-                        </div>
-                        <div className="flex justify-between items-center border-t pt-4">
-                            <span className="font-black text-lg">{isKo ? '합계' : 'Total'}</span>
-                            <span className="font-black text-xl text-[#0070F0]">{convertPrice(cart.reduce((a, b) => a + b.price * b.quantity, 0))}</span>
-                        </div>
+                        {selectedCartItems.length > 0 ? (
+                            <>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-gray-500">{isKo ? '선택 상품' : 'Selected Items'}</span>
+                                    <span className="font-bold text-sm">{cart.filter(i => selectedCartItems.includes(i.productId)).reduce((a, b) => a + b.quantity, 0)}{isKo ? '개' : ' items'}</span>
+                                </div>
+                                <div className="flex justify-between items-center mb-4 border-b pb-4">
+                                    <span className="font-black text-lg">{isKo ? '선택 합계' : 'Selected Total'}</span>
+                                    <span className="font-black text-xl text-[#0070F0]">{convertPrice(cart.filter(i => selectedCartItems.includes(i.productId)).reduce((a, b) => a + b.price * b.quantity, 0))}</span>
+                                </div>
+                                {selectedCartItems.length === 1 ? (
+                                    <button onClick={() => {
+                                        const item = cart.find(i => i.productId === selectedCartItems[0]);
+                                        if (item) {
+                                            const allItems = [...products, ...packages];
+                                            const product = allItems.find(p => String(p.id) === item.productId);
+                                            if (product) window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product }));
+                                        }
+                                    }} className="w-full bg-[#0070F0] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors">
+                                        <CreditCard size={18}/> {isKo ? '결제하기' : 'Proceed to Payment'} <ArrowRight size={16}/>
+                                    </button>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <p className="text-xs text-gray-500 text-center mb-3">{isKo ? '각 상품의 상세 페이지에서 개별 결제가 진행됩니다.' : 'Each item will be processed individually from its detail page.'}</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {cart.filter(i => selectedCartItems.includes(i.productId)).map(item => {
+                                                const allItems = [...products, ...packages];
+                                                const product = allItems.find(p => String(p.id) === item.productId);
+                                                return (
+                                                    <button key={item.productId} onClick={() => {
+                                                        if (product) window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product }));
+                                                    }} className="bg-[#0070F0] text-white py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-blue-600 transition-colors truncate">
+                                                        <CreditCard size={14}/> {item.title}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="font-bold text-gray-600">{isKo ? '총 상품' : 'Total Items'}</span>
+                                    <span className="font-bold">{cart.reduce((a, b) => a + b.quantity, 0)}{isKo ? '개' : ' items'}</span>
+                                </div>
+                                <div className="flex justify-between items-center border-t pt-4 mb-4">
+                                    <span className="font-black text-lg">{isKo ? '합계' : 'Total'}</span>
+                                    <span className="font-black text-xl text-[#0070F0]">{convertPrice(cart.reduce((a, b) => a + b.price * b.quantity, 0))}</span>
+                                </div>
+                                <p className="text-center text-xs text-gray-400">{isKo ? '결제할 상품을 선택해주세요' : 'Select items to proceed to payment'}</p>
+                            </>
+                        )}
                     </div>
                 </>
             )}
