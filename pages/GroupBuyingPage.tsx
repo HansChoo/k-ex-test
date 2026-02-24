@@ -306,7 +306,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
     <div className="w-full font-sans text-[#1a1a1a] bg-[#F5F7FB] pb-24 min-h-screen">
       
       {/* Hero Section - 홈 프로모션 섹션과 동일한 색상 */}
-      <section className="text-white pt-20 pb-10 px-6 relative overflow-hidden">
+      <section className="text-white pt-10 pb-10 px-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#B71C1C] via-[#D32F2F] to-[#FF5252] pointer-events-none"></div>
           <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none z-0"></div>
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-black/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none z-0"></div>
