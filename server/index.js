@@ -105,6 +105,46 @@ app.get('/api/paypal/client-id', (req, res) => {
   res.json({ clientId: PAYPAL_CLIENT_ID });
 });
 
+let cachedRate = { rate: 1 / 1400, timestamp: 0 };
+const CACHE_DURATION = 60 * 60 * 1000;
+
+app.get('/api/exchange-rate', async (req, res) => {
+  try {
+    if (Date.now() - cachedRate.timestamp < CACHE_DURATION && cachedRate.rate) {
+      return res.json({ rate: cachedRate.rate, cached: true, updatedAt: new Date(cachedRate.timestamp).toISOString() });
+    }
+
+    let rate = null;
+    try {
+      const r = await fetch('https://api.frankfurter.dev/v1/latest?base=KRW&symbols=USD');
+      if (r.ok) {
+        const data = await r.json();
+        rate = data.rates?.USD;
+      }
+    } catch (e) {}
+
+    if (!rate) {
+      try {
+        const r = await fetch('https://latest.currency-api.pages.dev/v1/currencies/krw.json');
+        if (r.ok) {
+          const data = await r.json();
+          rate = data.krw?.usd;
+        }
+      } catch (e) {}
+    }
+
+    if (rate && rate > 0) {
+      cachedRate = { rate, timestamp: Date.now() };
+      res.json({ rate, cached: false, updatedAt: new Date().toISOString() });
+    } else {
+      res.json({ rate: cachedRate.rate || 1 / 1400, cached: true, fallback: true, updatedAt: new Date(cachedRate.timestamp || Date.now()).toISOString() });
+    }
+  } catch (err) {
+    console.error('Exchange rate error:', err);
+    res.json({ rate: cachedRate.rate || 1 / 1400, cached: true, fallback: true });
+  }
+});
+
 const PORT = 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`PayPal API server running on port ${PORT}`);

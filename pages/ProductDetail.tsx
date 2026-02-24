@@ -7,6 +7,7 @@ import { createReservation, checkAvailability, validateCoupon } from '../service
 import { loginWithGoogle, handleAuthError } from '../services/authService';
 import { useGlobal } from '../contexts/GlobalContext';
 import { PayPalCheckout } from '../components/PayPalCheckout';
+import { getExchangeRate, krwToUsd } from '../services/paypalService';
 
 interface ProductDetailProps {
   language: 'ko' | 'en' | 'ja' | 'zh';
@@ -35,6 +36,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [openFaqId, setOpenFaqId] = useState<string | null>(null);
   const [showPayPal, setShowPayPal] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<number>(1 / 1400);
 
   const title = getLocalizedValue(product, 'title');
   const description = getLocalizedValue(product, 'description');
@@ -169,6 +171,8 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     const { available } = await checkAvailability(selectedDate);
     if (available < guestList.length) return alert("Sold Out");
 
+    const rate = await getExchangeRate();
+    setExchangeRate(rate);
     setShowPayPal(true);
   };
 
@@ -409,9 +413,9 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                 <div className="space-y-3 animate-fade-in">
                                     <p className="text-xs text-gray-500 text-center font-bold">{isKo ? 'PayPal로 안전하게 결제하세요' : 'Pay securely with PayPal'}</p>
                                     <PayPalCheckout
-                                        amount={getPrice() / 1400}
+                                        amount={krwToUsd(getPrice(), exchangeRate)}
                                         description={`${title} - ${selectedDate}`}
-                                        items={[{ name: title.substring(0, 127), price: Number((getPrice() / 1400).toFixed(2)), quantity: guestList.length }]}
+                                        items={[{ name: title.substring(0, 127), price: krwToUsd(getPrice() / guestList.length, exchangeRate), quantity: guestList.length }]}
                                         onSuccess={handlePayPalSuccess}
                                         onError={(err) => { alert(isKo ? '결제 중 오류가 발생했습니다. 다시 시도해주세요.' : 'Payment error. Please try again.'); console.error(err); }}
                                         onCancel={() => { setShowPayPal(false); }}

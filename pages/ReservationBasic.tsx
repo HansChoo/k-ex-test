@@ -5,6 +5,7 @@ import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { createReservation, checkAvailability, validateCoupon } from '../services/reservationService';
 import { useGlobal } from '../contexts/GlobalContext';
 import { PayPalCheckout } from '../components/PayPalCheckout';
+import { getExchangeRate, krwToUsd } from '../services/paypalService';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { generateMockReviews } from '../constants';
 
@@ -97,6 +98,7 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
 
   const [showPayPal, setShowPayPal] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<number>(1 / 1400);
 
   const handleReservation = async () => {
     if (!selectedDate) { alert(t('select_options')); return; }
@@ -112,6 +114,8 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
     }
     const { available } = await checkAvailability(selectedDate);
     if (available < guestList.length) { alert(t('sold_out')); return; }
+    const rate = await getExchangeRate();
+    setExchangeRate(rate);
     setShowPayPal(true);
   };
 
@@ -265,7 +269,7 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
                             ) : (
                                 <div className="space-y-3 animate-fade-in">
                                     <p className="text-xs text-gray-500 text-center font-bold">{isEn ? 'Pay securely with PayPal' : 'PayPal로 안전하게 결제하세요'}</p>
-                                    <PayPalCheckout amount={getPrice() / 1400} description={`Basic Package - ${selectedDate}`} items={[{ name: 'Basic Health Checkup Package', price: Number((getPrice() / 1400).toFixed(2)), quantity: guestList.length }]} onSuccess={handlePayPalSuccess} onError={(err) => { alert(isEn ? 'Payment error.' : '결제 오류가 발생했습니다.'); console.error(err); }} onCancel={() => setShowPayPal(false)} language={language}/>
+                                    <PayPalCheckout amount={krwToUsd(getPrice(), exchangeRate)} description={`Basic Package - ${selectedDate}`} items={[{ name: 'Basic Health Checkup Package', price: krwToUsd(getPrice() / guestList.length, exchangeRate), quantity: guestList.length }]} onSuccess={handlePayPalSuccess} onError={(err) => { alert(isEn ? 'Payment error.' : '결제 오류가 발생했습니다.'); console.error(err); }} onCancel={() => setShowPayPal(false)} language={language}/>
                                     <button onClick={() => setShowPayPal(false)} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2">{isEn ? 'Cancel' : '취소'}</button>
                                 </div>
                             )}

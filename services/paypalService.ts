@@ -37,6 +37,35 @@ export async function loadPayPalScript(): Promise<void> {
   }
 }
 
+let cachedExchangeRate: { rate: number; updatedAt: string } | null = null;
+let ratePromise: Promise<number> | null = null;
+
+export async function getExchangeRate(): Promise<number> {
+  if (cachedExchangeRate) return cachedExchangeRate.rate;
+  if (ratePromise) return ratePromise;
+
+  ratePromise = (async () => {
+    try {
+      const res = await fetch('/api/exchange-rate');
+      if (res.ok) {
+        const data = await res.json();
+        cachedExchangeRate = { rate: data.rate, updatedAt: data.updatedAt };
+        setTimeout(() => { cachedExchangeRate = null; }, 30 * 60 * 1000);
+        return data.rate;
+      }
+    } catch (e) {}
+    return 1 / 1400;
+  })();
+
+  const result = await ratePromise;
+  ratePromise = null;
+  return result;
+}
+
+export function krwToUsd(krw: number, rate: number): number {
+  return Number((krw * rate).toFixed(2));
+}
+
 export async function createPayPalOrder(amount: number, description: string, items?: { name: string; price: number; quantity: number }[]) {
   const res = await fetch('/api/paypal/create-order', {
     method: 'POST',
