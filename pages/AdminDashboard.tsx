@@ -1104,11 +1104,6 @@ export const AdminDashboard: React.FC<any> = () => {
                                                     <Trash2 size={16}/>
                                                 </button>
                                             </div>
-                                            {group.isSecret && (
-                                                <div className="absolute top-16 right-4 z-10 bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-md">
-                                                    <Lock size={12}/> Secret
-                                                </div>
-                                            )}
                                             <div className={`h-14 ${theme.bg} px-6 flex items-center justify-between text-white`}>
                                                 <span className="font-black tracking-wider text-sm uppercase">GROUP #{index+1}</span>
                                                 <div className="flex items-center gap-1 bg-black/20 px-2 py-1 rounded-lg text-xs font-bold">
@@ -1155,7 +1150,6 @@ export const AdminDashboard: React.FC<any> = () => {
                                                 </div>
                                                 <div className="border-t border-gray-100 pt-3 mt-3">
                                                     <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase flex items-center gap-1"><SettingsIcon size={10}/> Admin Details</h4>
-                                                    {group.isSecret && (<div className="flex items-center justify-between bg-gray-100 px-3 py-2 rounded text-xs mb-2"><span className="font-bold text-gray-600">Secret Code</span><span className="font-mono font-black text-red-500">{group.secretCode}</span></div>)}
                                                     <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto no-scrollbar">
                                                         <p className="text-[10px] text-gray-500 font-bold mb-1">참여자 리스트 ({group.participants?.length || 0})</p>
                                                         {group.participantDetails && group.participantDetails.length > 0 ? (
@@ -1598,15 +1592,6 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <div><label className="block text-xs font-bold mb-1">리더 이름 (표시용)</label><input className="w-full border p-2 rounded" value={editingItem.leaderName} onChange={e=>setEditingItem({...editingItem, leaderName:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">시작 인원</label><input type="number" className="w-full border p-2 rounded" value={editingItem.currentCount} onChange={e=>setEditingItem({...editingItem, currentCount:Number(e.target.value)})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">최대 인원 (목표)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.maxCount || 10} onChange={e=>setEditingItem({...editingItem, maxCount:Number(e.target.value)})}/></div>
-                                </div>
-                                <div className="flex items-center gap-3 pt-2">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" checked={editingItem.isSecret || false} onChange={e => setEditingItem({...editingItem, isSecret: e.target.checked})} className="w-4 h-4"/>
-                                        <span className="text-xs font-bold">비밀 공동구매 (Secret)</span>
-                                    </label>
-                                    {editingItem.isSecret && (
-                                        <input className="border p-1.5 rounded text-xs w-32" placeholder="시크릿 코드" value={editingItem.secretCode || ''} onChange={e=>setEditingItem({...editingItem, secretCode: e.target.value})}/>
-                                    )}
                                 </div>
                             </div>
                         )}

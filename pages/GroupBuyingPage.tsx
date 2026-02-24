@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, TrendingDown, Info, Crown, CheckCircle2, ChevronRight, Timer, Lock, Search, Plus, X, Calendar, CreditCard, UserPlus, Mail, Globe, Phone, Archive } from 'lucide-react';
+import { Users, TrendingDown, Info, Crown, CheckCircle2, ChevronRight, Timer, Search, Plus, X, Calendar, CreditCard, UserPlus, Mail, Globe, Phone, Archive } from 'lucide-react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion, addDoc, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
 import { useGlobal } from '../contexts/GlobalContext';
@@ -41,7 +41,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const isEn = language !== 'ko';
   const isKo = language === 'ko';
 
-  const [activeTab, setActiveTab] = useState<'public' | 'secret' | 'completed'>('public');
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [groupList, setGroupList] = useState<GroupBuyItem[]>([]);
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   // --- Create Modal State ---
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createStep, setCreateStep] = useState(1);
-  const [newGroupType, setNewGroupType] = useState<'public' | 'secret'>('public');
+  const [newGroupType, setNewGroupType] = useState<'public'>('public');
   const [newGroupData, setNewGroupData] = useState<any>({
       productId: '',
       visitDate: '',
@@ -96,14 +96,9 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
   const activeGroupCount = groupList.filter(g => g.status === 'active').length;
 
-  // Filter groups based on tab
   const filteredGroups = groupList.filter(g => {
       if (activeTab === 'completed') return g.status === 'completed';
-      // For Public/Secret tabs, show only active ones
-      if (g.status === 'completed') return false; 
-      
-      if (activeTab === 'public') return !g.isSecret;
-      return g.isSecret;
+      return g.status !== 'completed';
   });
 
   // --- Actions ---
@@ -118,15 +113,6 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
       if (participants.includes(auth!.currentUser!.uid)) {
           alert(isEn ? "You already joined." : "이미 참여중인 공동구매입니다.");
           return;
-      }
-
-      // Secret Group Check
-      if (group.isSecret) {
-          const code = prompt(isEn ? "Enter Secret Code:" : "비공개 코드 4자리를 입력하세요:");
-          if (code !== group.secretCode) {
-              alert(isEn ? "Invalid Code" : "코드가 일치하지 않습니다.");
-              return;
-          }
       }
 
       const currentCount = group.currentCount || 0;
@@ -163,12 +149,12 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
       }
   };
 
-  const handleOpenCreateModal = (type: 'public' | 'secret') => {
+  const handleOpenCreateModal = () => {
       if (!auth?.currentUser) {
           alert(isEn ? "Please login to create a group." : "공동구매를 생성하려면 로그인이 필요합니다.");
           return;
       }
-      setNewGroupType(type);
+      setNewGroupType('public');
       
       // Default leader info from auth
       const defaultNationality = COUNTRY_CODES.find(c => c.code === 'KR') || COUNTRY_CODES[0];
@@ -256,8 +242,8 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                 participantDetails: newGroupData.participants, // Store detailed info
                 description: selectedItem.description || '',
                 items: selectedItem.items || [],
-                isSecret: newGroupType === 'secret',
-                secretCode: newGroupType === 'secret' ? Math.floor(1000 + Math.random() * 9000).toString() : null,
+                isSecret: false,
+                secretCode: null,
                 status: 'active',
                 createdAt: serverTimestamp()
             });
@@ -359,31 +345,14 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
       {/* Tabs */}
       <div className="sticky top-[60px] z-30 bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-[800px] mx-auto flex">
-              <button onClick={() => setActiveTab('public')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'public' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}>
-                  <Users size={16}/> {t('ongoing_public') || 'Public Group'}
-              </button>
-              <button onClick={() => setActiveTab('secret')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'secret' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}>
-                  <Lock size={16}/> Secret Group
+              <button onClick={() => setActiveTab('active')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'active' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}>
+                  <Users size={16}/> {isEn ? 'Active Groups' : '진행중인 공동구매'}
               </button>
               <button onClick={() => setActiveTab('completed')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'completed' ? 'text-gray-700 border-b-2 border-gray-700' : 'text-gray-400 hover:text-gray-600'}`}>
-                  <Archive size={16}/> {isEn ? "Finished" : "마감된 공구"}
+                  <Archive size={16}/> {isEn ? 'Finished' : '마감된 공동구매'}
               </button>
           </div>
       </div>
-
-      {/* Action Buttons (Only show for Public/Secret tabs) */}
-      {activeTab !== 'completed' && (
-          <div className="max-w-[800px] mx-auto px-4 py-6">
-              <div className="flex gap-4">
-                  <button onClick={() => handleOpenCreateModal('public')} className="flex-1 bg-white border-2 border-[#0070F0] text-[#0070F0] py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors shadow-sm">
-                      <Users size={20}/> {isEn ? "Create Public Group" : "공개 공동구매 만들기"}
-                  </button>
-                  <button onClick={() => handleOpenCreateModal('secret')} className="flex-1 bg-[#333] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-colors shadow-md">
-                      <Lock size={20}/> {isEn ? "Create Secret Group" : "비밀 공동구매 만들기"}
-                  </button>
-              </div>
-          </div>
-      )}
 
       {/* Group List */}
       <div className="max-w-[600px] mx-auto px-4 space-y-6 pt-6">
@@ -407,12 +376,6 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
             return (
                 <div key={group.id} className={`bg-white rounded-[24px] shadow-lg overflow-hidden border border-gray-100 relative group-card ${isCompleted ? 'opacity-80 grayscale-[0.8]' : ''}`}>
-                    {group.isSecret && (
-                        <div className="absolute top-4 right-4 z-10 bg-black text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-md">
-                            <Lock size={12}/> Secret
-                        </div>
-                    )}
-                    
                     <div className={`h-14 ${theme.bg} px-6 flex items-center justify-between text-white`}>
                         <span className="font-black tracking-wider text-sm uppercase">GROUP #{index+1}</span>
                         {isCompleted ? (
@@ -502,22 +465,15 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
         }) : (
             <div className="flex flex-col items-center justify-center py-24 px-4">
                 <div className="relative group cursor-default">
-                    {/* Glow effect */}
-                    <div className={`absolute -inset-4 bg-gradient-to-r ${activeTab === 'public' ? 'from-blue-200 to-cyan-200' : activeTab === 'secret' ? 'from-purple-200 to-pink-200' : 'from-gray-200 to-gray-300'} rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500`}></div>
-                    
-                    {/* Icon Container */}
+                    <div className={`absolute -inset-4 bg-gradient-to-r ${activeTab === 'active' ? 'from-blue-200 to-cyan-200' : 'from-gray-200 to-gray-300'} rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500`}></div>
                     <div className={`relative w-24 h-24 bg-white rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex items-center justify-center mb-8 border border-white`}>
-                        {activeTab === 'public' ? (
+                        {activeTab === 'active' ? (
                             <Users size={36} className="text-[#0070F0]" />
-                        ) : activeTab === 'secret' ? (
-                            <Lock size={36} className="text-purple-600" />
                         ) : (
                             <Archive size={36} className="text-gray-500" />
                         )}
-                        
-                        {/* Floating decoration */}
                         <div className="absolute -top-2 -right-2 w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-lg shadow-md animate-bounce">
-                            {activeTab === 'public' ? '🔥' : activeTab === 'secret' ? '🤫' : '🏁'}
+                            {activeTab === 'active' ? '🔥' : '🏁'}
                         </div>
                     </div>
                 </div>
@@ -525,30 +481,16 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                 <h3 className="text-2xl font-black text-[#111] mb-3 leading-snug text-center">
                     {activeTab === 'completed' 
                         ? (isEn ? "No Finished Groups" : "마감된 내역이 없습니다")
-                        : activeTab === 'public' ? (isEn ? "No Public Groups Active" : "진행 중인 모집이 없습니다") : (isEn ? "No Secret Groups Active" : "진행 중인 비밀 모집이 없습니다")
+                        : (isEn ? "No Active Groups" : "진행 중인 공동구매가 없습니다")
                     }
                 </h3>
                 
                 <p className="text-gray-500 text-sm md:text-base max-w-sm text-center mb-10 leading-relaxed font-medium">
-                    {activeTab === 'public' 
-                        ? (isEn ? "Be the first leader! Start a group and invite others to unlock up to 30% discount." : "첫 번째 리더가 되어주세요! 그룹을 만들고 사람들을 모으면 최대 30%까지 할인이 커집니다.")
-                        : activeTab === 'secret' ? (isEn ? "Create a private room for you and your friends. Only people with the code can join." : "친구들과 함께하는 프라이빗한 여행! 시크릿 코드로 우리끼리만 뭉치고 할인받으세요.")
+                    {activeTab === 'active' 
+                        ? (isEn ? "New group buys will be posted here soon. Stay tuned for great deals!" : "곧 새로운 공동구매가 열릴 예정입니다. 함께하면 최대 30% 할인!")
                         : (isEn ? "Check back later for finished events." : "완료된 공동구매 내역이 이곳에 표시됩니다.")
                     }
                 </p>
-
-                {activeTab !== 'completed' && (
-                    <button 
-                        onClick={() => handleOpenCreateModal(activeTab as 'public' | 'secret')} 
-                        className={`group relative px-8 py-4 rounded-2xl font-bold text-white shadow-xl shadow-blue-100 transition-all hover:-translate-y-1 active:scale-95 overflow-hidden`}
-                    >
-                        <div className={`absolute inset-0 bg-gradient-to-r ${activeTab === 'public' ? 'from-[#0070F0] to-[#00C7AE]' : 'from-[#333] to-[#555]'} transition-all`}></div>
-                        <div className="relative flex items-center gap-3">
-                            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300"/>
-                            <span>{activeTab === 'public' ? (isEn ? "Start New Group" : "새로운 공동구매 시작하기") : (isEn ? "Create Secret Group" : "비밀 공동구매 시작하기")}</span>
-                        </div>
-                    </button>
-                )}
             </div>
         )}
       </div>
@@ -558,7 +500,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in">
               <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
                   <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                      <h3 className="font-bold text-lg">{newGroupType === 'public' ? '공개 공동구매 만들기' : '비밀 공동구매 만들기'}</h3>
+                      <h3 className="font-bold text-lg">공동구매 만들기</h3>
                       <button onClick={() => setIsCreateModalOpen(false)}><X/></button>
                   </div>
                   
