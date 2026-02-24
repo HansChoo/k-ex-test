@@ -422,17 +422,6 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                             )}
                         </div>
 
-                        <div className="flex items-center gap-3 mb-6 p-3 bg-blue-50/50 rounded-lg border border-blue-50">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-xl relative">
-                                🧑‍💻
-                                <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 border border-white"><Crown size={8} className="text-white fill-white"/></div>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase">GROUP LEADER</p>
-                                <p className="text-sm font-bold text-gray-800">{group.leaderName || 'Anonymous'}</p>
-                            </div>
-                        </div>
-
                         {!isCompleted && (
                             <div className="mb-6">
                                 <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"><Users size={16} /> 인원별 할인 가격 (남성 기준)</h4>

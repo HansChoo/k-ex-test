@@ -1070,8 +1070,11 @@ export const AdminDashboard: React.FC<any> = () => {
                     <div>
                         <div className="flex justify-between items-center mb-6">
                              <h2 className="text-2xl font-black flex items-center gap-2"><Megaphone className="text-[#0070F0]"/> 진행 중인 공동구매</h2>
-                             <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">
-                                 * 날짜가 지난 공동구매는 자동으로 '완료됨' 처리됩니다.
+                             <div className="flex items-center gap-3">
+                                 <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">* 날짜가 지난 공동구매는 자동으로 '완료됨' 처리됩니다.</span>
+                                 <button onClick={() => { setEditingItem({ productId: '', productName: '', productImage: '', originalPrice: 0, visitDate: '', deadline: '', leaderName: '관리자', currentCount: 0, maxCount: 10, description: '', items: [], status: 'active' }); setModalType('groupbuy'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
+                                     <Plus size={16}/> 공동구매 만들기
+                                 </button>
                              </div>
                         </div>
 
@@ -1138,15 +1141,6 @@ export const AdminDashboard: React.FC<any> = () => {
                                                     <div className="border-r border-gray-200 last:border-0"><p className="text-[10px] text-gray-400 font-bold mb-1">1인 할인가</p><p className="font-bold text-xs text-gray-800">₩{finalPrice.toLocaleString()}</p></div>
                                                     <div className="border-r border-gray-200 last:border-0"><p className="text-[10px] text-gray-400 font-bold mb-1">총 결제액</p><p className="font-bold text-xs text-blue-600">₩{totalDepositCollected.toLocaleString()}</p></div>
                                                     <div><p className="text-[10px] text-gray-400 font-bold mb-1">1인 잔금</p><p className="font-bold text-xs text-red-500">₩{remainingBalance.toLocaleString()}</p></div>
-                                                </div>
-                                                <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50/50 rounded-lg border border-blue-50">
-                                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-lg relative">
-                                                        🧑‍💻<div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5 border border-white"><Crown size={8} className="text-white fill-white"/></div>
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] text-gray-400 font-bold uppercase">LEADER</p>
-                                                        <p className="text-xs font-bold text-gray-800 truncate">{group.leaderName}</p>
-                                                    </div>
                                                 </div>
                                                 <div className="border-t border-gray-100 pt-3 mt-3">
                                                     <h4 className="text-[10px] font-bold text-gray-400 mb-2 uppercase flex items-center gap-1"><SettingsIcon size={10}/> Admin Details</h4>
@@ -1586,11 +1580,14 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </div>
                                     </div>
                                 )}
+                                <div>
+                                    <label className="block text-xs font-bold mb-1">공동구매 설명</label>
+                                    <input className="w-full border p-2 rounded" placeholder="예: K-Experience Special Offer" value={editingItem.description || ''} onChange={e=>setEditingItem({...editingItem, description:e.target.value})}/>
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div><label className="block text-xs font-bold mb-1">방문 예정일</label><input type="date" className="w-full border p-2 rounded" value={editingItem.visitDate} onChange={e=>setEditingItem({...editingItem, visitDate:e.target.value})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">모집 마감일</label><input type="date" className="w-full border p-2 rounded" value={editingItem.deadline} onChange={e=>setEditingItem({...editingItem, deadline:e.target.value})}/></div>
-                                    <div><label className="block text-xs font-bold mb-1">리더 이름 (표시용)</label><input className="w-full border p-2 rounded" value={editingItem.leaderName} onChange={e=>setEditingItem({...editingItem, leaderName:e.target.value})}/></div>
-                                    <div><label className="block text-xs font-bold mb-1">시작 인원</label><input type="number" className="w-full border p-2 rounded" value={editingItem.currentCount} onChange={e=>setEditingItem({...editingItem, currentCount:Number(e.target.value)})}/></div>
+                                    <div><label className="block text-xs font-bold mb-1">시작 인원</label><input type="number" className="w-full border p-2 rounded" value={editingItem.currentCount || 0} onChange={e=>setEditingItem({...editingItem, currentCount:Number(e.target.value)})}/></div>
                                     <div><label className="block text-xs font-bold mb-1">최대 인원 (목표)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.maxCount || 10} onChange={e=>setEditingItem({...editingItem, maxCount:Number(e.target.value)})}/></div>
                                 </div>
                             </div>
