@@ -9,7 +9,7 @@ interface AllProductsPageProps {
 }
 
 export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategoryLabel }) => {
-  const { t, products, wishlist, toggleWishlist, getLocalizedValue, convertPrice, categories, language } = useGlobal();
+  const { t, products, packages, wishlist, toggleWishlist, getLocalizedValue, convertPrice, categories, language } = useGlobal();
   const isEn = language !== 'ko';
 
   const [activeFilter, setActiveFilter] = useState('all');
@@ -27,8 +27,26 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
       setTimeout(() => setLoading(false), 400); 
   }, [activeFilter, products]);
 
+  const isPackageCategory = (() => {
+      if (activeFilter === 'all') return false;
+      const activeCat = categories.find(c => c.id === activeFilter);
+      if (!activeCat) return false;
+      const label = (activeCat.label || '').toLowerCase();
+      return label.includes('올인원') || label.includes('패키지');
+  })();
+
+  const packagesAsProducts = packages.map(pkg => ({
+      ...pkg,
+      category: '올인원 패키지',
+      image: pkg.image || pkg.thumbnail || '',
+      priceVal: pkg.price,
+      _isPackage: true,
+  }));
+
   const filteredProducts = activeFilter === 'all' 
-    ? products 
+    ? [...products, ...packagesAsProducts]
+    : isPackageCategory
+    ? packagesAsProducts
     : products.filter(p => {
         const activeCat = categories.find(c => c.id === activeFilter);
         if (!activeCat) return false;
@@ -123,7 +141,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                             </div>
                             <div className="p-4 flex flex-col flex-1">
                                 <div className="flex items-center gap-1 text-[10px] text-gray-500 mb-1">
-                                    {product.category?.includes('건강') ? '🏥' : product.category?.includes('뷰티') ? '💄' : '🎤'} 
+                                    {product.category?.includes('올인원') || product.category?.includes('패키지') ? '🎁' : product.category?.includes('건강') ? '🏥' : product.category?.includes('뷰티') ? '💄' : '🎤'} 
                                     <span>{product.category}</span>
                                 </div>
                                 <h3 className="text-[14px] font-bold text-[#111] leading-tight mb-4 line-clamp-2">{title}</h3>
