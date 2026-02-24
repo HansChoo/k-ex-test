@@ -3,16 +3,17 @@ import React, { useEffect, useState } from 'react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, where, getDocs, orderBy, doc, updateDoc, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send } from 'lucide-react';
+import { Ticket, XCircle, Download, Edit2, Save, User as UserIcon, Printer, MessageCircle, ChevronDown, ChevronUp, Plus, Send, Users, TrendingDown } from 'lucide-react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { printReceipt } from '../services/receiptService';
 
 export const MyPage: React.FC<any> = () => {
-  const { t, language } = useGlobal();
+  const { t, language, convertPrice } = useGlobal();
   const isEn = language !== 'ko';
   const isKo = language === 'ko';
   const [reservations, setReservations] = useState<any[]>([]);
   const [inquiries, setInquiries] = useState<any[]>([]);
+  const [myGroupBuys, setMyGroupBuys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [userData, setUserData] = useState<any>(null);
@@ -31,6 +32,7 @@ export const MyPage: React.FC<any> = () => {
   useEffect(() => {
     let unsubscribeReservations: (() => void) | undefined;
     let unsubscribeInquiries: (() => void) | undefined;
+    let unsubscribeGroupBuys: (() => void) | undefined;
 
     if (!auth || !db) { setLoading(false); return; }
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
@@ -46,6 +48,12 @@ export const MyPage: React.FC<any> = () => {
         const qInq = query(collection(db!, "inquiries"), where("userId", "==", currentUser.uid), orderBy("createdAt", "desc"));
         unsubscribeInquiries = onSnapshot(qInq, (snapshot) => {
             setInquiries(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+
+        // 3. Group Buys Sync
+        const qGb = query(collection(db!, "group_buys"), where("participants", "array-contains", currentUser.uid));
+        unsubscribeGroupBuys = onSnapshot(qGb, (snapshot) => {
+            setMyGroupBuys(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
 
         // 3. User Data
@@ -67,6 +75,7 @@ export const MyPage: React.FC<any> = () => {
         unsubscribeAuth();
         if (unsubscribeReservations) unsubscribeReservations();
         if (unsubscribeInquiries) unsubscribeInquiries();
+        if (unsubscribeGroupBuys) unsubscribeGroupBuys();
     };
   }, []);
 
@@ -187,6 +196,72 @@ export const MyPage: React.FC<any> = () => {
                     ))}
                 </div>
             )}
+
+            {/* 참여 공동구매 현황 */}
+            <div className="mt-12">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Users size={20} className="text-[#0070F0]"/> {isKo ? '참여 공동구매 현황' : 'My Group Buys'}</h2>
+                {myGroupBuys.length === 0 ? (
+                    <div className="text-center py-16 bg-gray-50 rounded-xl"><p className="text-gray-500">{isKo ? '참여한 공동구매가 없습니다.' : 'No group buys joined.'}</p></div>
+                ) : (
+                    <div className="space-y-4">
+                        {myGroupBuys.map((gb) => {
+                            const safeCurrent = gb.currentCount || 0;
+                            const safeMax = gb.maxCount || 10;
+                            const safeOriginalPrice = gb.originalPrice || 0;
+                            const progress = Math.min(100, (safeCurrent / safeMax) * 100);
+                            const discountRate = Math.min(0.3, safeCurrent * 0.03);
+                            const discountedPrice = safeOriginalPrice * (1 - discountRate);
+                            const isCompleted = gb.status === 'completed';
+
+                            return (
+                                <div key={gb.id} className={`bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md ${isCompleted ? 'opacity-70' : ''}`}>
+                                    <div className={`h-2 ${isCompleted ? 'bg-gray-300' : 'bg-gradient-to-r from-[#0070F0] to-[#00C7AE]'}`}></div>
+                                    <div className="p-5">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h3 className="text-lg font-bold text-[#111] mb-1">{gb.productName || 'Unknown'}</h3>
+                                                <p className="text-xs text-gray-500">{gb.description || ''}</p>
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 ${isCompleted ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700'}`}>
+                                                {isCompleted ? (isKo ? '마감' : 'Closed') : (isKo ? '진행중' : 'Active')}
+                                            </span>
+                                        </div>
+
+                                        <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-100">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-xs font-bold text-gray-600">{isKo ? '모집 현황' : 'Progress'}</span>
+                                                <span className="text-xs font-bold text-gray-800">{safeCurrent}{isKo ? '명' : ''} / {safeMax}{isKo ? '명' : ' people'}</span>
+                                            </div>
+                                            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full transition-all ${isCompleted ? 'bg-gray-400' : 'bg-gradient-to-r from-[#0070F0] to-[#00C7AE]'}`} style={{ width: `${progress}%` }}></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-3 text-center">
+                                            <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                                <p className="text-[10px] text-gray-400 font-bold mb-0.5">{isKo ? '정가' : 'Original'}</p>
+                                                <p className="text-xs font-bold text-gray-500 line-through">{convertPrice(safeOriginalPrice)}</p>
+                                            </div>
+                                            <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
+                                                <p className="text-[10px] text-blue-500 font-bold mb-0.5">{isKo ? '할인가' : 'Discounted'}</p>
+                                                <p className="text-xs font-black text-blue-700">{convertPrice(discountedPrice)}</p>
+                                            </div>
+                                            <div className="bg-red-50 rounded-lg p-2 border border-red-100">
+                                                <p className="text-[10px] text-red-400 font-bold mb-0.5 flex items-center justify-center gap-1"><TrendingDown size={10}/> {isKo ? '할인율' : 'Discount'}</p>
+                                                <p className="text-xs font-black text-red-600">{(discountRate * 100).toFixed(0)}%</p>
+                                            </div>
+                                        </div>
+
+                                        {gb.visitDate && (
+                                            <p className="text-xs text-gray-400 mt-3 text-right">{isKo ? '방문 예정일' : 'Visit Date'}: <strong>{gb.visitDate}</strong></p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
           </>
       )}
 
