@@ -7,9 +7,10 @@ import { Check, ChevronRight, ChevronLeft, Info } from 'lucide-react';
 interface PackageSectionProps {
   language: 'ko' | 'en' | 'ja' | 'zh';
   onBookClick: (pkgId: string) => void;
+  onViewAll?: () => void;
 }
 
-export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, language }) => {
+export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, language, onViewAll }) => {
   const { convertPrice, t, packages } = useGlobal();
   const isEn = language !== 'ko';
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -35,8 +36,17 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
     <section className="w-full max-w-[1280px] mx-auto px-6 pb-6 pt-10 font-sans tracking-tight relative">
         <ScrollReveal>
             <div className="mb-6">
-                <div className="text-[18px] mb-1">🎁 <strong>{t('pkg_title')}</strong></div>
-                <p className="text-[13px] text-gray-500">{t('pkg_desc_sub')}</p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="text-[18px] mb-1">🎁 <strong>{t('pkg_title')}</strong></div>
+                        <p className="text-[13px] text-gray-500">{t('pkg_desc_sub')}</p>
+                    </div>
+                    {onViewAll && (
+                        <button onClick={onViewAll} className="text-[13px] font-bold text-[#0070F0] hover:underline shrink-0">
+                            {language === 'ko' ? '전체보기 →' : 'View All →'}
+                        </button>
+                    )}
+                </div>
             </div>
         </ScrollReveal>
 

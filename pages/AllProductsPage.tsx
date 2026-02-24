@@ -5,13 +5,21 @@ import { Heart, Star, Plus, ArrowLeft } from 'lucide-react';
 
 interface AllProductsPageProps {
     language: 'ko' | 'en' | 'ja' | 'zh';
+    initialCategoryLabel?: string;
 }
 
-export const AllProductsPage: React.FC<AllProductsPageProps> = () => {
+export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategoryLabel }) => {
   const { t, products, wishlist, toggleWishlist, getLocalizedValue, convertPrice, categories, language } = useGlobal();
   const isEn = language !== 'ko';
 
   const [activeFilter, setActiveFilter] = useState('all');
+
+  useEffect(() => {
+      if (initialCategoryLabel && categories.length > 0) {
+          const matched = categories.find(c => c.label === initialCategoryLabel || c.labelEn === initialCategoryLabel);
+          if (matched) setActiveFilter(matched.id);
+      }
+  }, [initialCategoryLabel, categories]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { 

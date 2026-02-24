@@ -46,6 +46,7 @@ const AppContent: React.FC = () => {
   const [socialProof, setSocialProof] = useState<{name: string, country: string, product: string} | null>(null);
   
   const [selectedCategory, setSelectedCategory] = useState<{id: string, ts: number} | null>(null);
+  const [allProductsCategoryLabel, setAllProductsCategoryLabel] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -241,9 +242,9 @@ const AppContent: React.FC = () => {
         {currentView === 'home' && (
           <>
             <HeroSection language={language} />
-            <ProductList language={language} initialCategory={selectedCategory} onViewAll={() => navigateTo('all_products')} />
+            <ProductList language={language} initialCategory={selectedCategory} onViewAll={() => { setAllProductsCategoryLabel(undefined); navigateTo('all_products'); }} />
             <PromoSection language={language} onGroupBuyClick={() => navigateTo('group_buying')} />
-            <PackageSection language={language} onBookClick={handlePackageBookClick} />
+            <PackageSection language={language} onBookClick={handlePackageBookClick} onViewAll={() => { setAllProductsCategoryLabel('올인원 패키지'); navigateTo('all_products'); }} />
             <MagazinePreview />
             <BottomHero language={language} />
           </>
@@ -256,7 +257,7 @@ const AppContent: React.FC = () => {
         {currentView === 'magazine' && <MagazinePage />}
         {currentView === 'wishlist' && <WishlistPage language={language} />}
         {currentView === 'survey' && <SurveyPage language={language} />}
-        {currentView === 'all_products' && <AllProductsPage language={language} />}
+        {currentView === 'all_products' && <AllProductsPage language={language} initialCategoryLabel={allProductsCategoryLabel} />}
         
         {currentView === 'admin' && (
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>}>
