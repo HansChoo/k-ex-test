@@ -305,56 +305,50 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   return (
     <div className="w-full font-sans text-[#1a1a1a] bg-[#F5F7FB] pb-24 min-h-screen">
       
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-white pt-28 pb-16 px-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#0070F0]/20 rounded-full blur-[150px] -translate-y-1/3 translate-x-1/4 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/15 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
+      {/* Hero Section - 홈 프로모션 섹션과 동일한 색상 */}
+      <section className="text-white pt-28 pb-12 px-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#B71C1C] via-[#D32F2F] to-[#FF5252] pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none z-0"></div>
+          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-black/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none z-0"></div>
           
           <div className="max-w-[800px] mx-auto relative z-10">
               <div className="flex flex-col md:flex-row md:items-center gap-10">
-                  <div className="flex-1">
-                      <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full mb-6">
-                          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                          <span className="text-white/90 font-bold text-sm">
-                              {activeGroupCount > 0 
-                                  ? (isKo ? `${activeGroupCount}건 진행 중` : `${activeGroupCount} groups active`)
-                                  : (isKo ? '공동구매 오픈' : 'Group Buy Open')
-                              }
-                          </span>
+                  <div className="flex-1 text-center md:text-left">
+                      <div className="flex items-center gap-2 mb-3 justify-center md:justify-start animate-pulse">
+                          <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
+                          <span className="text-yellow-400 text-[11px] md:text-[13px] font-black uppercase tracking-[0.2em]">{t('promo_badge')}</span>
                       </div>
-                      <h1 className="text-3xl md:text-[44px] font-black text-white mb-3 tracking-tight leading-[1.15]">
-                          {isKo ? '함께할수록\n더 저렴하게' : 'More People,\nLower Price'}
+                      <h1 className="text-[24px] md:text-[44px] font-[900] text-white mb-3 tracking-[-0.03em] leading-[1.1] drop-shadow-2xl whitespace-pre-wrap">
+                          {t('promo_title')}
                       </h1>
-                      <p className="text-white/70 text-base md:text-lg font-medium leading-relaxed mb-8 max-w-md whitespace-pre-line">
-                          {isKo 
-                              ? 'K-아이돌 체험, 뷰티시술, 건강검진까지\n인원이 늘어날수록 할인율이 올라갑니다.\n최대 30% 할인!' 
-                              : 'From K-IDOL experience to beauty care & health checkups.\nMore people join, bigger discounts.\nUp to 30% off!'}
+                      <p className="text-[13px] md:text-[17px] text-white/90 font-medium leading-relaxed max-w-xl mb-6 whitespace-pre-wrap">
+                          {t('promo_desc')}
                       </p>
-                      <div className="flex flex-wrap gap-3">
-                          <div className="bg-white/10 backdrop-blur border border-white/15 px-4 py-2 rounded-xl flex items-center gap-2">
-                              <TrendingDown size={16} className="text-cyan-400" />
-                              <span className="text-white/90 text-[13px] font-bold">{isKo ? '인당 3% 추가 할인' : '3% off per person'}</span>
+                      <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                          <div className="bg-white/15 backdrop-blur border border-white/20 px-4 py-2.5 rounded-xl flex items-center gap-2">
+                              <TrendingDown size={16} className="text-yellow-400" />
+                              <span className="text-white font-bold text-[13px]">{isKo ? '최대 30% 할인' : 'Up to 30% off'}</span>
                           </div>
-                          <div className="bg-white/10 backdrop-blur border border-white/15 px-4 py-2 rounded-xl flex items-center gap-2">
-                              <Users size={16} className="text-cyan-400" />
-                              <span className="text-white/90 text-[13px] font-bold">{isKo ? '최대 10명 매칭' : 'Up to 10 people'}</span>
+                          <div className="bg-white/15 backdrop-blur border border-white/20 px-4 py-2.5 rounded-xl flex items-center gap-2">
+                              <Users size={16} className="text-yellow-400" />
+                              <span className="text-white font-bold text-[13px]">{isKo ? '10명 모집 시 성공!' : '10 people = Success!'}</span>
                           </div>
                       </div>
                   </div>
                   
                   <div className="hidden md:flex flex-col items-center gap-3">
-                      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-8 text-center min-w-[200px]">
-                          <div className="text-[48px] font-black text-cyan-400 leading-none mb-1">30%</div>
-                          <div className="text-white/60 text-sm font-bold">{isKo ? '최대 할인율' : 'Max Discount'}</div>
+                      <div className="bg-white/15 backdrop-blur-lg border border-white/20 rounded-3xl p-8 text-center min-w-[200px]">
+                          <div className="text-[48px] font-black text-yellow-400 leading-none mb-1">30%</div>
+                          <div className="text-white/70 text-sm font-bold">{isKo ? '최대 할인율' : 'Max Discount'}</div>
                       </div>
                       <div className="flex gap-3 w-full">
-                          <div className="flex-1 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
+                          <div className="flex-1 bg-white/15 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
                               <div className="text-xl font-black text-white">{activeGroupCount}</div>
-                              <div className="text-white/50 text-[11px] font-bold">{isKo ? '진행중' : 'Active'}</div>
+                              <div className="text-white/60 text-[11px] font-bold">{isKo ? '진행중' : 'Active'}</div>
                           </div>
-                          <div className="flex-1 bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
+                          <div className="flex-1 bg-white/15 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
                               <div className="text-xl font-black text-white">20%</div>
-                              <div className="text-white/50 text-[11px] font-bold">{isKo ? '예약금' : 'Deposit'}</div>
+                              <div className="text-white/60 text-[11px] font-bold">{isKo ? '예약금' : 'Deposit'}</div>
                           </div>
                       </div>
                   </div>
