@@ -71,10 +71,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
           });
       } else if (!introContent) {
           // Fallback for normal products if no content
-          return <img src={product.detailTopImage || product.image} className="w-full rounded-xl" />;
+          return <img src={product.detailTopImage || product.image} className="w-full max-w-full h-auto rounded-xl" />;
       }
 
-      return <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: html }} />;
+      return <div className="prose max-w-none text-sm leading-7 text-gray-600 [&_img]:max-w-full [&_img]:h-auto [&_img]:!w-full [&_img]:object-contain [&_img]:rounded-lg overflow-hidden" dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
   useEffect(() => {
@@ -182,7 +182,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const CALENDAR_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
   return (
-    <div className="w-full bg-white relative font-sans tracking-tight text-[#111]">
+    <div className="w-full bg-white relative font-sans tracking-tight text-[#111] overflow-x-hidden">
       <div className="max-w-[1360px] mx-auto lg:px-4 lg:py-10 flex flex-col lg:flex-row gap-10 relative">
         <div className="flex-1 w-full min-w-0">
             {/* Same Left Column as before */}

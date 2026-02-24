@@ -61,6 +61,14 @@
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       .keep-all { word-break: keep-all; }
       
+      /* Product Detail - prevent image overflow on mobile */
+      .prose img, .prose video, .prose iframe,
+      [dangerouslysetinnerhtml] img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+      }
+      
       /* Dark Mode Transitions */
       body, div, nav, footer, section { transition: background-color 0.3s ease, color 0.3s ease; }
       
