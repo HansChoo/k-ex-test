@@ -85,8 +85,17 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - **Frontend**: PayPal JS SDK loaded dynamically, Smart Payment Buttons
 - **Flow**: User fills booking form → clicks "Book Now" → PayPal buttons appear → payment → reservation created in Firestore
 - **Currency**: Real-time exchange rate for USD/JPY/CNY via Frankfurter API (`/api/exchange-rate` endpoint), 1-hour server cache, backup API fallback, `currencyService.ts` fetches rates on app load → `liveRates` state in GlobalContext
+- **Live Rate Indicator**: Green pulsing dot with "Live exchange rate" text appears next to prices when viewing in non-KRW currency. Uses `ratesLoaded` flag from GlobalContext.
 - **Pages**: ProductDetail, ReservationBasic, ReservationPremium all use PayPal
 - **Vite Proxy**: `/api` routes proxied to backend server (port 3001)
+
+## No Hardcoded Fake Data Policy
+- No fake user counts, mock reviews, or simulated social proof notifications
+- All reviews come from Firebase only; empty state shown when no reviews exist
+- Calendar dates are dynamically generated based on current date (next month)
+- Exchange rates are fetched from real APIs (Frankfurter + backup), never static values
+- Company info in Footer is real business data from `constants.ts` COMPANY_INFO
+- `PRODUCTS_DATA` in constants.ts is reference data for AI chatbot only, not displayed in UI
 
 ## Guest Reservation Form
 - All fields with labels: Passport Name, Date of Birth, Gender, Nationality (dropdown: US/CN/JP), Phone Number (auto country code +1/+86/+81), Messenger App (WhatsApp/KakaoTalk/LINE/WeChat), Messenger ID

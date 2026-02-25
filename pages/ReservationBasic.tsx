@@ -7,7 +7,6 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { PayPalCheckout } from '../components/PayPalCheckout';
 import { getExchangeRate, krwToUsd } from '../services/paypalService';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { generateMockReviews } from '../constants';
 
 interface ReservationBasicProps {
   language: 'ko' | 'en' | 'ja' | 'zh'; 
@@ -43,7 +42,7 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setReviews(generateMockReviews(50));
+    setReviews([]);
     if (!db) { setLoading(false); return; }
     const unsub = onSnapshot(doc(db, "cms_packages", "package_basic"), (doc) => {
         if (doc.exists()) setCmsData(doc.data());
@@ -152,7 +151,12 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
   const title = getLocalizedValue(cmsData, 'title');
   const description = getLocalizedValue(cmsData, 'description');
   const content = getLocalizedValue(cmsData, 'content');
-  const CALENDAR_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+  const _now = new Date();
+  const _calYear = _now.getMonth() === 11 ? _now.getFullYear() + 1 : _now.getFullYear();
+  const _calMonth = _now.getMonth() === 11 ? 0 : _now.getMonth() + 1;
+  const _daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+  const CALENDAR_DAYS = Array.from({ length: _daysInMonth }, (_, i) => i + 1);
+  const _calMonthStr = String(_calMonth + 1).padStart(2, '0');
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
   if (!cmsData) return <div className="p-20 text-center">No Content</div>;
@@ -183,7 +187,9 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
                 {activeTab === 'detail' && <div className="prose max-w-none text-sm leading-7 text-gray-600" dangerouslySetInnerHTML={{ __html: content }} />}
                 {activeTab === 'reviews' && (
                     <div className="space-y-6">
-                        {reviews.map((rev, i) => (
+                        {reviews.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400 text-sm">{t('no_reviews')}</div>
+                        ) : reviews.map((rev, i) => (
                             <div key={i} className="border-b border-gray-100 pb-6">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2"><div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center font-bold text-xs">{rev.user.charAt(0)}</div><div><div className="font-bold text-sm">{rev.user}</div><div className="text-yellow-400 text-xs">★★★★★</div></div></div>
@@ -206,7 +212,7 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
                             <div><span className="block text-xs text-[#888] font-bold mb-1">{t('step1')}</span><span className={`text-[15px] font-bold ${selectedDate ? 'text-[#0070F0]' : 'text-[#111]'}`}>{selectedDate || t('step1_label')}</span></div>
                             <ChevronDown size={20} className="text-[#888]" />
                         </button>
-                        {openSection === 'date' && <div className="px-5 pb-6 bg-white"><div className="grid grid-cols-7 gap-1">{CALENDAR_DAYS.map(day => (<button key={day} onClick={() => { setSelectedDate(`2026-02-${day.toString().padStart(2,'0')}`); setOpenSection('options'); }} className={`h-9 text-[13px] rounded hover:bg-gray-50 flex items-center justify-center ${selectedDate?.includes(day.toString().padStart(2,'0')) ? 'bg-black text-white font-bold' : 'text-[#333]'}`}>{day}</button>))}</div></div>}
+                        {openSection === 'date' && <div className="px-5 pb-6 bg-white"><div className="grid grid-cols-7 gap-1">{CALENDAR_DAYS.map(day => (<button key={day} onClick={() => { setSelectedDate(`${_calYear}-${_calMonthStr}-${day.toString().padStart(2,'0')}`); setOpenSection('options'); }} className={`h-9 text-[13px] rounded hover:bg-gray-50 flex items-center justify-center ${selectedDate?.includes(day.toString().padStart(2,'0')) ? 'bg-black text-white font-bold' : 'text-[#333]'}`}>{day}</button>))}</div></div>}
                     </div>
 
                     {/* Guest Options */}

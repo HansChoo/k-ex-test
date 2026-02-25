@@ -2,7 +2,6 @@
 import React from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
-import { Flame } from 'lucide-react';
 
 interface HeroSectionProps {
   language: 'ko' | 'en' | 'ja' | 'zh'; 
@@ -18,11 +17,7 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
         
         {/* Pill Badge */}
         <ScrollReveal delay={0}>
-            <div className="inline-flex items-center gap-1.5 bg-[#d6e6f9] px-4 py-1.5 rounded-full mb-6">
-                <span className="text-[#3b82f6] font-bold text-[13px] tracking-tight flex items-center gap-1">
-                    <Flame size={12} className="fill-[#f97316] text-[#f97316]"/> {t('hero_badge')}
-                </span>
-            </div>
+            <div className="mb-6"></div>
         </ScrollReveal>
         
         {/* Main Title */}

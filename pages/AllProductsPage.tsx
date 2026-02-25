@@ -10,7 +10,7 @@ interface AllProductsPageProps {
 }
 
 export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategoryLabel }) => {
-  const { t, products, packages, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, categories, language } = useGlobal();
+  const { t, products, packages, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, categories, language, currency, ratesLoaded } = useGlobal();
   const isEn = language !== 'ko';
 
   const [activeFilter, setActiveFilter] = useState('all');
@@ -67,10 +67,18 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
             <button onClick={handleBack} className="flex items-center gap-1 text-gray-500 hover:text-black text-sm font-bold mb-4">
                 <ArrowLeft size={16}/> {language === 'ko' ? '메인으로' : 'Back'}
             </button>
-            <div className="flex items-center gap-1 mb-4">
-                <Star className="fill-yellow-400 text-yellow-400 w-5 h-5"/>
-                <h2 className="text-[22px] font-bold text-[#111]">{language === 'ko' ? '전체 상품' : 'All Products'}</h2>
-                <span className="text-sm text-gray-400 ml-2">{isPackageCategory ? packages.length : filteredProducts.length}{language === 'ko' ? '개' : ' items'}</span>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-1">
+                    <Star className="fill-yellow-400 text-yellow-400 w-5 h-5"/>
+                    <h2 className="text-[22px] font-bold text-[#111]">{language === 'ko' ? '전체 상품' : 'All Products'}</h2>
+                    <span className="text-sm text-gray-400 ml-2">{isPackageCategory ? packages.length : filteredProducts.length}{language === 'ko' ? '개' : ' items'}</span>
+                </div>
+                {currency !== 'KRW' && ratesLoaded && (
+                    <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                        {t('live_rate')}
+                    </span>
+                )}
             </div>
             
             <div className="flex flex-wrap gap-2">

@@ -22,7 +22,7 @@ import { SurveyPage } from './pages/SurveyPage';
 import { AllProductsPage } from './pages/AllProductsPage';
 import { collection, query, doc, increment, updateDoc, getDocs, where } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './services/firebaseConfig';
-import { X, CheckCircle, AlertCircle, Info, ShoppingBag, Loader2 } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Info, Loader2 } from 'lucide-react';
 import { subscribeToAuthChanges } from './services/authService';
 import { User } from 'firebase/auth';
 import { AuthModal } from './components/AuthModal';
@@ -43,7 +43,6 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
-  const [socialProof, setSocialProof] = useState<{name: string, country: string, product: string} | null>(null);
   
   const [selectedCategory, setSelectedCategory] = useState<{id: string, ts: number} | null>(null);
   const [allProductsCategoryLabel, setAllProductsCategoryLabel] = useState<string | undefined>(undefined);
@@ -170,13 +169,6 @@ const AppContent: React.FC = () => {
       };
   }, []);
 
-  useEffect(() => {
-      const timer = setTimeout(() => {
-          setSocialProof({ name: "Emma", country: "🇺🇸 USA", product: "K-IDOL Basic" });
-          setTimeout(() => setSocialProof(null), 5000);
-      }, 10000);
-      return () => clearTimeout(timer);
-  }, []);
 
   const handlePackageBookClick = (pkgId: string) => {
       const pkg = packages.find(p => p.id === pkgId);
@@ -212,21 +204,6 @@ const AppContent: React.FC = () => {
         ))}
       </div>
 
-      {socialProof && currentView === 'home' && (
-          <div className="fixed bottom-24 right-4 z-40 bg-white/95 backdrop-blur-md border border-gray-100 p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-up max-w-[90%] md:max-w-[320px]">
-              <div className="w-10 h-10 bg-gradient-to-tr from-green-400 to-green-600 rounded-full flex items-center justify-center text-white shrink-0 shadow-lg">
-                  <ShoppingBag size={18} />
-              </div>
-              <div className="min-w-0">
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">{t('just_purchased')}</p>
-                  <p className="text-xs font-bold text-[#111] leading-tight truncate">
-                      {socialProof.country} <span className="text-blue-600">{socialProof.name}</span>
-                  </p>
-                  <p className="text-xs font-black text-[#111] truncate">"{socialProof.product}"</p>
-              </div>
-              <button onClick={() => setSocialProof(null)} className="absolute top-2 right-2 text-gray-300 hover:text-gray-500"><X size={12}/></button>
-          </div>
-      )}
 
       {currentView !== 'admin' && currentView !== 'survey' && (
           <Navbar 

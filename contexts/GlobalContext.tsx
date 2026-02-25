@@ -30,6 +30,8 @@ interface GlobalContextType {
   currency: Currency;
   setGlobalMode: (countryCode: string) => void;
   convertPrice: (krwPrice: number) => string;
+  liveRates: { KRW: number; USD: number; JPY: number; CNY: number };
+  ratesLoaded: boolean;
   wishlist: (number | string)[];
   toggleWishlist: (id: number | string) => void;
   cart: CartItem[];
@@ -104,7 +106,7 @@ const TRANSLATIONS: any = {
     monthly_rev: '월별 매출 추이', order_date: '주문일시', status: '상태', manage: '관리',
     status_pending: '입금대기', status_confirmed: '예약확정', status_completed: '이용완료', status_cancelled: '취소됨',
     save: '저장', cancel: '취소', delete: '삭제', edit: '수정', memo: '메모',
-    no_products: '등록된 상품이 없습니다!', import_db: '기본 상품 DB로 가져오기',
+    no_products: '등록된 상품이 없습니다!', no_reviews: '아직 리뷰가 없습니다.', import_db: '기본 상품 DB로 가져오기',
     magazine: 'K-매거진', inquiry: '1:1 문의', coupon: '쿠폰', affiliate: '제휴 마케팅',
     coupon_code: '프로모션 코드', apply: '적용', discount_applied: '할인 적용됨', invalid_coupon: '유효하지 않은 쿠폰입니다.',
     my_inquiries: '나의 문의내역', new_inquiry: '새 문의 작성', inquiry_title: '제목', inquiry_content: '내용',
@@ -117,7 +119,7 @@ const TRANSLATIONS: any = {
     total_rev: '총 매출액', comm_amount: '정산금액', link_copy: '링크복사', max_usage: '발행수량', current_usage: '사용됨',
     usage_limit_reached: '선착순 마감된 쿠폰입니다.',
     start_now: '지금 시작하기', home: '홈', group_buy: '공동구매', all_exp: '전체체험',
-    no_categories: '카테고리가 준비 중입니다.',
+    no_categories: '카테고리가 준비 중입니다.', live_rate: '실시간 환율 적용',
     quiz_q1: '가장 관심 있는 분야는?', quiz_q2: '선호하는 예산 범위는?',
     quiz_basic: '에센셜 체험 (베이직)', quiz_premium: '프리미엄 VIP 서비스',
     ai_concierge: 'AI 컨시어지', analyzing: '취향을 분석 중...', finding: '당신에게 완벽한 K-체험을 찾고 있습니다',
@@ -186,7 +188,7 @@ const TRANSLATIONS: any = {
     monthly_rev: 'Monthly Revenue', order_date: 'Date', status: 'Status', manage: 'Manage',
     status_pending: 'Pending', status_confirmed: 'Confirmed', status_completed: 'Completed', status_cancelled: 'Cancelled',
     save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', memo: 'Note',
-    no_products: 'No products found!', import_db: 'Import Defaults',
+    no_products: 'No products found!', no_reviews: 'No reviews yet.', import_db: 'Import Defaults',
     magazine: 'K-Magazine', inquiry: '1:1 Inquiry', coupon: 'Coupon', affiliate: 'Affiliates',
     coupon_code: 'Promo Code', apply: 'Apply', discount_applied: 'Discount Applied', invalid_coupon: 'Invalid Coupon',
     my_inquiries: 'My Inquiries', new_inquiry: 'New Inquiry', inquiry_title: 'Title', inquiry_content: 'Content',
@@ -199,7 +201,7 @@ const TRANSLATIONS: any = {
     total_rev: 'Total Revenue', comm_amount: 'Comm. Amount', link_copy: 'Copy Link', max_usage: 'Limit', current_usage: 'Used',
     usage_limit_reached: 'This coupon has reached its usage limit.',
     start_now: 'Start Now!', home: 'Home', group_buy: 'Group Buy', all_exp: 'All Exp.',
-    no_categories: 'Categories coming soon.',
+    no_categories: 'Categories coming soon.', live_rate: 'Live exchange rate',
     quiz_q1: 'What are you most interested in?', quiz_q2: 'What is your preferred range?',
     quiz_basic: 'Essential Experience (Basic)', quiz_premium: 'Premium VIP Service',
     ai_concierge: 'AI Concierge', analyzing: 'Analyzing your taste...', finding: 'Finding the perfect K-Experience for you',
@@ -268,7 +270,7 @@ const TRANSLATIONS: any = {
     monthly_rev: '月別売上推移', order_date: '注文日時', status: '状態', manage: '管理',
     status_pending: '入金待ち', status_confirmed: '予約確定', status_completed: '利用完了', status_cancelled: 'キャンセル',
     save: '保存', cancel: 'キャンセル', delete: '削除', edit: '編集', memo: 'メモ',
-    no_products: '登録された商品がありません！', import_db: 'デフォルトDBをインポート',
+    no_products: '登録された商品がありません！', no_reviews: 'まだレビューがありません。', import_db: 'デフォルトDBをインポート',
     magazine: 'K-マガジン', inquiry: '1:1 お問い合わせ', coupon: 'クーポン', affiliate: 'アフィリエイト',
     coupon_code: 'プロモーションコード', apply: '適用', discount_applied: '割引適用', invalid_coupon: '無効なクーポンです。',
     my_inquiries: 'お問い合わせ履歴', new_inquiry: '新しいお問い合わせ', inquiry_title: 'タイトル', inquiry_content: '内容',
@@ -281,7 +283,7 @@ const TRANSLATIONS: any = {
     total_rev: '総売上額', comm_amount: '精算額', link_copy: 'リンクコピー', max_usage: '発行数量', current_usage: '使用済み',
     usage_limit_reached: 'このクーポンは使用上限に達しました。',
     start_now: '今すぐ始める', home: 'ホーム', group_buy: '共同購入', all_exp: 'すべての体験',
-    no_categories: 'カテゴリー準備中です。',
+    no_categories: 'カテゴリー準備中です。', live_rate: 'リアルタイム為替レート',
     quiz_q1: '最も興味のある分野は？', quiz_q2: 'ご予算は？',
     quiz_basic: 'エッセンシャル体験（ベーシック）', quiz_premium: 'プレミアムVIPサービス',
     ai_concierge: 'AIコンシェルジュ', analyzing: 'お好みを分析中...', finding: 'あなたにぴったりのK-体験を探しています',
@@ -350,7 +352,7 @@ const TRANSLATIONS: any = {
     monthly_rev: '月度销售趋势', order_date: '订单日期', status: '状态', manage: '管理',
     status_pending: '待付款', status_confirmed: '已确认', status_completed: '已完成', status_cancelled: '已取消',
     save: '保存', cancel: '取消', delete: '删除', edit: '编辑', memo: '备注',
-    no_products: '暂无商品！', import_db: '导入默认数据',
+    no_products: '暂无商品！', no_reviews: '暂无评价。', import_db: '导入默认数据',
     magazine: 'K-杂志', inquiry: '1:1 咨询', coupon: '优惠券', affiliate: '联盟营销',
     coupon_code: '优惠码', apply: '应用', discount_applied: '已应用折扣', invalid_coupon: '无效的优惠券',
     my_inquiries: '我的咨询', new_inquiry: '新建咨询', inquiry_title: '标题', inquiry_content: '内容',
@@ -363,7 +365,7 @@ const TRANSLATIONS: any = {
     total_rev: '总销售额', comm_amount: '结算金额', link_copy: '复制链接', max_usage: '发行数量', current_usage: '已使用',
     usage_limit_reached: '此优惠券已达到使用上限。',
     start_now: '立即开始', home: '首页', group_buy: '拼团', all_exp: '全部体验',
-    no_categories: '类别准备中。',
+    no_categories: '类别准备中。', live_rate: '实时汇率',
     quiz_q1: '您最感兴趣的领域？', quiz_q2: '您的预算范围？',
     quiz_basic: '基础体验（基础版）', quiz_premium: '尊享VIP服务',
     ai_concierge: 'AI助手', analyzing: '正在分析您的偏好...', finding: '正在为您寻找完美的K-体验',
@@ -390,6 +392,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
   const [liveRates, setLiveRates] = useState<{ KRW: number; USD: number; JPY: number; CNY: number }>(RATES);
+  const [ratesLoaded, setRatesLoaded] = useState(false);
   const savingRef = useRef(false);
 
   const saveToFirestore = useCallback(async (uid: string, newWishlist: (number | string)[], newCart: CartItem[]) => {
@@ -447,7 +450,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     fetchExchangeRates().then(rates => {
       setLiveRates({ KRW: 1, USD: rates.USD, JPY: rates.JPY, CNY: rates.CNY });
-      console.log('Exchange rates loaded:', rates);
+      setRatesLoaded(true);
     });
     const interval = setInterval(() => {
       fetchExchangeRates().then(rates => {
@@ -584,7 +587,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const displayProducts = realtimeProducts; 
 
   return (
-    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, wishlist, toggleWishlist, cart, addToCart, removeFromCart, updateCartQuantity, clearCart, t, products: displayProducts, packages, categories, getLocalizedValue }}>
+    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, liveRates, ratesLoaded, wishlist, toggleWishlist, cart, addToCart, removeFromCart, updateCartQuantity, clearCart, t, products: displayProducts, packages, categories, getLocalizedValue }}>
       {children}
     </GlobalContext.Provider>
   );

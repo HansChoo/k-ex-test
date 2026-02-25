@@ -21,7 +21,7 @@ interface ProductListProps {
 }
 
 export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onViewAll }) => {
-  const { t, products, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, language } = useGlobal();
+  const { t, products, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, language, currency, ratesLoaded } = useGlobal();
 
   const [loading, setLoading] = useState(true);
 
@@ -43,11 +43,19 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
                         <Star className="fill-yellow-400 text-yellow-400 w-5 h-5"/>
                         <h2 className="text-[20px] font-bold text-[#111]">{t('popular_products')}</h2>
                     </div>
-                    {onViewAll && (
-                        <button onClick={onViewAll} className="text-[13px] font-bold text-[#0070F0] hover:underline">
-                            {language === 'ko' ? '전체보기 →' : 'View All →'}
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {currency !== 'KRW' && ratesLoaded && (
+                            <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                                {t('live_rate')}
+                            </span>
+                        )}
+                        {onViewAll && (
+                            <button onClick={onViewAll} className="text-[13px] font-bold text-[#0070F0] hover:underline">
+                                {language === 'ko' ? '전체보기 →' : 'View All →'}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </ScrollReveal>

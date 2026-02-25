@@ -15,7 +15,7 @@ interface ProductDetailProps {
 }
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
-  const { language, t, convertPrice, wishlist, toggleWishlist, getLocalizedValue, products } = useGlobal();
+  const { language, t, convertPrice, wishlist, toggleWishlist, getLocalizedValue, products, currency, ratesLoaded } = useGlobal();
   const isEn = language !== 'ko';
   const isKo = language === 'ko';
   
@@ -212,13 +212,19 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     } catch (e: any) { alert(e); }
   };
 
+  const now = new Date();
+  const calendarYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+  const calendarMonth = now.getMonth() === 11 ? 0 : now.getMonth() + 1;
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
   const handleDateSelect = (day: number) => {
-    setSelectedDate(`2026-02-${day.toString().padStart(2, '0')}`);
+    const m = String(calendarMonth + 1).padStart(2, '0');
+    setSelectedDate(`${calendarYear}-${m}-${day.toString().padStart(2, '0')}`);
     setOpenSection('options');
   };
 
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const CALENDAR_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+  const CALENDAR_DAYS = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   const mapLocations = product.mapLocations || [];
 
@@ -240,7 +246,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 </div>
                 <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug">{title}</h1>
                 <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{description}</p>
-                <div className="flex items-center justify-between"><div className="flex items-baseline gap-2"><span className="text-[32px] font-black text-[#111]">{convertPrice(getPrice() / (selectedPayment === 'deposit' ? 0.2 : 1))}</span></div><div className="flex gap-4"><button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group"><Heart size={20} className={`transition-all duration-300 ${wishlist.some(w => String(w) === String(product.id || 999)) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"}`} /><span>Wishlist</span></button><button className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95"><Share2 size={20} /><span>{t('share')}</span></button></div></div>
+                <div className="flex items-center justify-between"><div className="flex items-baseline gap-2"><span className="text-[32px] font-black text-[#111]">{convertPrice(getPrice() / (selectedPayment === 'deposit' ? 0.2 : 1))}</span>{currency !== 'KRW' && ratesLoaded && <span className="text-[10px] text-green-600 font-medium flex items-center gap-1 ml-2"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>{t('live_rate')}</span>}</div><div className="flex gap-4"><button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group"><Heart size={20} className={`transition-all duration-300 ${wishlist.some(w => String(w) === String(product.id || 999)) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"}`} /><span>Wishlist</span></button><button className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95"><Share2 size={20} /><span>{t('share')}</span></button></div></div>
             </div>
             <div className="mb-12 overflow-x-auto no-scrollbar flex gap-4 px-4 lg:px-0 snap-x"><div className="relative w-[80vw] lg:w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg shrink-0 snap-center"><img src={getLocalizedValue(product, 'image') || product.image} className="w-full h-full object-cover" alt={title} /></div></div>
             
