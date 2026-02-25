@@ -84,7 +84,7 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - **Backend**: Express server on port 3001, handles order creation and capture
 - **Frontend**: PayPal JS SDK loaded dynamically, Smart Payment Buttons
 - **Flow**: User fills booking form → clicks "Book Now" → PayPal buttons appear → payment → reservation created in Firestore
-- **Currency**: Real-time exchange rate via Frankfurter API (`/api/exchange-rate` endpoint), 1-hour server cache, backup API fallback
+- **Currency**: Real-time exchange rate for USD/JPY/CNY via Frankfurter API (`/api/exchange-rate` endpoint), 1-hour server cache, backup API fallback, `currencyService.ts` fetches rates on app load → `liveRates` state in GlobalContext
 - **Pages**: ProductDetail, ReservationBasic, ReservationPremium all use PayPal
 - **Vite Proxy**: `/api` routes proxied to backend server (port 3001)
 

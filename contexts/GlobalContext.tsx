@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { collection, query, orderBy, onSnapshot, doc, setDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { db, auth, isFirebaseConfigured } from '../services/firebaseConfig';
+import { fetchExchangeRates } from '../services/currencyService';
 
 type Currency = 'KRW' | 'USD' | 'JPY' | 'CNY';
 type Language = 'ko' | 'en' | 'ja' | 'zh';
@@ -388,6 +389,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [packages, setPackages] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
+  const [liveRates, setLiveRates] = useState<{ KRW: number; USD: number; JPY: number; CNY: number }>(RATES);
   const savingRef = useRef(false);
 
   const saveToFirestore = useCallback(async (uid: string, newWishlist: (number | string)[], newCart: CartItem[]) => {
@@ -443,6 +445,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   useEffect(() => {
+    fetchExchangeRates().then(rates => {
+      setLiveRates({ KRW: 1, USD: rates.USD, JPY: rates.JPY, CNY: rates.CNY });
+      console.log('Exchange rates loaded:', rates);
+    });
+    const interval = setInterval(() => {
+      fetchExchangeRates().then(rates => {
+        setLiveRates({ KRW: 1, USD: rates.USD, JPY: rates.JPY, CNY: rates.CNY });
+      });
+    }, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     if (!isFirebaseConfigured) return;
     const q = query(collection(db!, "products"), orderBy("createdAt", "desc")); 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -495,7 +510,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const convertPrice = (krwPrice: number) => {
-    const rate = RATES[currency];
+    const rate = liveRates[currency];
     const converted = krwPrice * rate;
     if (currency === 'KRW') return `₩${Math.round(converted).toLocaleString()}`;
     if (currency === 'JPY') return `¥${Math.round(converted).toLocaleString()}`;

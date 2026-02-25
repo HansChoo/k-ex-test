@@ -105,43 +105,51 @@ app.get('/api/paypal/client-id', (req, res) => {
   res.json({ clientId: PAYPAL_CLIENT_ID });
 });
 
-let cachedRate = { rate: 1 / 1400, timestamp: 0 };
+let cachedRates = { rates: { USD: 0.00075, JPY: 0.11, CNY: 0.0054 }, timestamp: 0 };
 const CACHE_DURATION = 60 * 60 * 1000;
 
 app.get('/api/exchange-rate', async (req, res) => {
   try {
-    if (Date.now() - cachedRate.timestamp < CACHE_DURATION && cachedRate.rate) {
-      return res.json({ rate: cachedRate.rate, cached: true, updatedAt: new Date(cachedRate.timestamp).toISOString() });
+    if (Date.now() - cachedRates.timestamp < CACHE_DURATION && cachedRates.rates.USD) {
+      return res.json({ rate: cachedRates.rates.USD, rates: cachedRates.rates, cached: true, updatedAt: new Date(cachedRates.timestamp).toISOString() });
     }
 
-    let rate = null;
+    let rates = null;
     try {
-      const r = await fetch('https://api.frankfurter.dev/v1/latest?base=KRW&symbols=USD');
+      const r = await fetch('https://api.frankfurter.dev/v1/latest?base=KRW&symbols=USD,JPY,CNY');
       if (r.ok) {
         const data = await r.json();
-        rate = data.rates?.USD;
+        if (data.rates?.USD) {
+          rates = { USD: data.rates.USD, JPY: data.rates.JPY, CNY: data.rates.CNY };
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Frankfurter API error:', e.message);
+    }
 
-    if (!rate) {
+    if (!rates) {
       try {
         const r = await fetch('https://latest.currency-api.pages.dev/v1/currencies/krw.json');
         if (r.ok) {
           const data = await r.json();
-          rate = data.krw?.usd;
+          if (data.krw?.usd) {
+            rates = { USD: data.krw.usd, JPY: data.krw.jpy, CNY: data.krw.cny };
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Backup API error:', e.message);
+      }
     }
 
-    if (rate && rate > 0) {
-      cachedRate = { rate, timestamp: Date.now() };
-      res.json({ rate, cached: false, updatedAt: new Date().toISOString() });
+    if (rates && rates.USD > 0) {
+      cachedRates = { rates, timestamp: Date.now() };
+      res.json({ rate: rates.USD, rates, cached: false, updatedAt: new Date().toISOString() });
     } else {
-      res.json({ rate: cachedRate.rate || 1 / 1400, cached: true, fallback: true, updatedAt: new Date(cachedRate.timestamp || Date.now()).toISOString() });
+      res.json({ rate: cachedRates.rates.USD, rates: cachedRates.rates, cached: true, fallback: true, updatedAt: new Date(cachedRates.timestamp || Date.now()).toISOString() });
     }
   } catch (err) {
     console.error('Exchange rate error:', err);
-    res.json({ rate: cachedRate.rate || 1 / 1400, cached: true, fallback: true });
+    res.json({ rate: cachedRates.rates.USD, rates: cachedRates.rates, cached: true, fallback: true });
   }
 });
 
