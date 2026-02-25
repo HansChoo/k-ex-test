@@ -132,7 +132,20 @@ const TRANSLATIONS: any = {
     payment_complete: '결제 완료!', reservation_confirmed: '예약이 확정되었습니다.',
     go_home: '홈으로', pay_securely: 'PayPal로 안전하게 결제하세요',
     payment_error: '결제 오류가 발생했습니다.', select_all: '전체 선택',
-    selected_items: '선택한 상품', add_to_cart: '장바구니 담기', proceed_payment: '결제하기'
+    selected_items: '선택한 상품', add_to_cart: '장바구니 담기', proceed_payment: '결제하기',
+    per_person: '1인 기준', no_packages: '올인원 패키지가 준비 중입니다.',
+    quiz_opt_kpop: 'K-POP & 아이돌 문화', quiz_opt_beauty: '스킨케어 & 뷰티', quiz_opt_health: '종합 건강검진',
+    magazine_title: 'K-Experience 매거진', magazine_subtitle: '최신 K-트렌드 소식',
+    magazine_more: '더보기', magazine_see_all: '전체 보기', magazine_coming: '매거진 콘텐츠가 준비 중입니다',
+    magazine_coming_desc: 'K-뷰티, K-헬스, K-POP 등 다양한 트렌드 소식을 만나보세요',
+    copied: '복사됨!', copy_link: '링크 복사',
+    back_to_list: '목록으로', related_products: '관련 상품',
+    related_products_desc: '이 글과 관련된 K-Experience 상품을 확인해보세요',
+    back_to_magazine: '매거진 목록으로',
+    magazine_desc: '한국의 뷰티, 건강, 문화, 엔터테인먼트 최신 트렌드를 만나보세요.',
+    search_articles: '매거진 검색...', no_results: '검색 결과가 없습니다.',
+    coming_soon: '게시글이 없습니다.',
+    tab_all_magazine: '전체'
   },
   en: {
     login: 'Login', signup: 'Sign Up', mypage: 'My Page', logout: 'Logout',
@@ -214,7 +227,20 @@ const TRANSLATIONS: any = {
     payment_complete: 'Payment Complete!', reservation_confirmed: 'Your reservation is confirmed.',
     go_home: 'Go Home', pay_securely: 'Pay securely with PayPal',
     payment_error: 'Payment error occurred.', select_all: 'Select All',
-    selected_items: 'Selected Items', add_to_cart: 'Add to Cart', proceed_payment: 'Proceed to Payment'
+    selected_items: 'Selected Items', add_to_cart: 'Add to Cart', proceed_payment: 'Proceed to Payment',
+    per_person: 'Per Person', no_packages: 'Packages are being prepared.',
+    quiz_opt_kpop: 'K-POP & Idol Culture', quiz_opt_beauty: 'Skin Care & Beauty', quiz_opt_health: 'General Health Checkup',
+    magazine_title: 'K-Experience Magazine', magazine_subtitle: 'Latest K-trend news',
+    magazine_more: 'View All', magazine_see_all: 'See All', magazine_coming: 'Magazine content coming soon',
+    magazine_coming_desc: 'Stay tuned for K-Beauty, K-Health, K-POP trends & more',
+    copied: 'Copied!', copy_link: 'Share',
+    back_to_list: 'Back', related_products: 'Related Products',
+    related_products_desc: 'Check out related K-Experience products',
+    back_to_magazine: 'Back to Magazine',
+    magazine_desc: 'Discover the latest trends and tips about Korean beauty, health, culture, and entertainment.',
+    search_articles: 'Search articles...', no_results: 'No results found.',
+    coming_soon: 'Coming Soon!',
+    tab_all_magazine: 'All'
   },
   ja: {
     login: 'ログイン', signup: '会員登録', mypage: 'マイページ', logout: 'ログアウト',
@@ -296,7 +322,20 @@ const TRANSLATIONS: any = {
     payment_complete: 'お支払い完了！', reservation_confirmed: 'ご予約が確定しました。',
     go_home: 'ホームへ', pay_securely: 'PayPalで安全にお支払い',
     payment_error: 'お支払いエラーが発生しました。', select_all: 'すべて選択',
-    selected_items: '選択した商品', add_to_cart: 'カートに追加', proceed_payment: 'お支払いへ'
+    selected_items: '選択した商品', add_to_cart: 'カートに追加', proceed_payment: 'お支払いへ',
+    per_person: '1名様あたり', no_packages: 'パッケージ準備中です。',
+    quiz_opt_kpop: 'K-POP＆アイドル文化', quiz_opt_beauty: 'スキンケア＆ビューティー', quiz_opt_health: '総合健康診断',
+    magazine_title: 'K-Experience マガジン', magazine_subtitle: '最新K-トレンドニュース',
+    magazine_more: 'もっと見る', magazine_see_all: 'すべて見る', magazine_coming: 'マガジンコンテンツ準備中',
+    magazine_coming_desc: 'K-ビューティー、K-ヘルス、K-POPなど最新トレンド情報をお届けします',
+    copied: 'コピー済み！', copy_link: 'リンクコピー',
+    back_to_list: '一覧へ', related_products: '関連商品',
+    related_products_desc: 'この記事に関連するK-Experience商品をチェック',
+    back_to_magazine: 'マガジン一覧へ',
+    magazine_desc: '韓国のビューティー、健康、文化、エンタメの最新トレンドをお届けします。',
+    search_articles: 'マガジン検索...', no_results: '検索結果がありません。',
+    coming_soon: '記事がありません。',
+    tab_all_magazine: 'すべて'
   },
   zh: {
     login: '登录', signup: '注册', mypage: '我的页面', logout: '退出',
@@ -378,7 +417,20 @@ const TRANSLATIONS: any = {
     payment_complete: '支付完成！', reservation_confirmed: '您的预约已确认。',
     go_home: '返回首页', pay_securely: '使用PayPal安全支付',
     payment_error: '支付出现错误。', select_all: '全选',
-    selected_items: '选中的商品', add_to_cart: '加入购物车', proceed_payment: '去支付'
+    selected_items: '选中的商品', add_to_cart: '加入购物车', proceed_payment: '去支付',
+    per_person: '每人', no_packages: '套餐正在准备中。',
+    quiz_opt_kpop: 'K-POP & 偶像文化', quiz_opt_beauty: '护肤 & 美容', quiz_opt_health: '综合健康检查',
+    magazine_title: 'K-Experience 杂志', magazine_subtitle: '最新K-趋势资讯',
+    magazine_more: '查看更多', magazine_see_all: '查看全部', magazine_coming: '杂志内容即将上线',
+    magazine_coming_desc: '敬请期待K-美容、K-健康、K-POP等趋势资讯',
+    copied: '已复制！', copy_link: '复制链接',
+    back_to_list: '返回', related_products: '相关产品',
+    related_products_desc: '查看与本文相关的K-Experience产品',
+    back_to_magazine: '返回杂志列表',
+    magazine_desc: '发现韩国美容、健康、文化、娱乐的最新趋势。',
+    search_articles: '搜索杂志...', no_results: '未找到结果。',
+    coming_soon: '暂无文章。',
+    tab_all_magazine: '全部'
   }
 };
 

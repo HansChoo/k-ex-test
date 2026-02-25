@@ -52,7 +52,7 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
                         )}
                         {onViewAll && (
                             <button onClick={onViewAll} className="text-[13px] font-bold text-[#0070F0] hover:underline">
-                                {language === 'ko' ? '전체보기 →' : 'View All →'}
+                                {t('view_all')} →
                             </button>
                         )}
                     </div>

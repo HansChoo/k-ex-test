@@ -95,17 +95,16 @@ export const Navbar: React.FC<NavbarProps> = ({ isMenuOpen, toggleMenu, onLogoCl
              {user ? (
                  <div className="flex items-center gap-3">
                      {/* My Page Link */}
-                     <button onClick={onMyPageClick} className="text-[#333] hover:text-[#0070F0] transition-colors" title={language === 'ko' ? '마이페이지' : 'My Page'}>
+                     <button onClick={onMyPageClick} className="text-[#333] hover:text-[#0070F0] transition-colors" title={t('mypage')}>
                         <UserIcon size={24} strokeWidth={1.5} />
                      </button>
-                     {/* Logout Button */}
                      <button onClick={logoutUser} className="text-xs font-bold text-gray-500 hover:text-red-500 transition-colors whitespace-nowrap">
-                        {language === 'ko' ? '로그아웃' : 'Logout'}
+                        {t('logout')}
                      </button>
                  </div>
              ) : (
                  <button onClick={onLoginClick} className="bg-black text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-gray-800 transition-colors whitespace-nowrap shadow-sm">
-                    {language === 'ko' ? '로그인/회원가입' : 'Login / Sign Up'}
+                    {t('login')}/{t('signup')}
                  </button>
              )}
         </div>

@@ -5,7 +5,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { BookOpen, Calendar, ArrowRight, ChevronRight } from 'lucide-react';
 
 export const MagazinePreview: React.FC = () => {
-  const { language } = useGlobal();
+  const { language, t, getLocalizedValue } = useGlobal();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,9 +26,9 @@ export const MagazinePreview: React.FC = () => {
   };
 
   const getExcerpt = (post: any) => {
-    if (post.excerpt) return post.excerpt;
-    if (post.content) {
-      const text = post.content.replace(/<[^>]+>/g, '');
+    const content = getLocalizedValue(post, 'content');
+    if (content) {
+      const text = content.replace(/<[^>]+>/g, '');
       return text.substring(0, 80) + (text.length > 80 ? '...' : '');
     }
     return '';
@@ -67,18 +67,18 @@ export const MagazinePreview: React.FC = () => {
           <div className="flex items-center gap-2 mb-1">
             <BookOpen size={18} className="text-[#0070F0]" />
             <h2 className="text-[20px] font-black text-[#111] dark:text-white">
-              {language === 'ko' ? 'K-Experience 매거진' : 'Latest Stories'}
+              {t('magazine_title')}
             </h2>
           </div>
           <p className="text-sm text-gray-400 font-medium">
-            {language === 'ko' ? '최신 K-트렌드 소식' : 'Discover K-trends & tips'}
+            {t('magazine_subtitle')}
           </p>
         </div>
         <button
           onClick={handleViewAll}
           className="flex items-center gap-1 text-[#0070F0] font-bold text-sm hover:underline transition-all group"
         >
-          {language === 'ko' ? '더보기' : 'View All'}
+          {t('magazine_more')}
           <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
         </button>
       </div>
@@ -89,10 +89,10 @@ export const MagazinePreview: React.FC = () => {
             <BookOpen size={28} className="text-[#0070F0]" />
           </div>
           <p className="text-gray-500 text-sm font-medium text-center mb-1">
-            {language === 'ko' ? '매거진 콘텐츠가 준비 중입니다' : 'Magazine content coming soon'}
+            {t('magazine_coming')}
           </p>
           <p className="text-gray-400 text-xs text-center">
-            {language === 'ko' ? 'K-뷰티, K-헬스, K-POP 등 다양한 트렌드 소식을 만나보세요' : 'Stay tuned for K-Beauty, K-Health, K-POP trends & more'}
+            {t('magazine_coming_desc')}
           </p>
         </div>
       ) : (
@@ -107,7 +107,7 @@ export const MagazinePreview: React.FC = () => {
                 {post.image ? (
                   <img
                     src={post.image}
-                    alt={post.title}
+                    alt={getLocalizedValue(post, 'title')}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                 ) : (
@@ -121,7 +121,7 @@ export const MagazinePreview: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-[15px] font-bold text-[#111] dark:text-white leading-snug mb-1.5 line-clamp-2 group-hover:text-[#0070F0] transition-colors">
-                {post.title}
+                {getLocalizedValue(post, 'title')}
               </h3>
               <p className="text-[13px] text-gray-500 line-clamp-2 mb-2 leading-relaxed">
                 {getExcerpt(post)}
@@ -141,7 +141,7 @@ export const MagazinePreview: React.FC = () => {
               <div className="w-12 h-12 rounded-full border-2 border-gray-200 group-hover:border-[#0070F0] flex items-center justify-center transition-colors">
                 <ArrowRight size={20} />
               </div>
-              <span className="text-xs font-bold">{language === 'ko' ? '전체 보기' : 'See All'}</span>
+              <span className="text-xs font-bold">{t('magazine_see_all')}</span>
             </div>
           </div>
         </div>

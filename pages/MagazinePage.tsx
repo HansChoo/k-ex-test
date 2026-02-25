@@ -36,11 +36,13 @@ export const MagazinePage: React.FC = () => {
 
   useEffect(() => {
     if (selectedPost) {
-      const excerpt = selectedPost.content
-        ? selectedPost.content.replace(/<[^>]+>/g, '').substring(0, 160)
+      const localTitle = getLocalizedValue(selectedPost, 'title');
+      const localContent = getLocalizedValue(selectedPost, 'content');
+      const excerpt = localContent
+        ? localContent.replace(/<[^>]+>/g, '').substring(0, 160)
         : '';
       updateMetaTags({
-        title: `${selectedPost.title} | K-Experience Magazine`,
+        title: `${localTitle} | K-Experience Magazine`,
         description: excerpt,
         image: selectedPost.image || '',
         url: window.location.href,
@@ -154,7 +156,7 @@ export const MagazinePage: React.FC = () => {
               className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white px-4 py-2.5 rounded-full text-sm font-bold transition-all"
             >
               <ArrowLeft size={16} />
-              {language === 'ko' ? '목록으로' : 'Back'}
+              {t('back_to_list')}
             </button>
           </div>
           <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16">
@@ -163,10 +165,10 @@ export const MagazinePage: React.FC = () => {
                 {selectedPost.category || 'K-Trend'}
               </span>
               <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-4">
-                {selectedPost.title}
+                {getLocalizedValue(selectedPost, 'title')}
               </h1>
-              {selectedPost.subtitle && (
-                <p className="text-lg text-white/80 font-medium mb-4">{selectedPost.subtitle}</p>
+              {getLocalizedValue(selectedPost, 'subtitle') && (
+                <p className="text-lg text-white/80 font-medium mb-4">{getLocalizedValue(selectedPost, 'subtitle')}</p>
               )}
               <div className="flex flex-wrap items-center gap-4 text-white/70 text-sm">
                 <div className="flex items-center gap-1.5">
@@ -193,15 +195,15 @@ export const MagazinePage: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full text-sm font-bold text-gray-600 transition-colors"
             >
               {copied ? (
-                <><Link2 size={14} className="text-green-500" /> {language === 'ko' ? '복사됨!' : 'Copied!'}</>
+                <><Link2 size={14} className="text-green-500" /> {t('copied')}</>
               ) : (
-                <><Share2 size={14} /> {language === 'ko' ? '링크 복사' : 'Share'}</>
+                <><Share2 size={14} /> {t('copy_link')}</>
               )}
             </button>
           </div>
 
           <article className="tiptap-editor-content py-8 md:py-12">
-            <div className="tiptap" dangerouslySetInnerHTML={{ __html: selectedPost.content || '' }} />
+            <div className="tiptap" dangerouslySetInnerHTML={{ __html: getLocalizedValue(selectedPost, 'content') || '' }} />
           </article>
         </div>
 
@@ -209,10 +211,10 @@ export const MagazinePage: React.FC = () => {
           <div className="bg-gray-50 py-16 mt-8">
             <div className="max-w-[1000px] mx-auto px-4">
               <h3 className="text-2xl font-black text-[#111] mb-2">
-                {language === 'ko' ? '관련 상품' : 'Related Products'}
+                {t('related_products')}
               </h3>
               <p className="text-gray-500 text-sm mb-8">
-                {language === 'ko' ? '이 글과 관련된 K-Experience 상품을 확인해보세요' : 'Check out related K-Experience products'}
+                {t('related_products_desc')}
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {relatedProducts.map((product: any) => {
@@ -239,7 +241,7 @@ export const MagazinePage: React.FC = () => {
                           onClick={(e) => { e.stopPropagation(); handleProductClick(product); }}
                           className="w-full py-2 bg-[#0070F0] text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-1"
                         >
-                          {language === 'ko' ? '자세히 보기' : 'View Details'}
+                          {t('detail')}
                           <ChevronRight size={12} />
                         </button>
                       </div>
@@ -257,7 +259,7 @@ export const MagazinePage: React.FC = () => {
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#111] text-white font-bold rounded-full hover:bg-gray-800 transition-colors"
           >
             <ArrowLeft size={16} />
-            {language === 'ko' ? '매거진 목록으로' : 'Back to Magazine'}
+            {t('back_to_magazine')}
           </button>
         </div>
       </div>
@@ -270,9 +272,7 @@ export const MagazinePage: React.FC = () => {
         <span className="text-[#0070F0] font-black tracking-widest text-sm uppercase mb-2 block">K-Experience Magazine</span>
         <h1 className="text-4xl md:text-5xl font-black text-[#111] mb-4">{t('magazine')}</h1>
         <p className="text-gray-500 max-w-lg mx-auto">
-          {language === 'ko'
-            ? '한국의 뷰티, 건강, 문화, 엔터테인먼트 최신 트렌드를 만나보세요.'
-            : 'Discover the latest trends and tips about Korean beauty, health, culture, and entertainment.'}
+          {t('magazine_desc')}
         </p>
       </div>
 
@@ -282,7 +282,7 @@ export const MagazinePage: React.FC = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={language === 'ko' ? '매거진 검색...' : 'Search articles...'}
+          placeholder={t('search_articles')}
           className="w-full pl-11 pr-10 py-3 border border-gray-200 rounded-full text-sm focus:outline-none focus:border-[#0070F0] focus:ring-2 focus:ring-[#0070F0]/10 transition-all bg-gray-50 focus:bg-white"
         />
         {searchQuery && (
@@ -303,7 +303,7 @@ export const MagazinePage: React.FC = () => {
                 : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
             }`}
           >
-            {cat === 'All' ? (language === 'ko' ? '전체' : 'All') : cat}
+            {cat === 'All' ? t('tab_all_magazine') : cat}
           </button>
         ))}
       </div>
@@ -320,9 +320,7 @@ export const MagazinePage: React.FC = () => {
         </div>
       ) : filteredPosts.length === 0 ? (
         <div className="text-center py-20 bg-gray-50 rounded-2xl text-gray-500">
-          {searchQuery
-            ? (language === 'ko' ? '검색 결과가 없습니다.' : 'No results found.')
-            : (language === 'ko' ? '게시글이 없습니다.' : 'Coming Soon!')}
+          {searchQuery ? t('no_results') : t('coming_soon')}
         </div>
       ) : (
         <>
@@ -377,7 +375,7 @@ export const MagazinePage: React.FC = () => {
                       <img
                         src={post.image}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        alt={post.title}
+                        alt={getLocalizedValue(post, 'title')}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -390,10 +388,10 @@ export const MagazinePage: React.FC = () => {
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#111] mb-2 line-clamp-2 group-hover:text-[#0070F0] transition-colors">
-                      {post.title}
+                      {getLocalizedValue(post, 'title')}
                     </h3>
                     <p className="text-gray-500 text-sm line-clamp-3 mb-4 leading-relaxed">
-                      {getExcerpt(post)}
+                      {(() => { const c = getLocalizedValue(post, 'content'); if (!c) return ''; const t = c.replace(/<[^>]+>/g, ''); return t.substring(0, 80) + (t.length > 80 ? '...' : ''); })()}
                     </p>
                     <div className="flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-50">
                       <div className="flex items-center gap-1"><User size={12} /> {post.author || 'Editor'}</div>

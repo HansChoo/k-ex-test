@@ -65,13 +65,13 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
     <section className="w-full max-w-[1280px] mx-auto px-4 pb-32 font-sans tracking-tight pt-4">
         <div className="mb-6 px-2">
             <button onClick={handleBack} className="flex items-center gap-1 text-gray-500 hover:text-black text-sm font-bold mb-4">
-                <ArrowLeft size={16}/> {language === 'ko' ? '메인으로' : 'Back'}
+                <ArrowLeft size={16}/> {t('back_to_list')}
             </button>
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1">
                     <Star className="fill-yellow-400 text-yellow-400 w-5 h-5"/>
-                    <h2 className="text-[22px] font-bold text-[#111]">{language === 'ko' ? '전체 상품' : 'All Products'}</h2>
-                    <span className="text-sm text-gray-400 ml-2">{isPackageCategory ? packages.length : filteredProducts.length}{language === 'ko' ? '개' : ' items'}</span>
+                    <h2 className="text-[22px] font-bold text-[#111]">{t('prod_title')}</h2>
+                    <span className="text-sm text-gray-400 ml-2">{isPackageCategory ? packages.length : filteredProducts.length}</span>
                 </div>
                 {currency !== 'KRW' && ratesLoaded && (
                     <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
@@ -122,7 +122,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
         ) : isPackageCategory ? (
             packages.length === 0 ? (
                 <div className="py-20 text-center text-gray-500 bg-gray-50 rounded-xl mx-2">
-                    {isEn ? 'No packages available.' : '등록된 패키지가 없습니다.'}
+                    {t('no_packages')}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-2">
@@ -158,7 +158,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                                     </ul>
                                     <div className="border-t border-gray-100 pt-4 mb-4">
                                         <div className="flex justify-between items-end">
-                                            <span className="text-[11px] font-bold text-gray-400">{isEn ? 'Per Person' : '1인 기준'}</span>
+                                            <span className="text-[11px] font-bold text-gray-400">{t('per_person')}</span>
                                             <span className="font-black text-xl text-[#111]">{convertPrice(pkg.price)}</span>
                                         </div>
                                     </div>

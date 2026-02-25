@@ -22,9 +22,9 @@ export const RecommendationQuiz: React.FC<QuizProps> = ({ isOpen, onClose }) => 
       id: 'interest',
       question: t('quiz_q1'),
       options: [
-        { label: "K-POP & Idol Culture", value: "idol", icon: "🎤" },
-        { label: "Skin Care & Beauty", value: "beauty", icon: "✨" },
-        { label: "General Health Checkup", value: "health", icon: "🩺" }
+        { label: t('quiz_opt_kpop'), value: "idol", icon: "🎤" },
+        { label: t('quiz_opt_beauty'), value: "beauty", icon: "✨" },
+        { label: t('quiz_opt_health'), value: "health", icon: "🩺" }
       ]
     },
     {

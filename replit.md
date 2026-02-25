@@ -27,11 +27,13 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 ## Multilingual System (4 Languages)
 - **Languages**: Korean (ko), English (en), Japanese (ja), Chinese (zh)
 - **Currencies**: KRW, USD, JPY, CNY with real-time exchange rate conversion
-- **UI Translation**: `t()` function with 97+ keys per language in `TRANSLATIONS` object (GlobalContext.tsx)
+- **UI Translation**: `t()` function with 110+ keys per language in `TRANSLATIONS` object (GlobalContext.tsx). All 4 languages fully translated.
 - **Content Localization**: `getLocalizedValue(data, field)` reads `field_en`, `field_ja`, `field_zh` with Korean fallback
 - **Admin Language Tabs**: Product, Magazine, Package editors have 🇰🇷/🇺🇸/🇨🇳/🇯🇵 tabs for per-language content (title, description, content, image)
 - **Category Labels**: `label` (ko), `labelEn` (en), `label_ja` (ja), `label_zh` (zh) fields
 - **Firestore Field Pattern**: Korean = base fields (title, description, content, image), Other languages = suffixed fields (title_en, description_en, content_en, image_en, etc.)
+- **Magazine/MagazinePreview**: Uses `getLocalizedValue()` for title, subtitle, content - admin can manage per-language magazine content
+- **No Hardcoded UI Text**: All user-facing text uses `t()` function (Navbar, ProductList, PackageSection, MagazinePage, BottomHero, BottomNav, CategorySection, RecommendationQuiz, Footer)
 
 ## Firebase Configuration
 All Firebase credentials are managed via environment variables (no hardcoded values):
@@ -88,6 +90,12 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - **Live Rate Indicator**: Green pulsing dot with "Live exchange rate" text appears next to prices when viewing in non-KRW currency. Uses `ratesLoaded` flag from GlobalContext.
 - **Pages**: ProductDetail, ReservationBasic, ReservationPremium all use PayPal
 - **Vite Proxy**: `/api` routes proxied to backend server (port 3001)
+
+## Visitor Counter
+- HeroSection shows real-time visitor count from Firestore `site_stats/visitors` document
+- Uses atomic `increment(1)` with `merge: true` (no race conditions)
+- Real-time updates via `onSnapshot` listener
+- Fallback to BASE_COUNT=2847 when Firebase not connected
 
 ## No Hardcoded Fake Data Policy
 - No fake user counts, mock reviews, or simulated social proof notifications

@@ -4,7 +4,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
 import { Flame } from 'lucide-react';
 import { db, isFirebaseConfigured } from '../services/firebaseConfig';
-import { doc, onSnapshot, increment, setDoc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, increment, setDoc } from 'firebase/firestore';
 
 const BASE_COUNT = 2847;
 
@@ -23,12 +23,7 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
 
     const incrementVisitor = async () => {
       try {
-        const snap = await getDoc(ref);
-        if (!snap.exists()) {
-          await setDoc(ref, { count: BASE_COUNT + 1 });
-        } else {
-          await setDoc(ref, { count: increment(1) }, { merge: true });
-        }
+        await setDoc(ref, { count: increment(1) }, { merge: true });
       } catch (e) {
         console.warn('Visitor count increment failed:', e);
       }

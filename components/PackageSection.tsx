@@ -43,7 +43,7 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
                     </div>
                     {onViewAll && (
                         <button onClick={onViewAll} className="text-[13px] font-bold text-[#0070F0] hover:underline shrink-0">
-                            {language === 'ko' ? '전체보기 →' : 'View All →'}
+                            {t('view_all')} →
                         </button>
                     )}
                 </div>
@@ -52,7 +52,7 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
 
         {packages.length === 0 ? (
             <div className="w-full py-16 bg-gray-50 rounded-[16px] flex items-center justify-center text-gray-400 text-sm">
-                {isEn ? "Packages are being prepared." : "올인원 패키지가 준비 중입니다."}
+                {t('no_packages')}
             </div>
         ) : (
             <>
@@ -116,7 +116,7 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
                                     <div className="border-t border-gray-100 pt-4 mb-4">
                                         <div className="flex justify-between items-end">
                                             <span className="text-[11px] font-bold text-gray-400">
-                                                {isEn ? "Per Person" : "1인 기준"}
+                                                {t('per_person')}
                                             </span>
                                             <div className="text-right">
                                                 <span className="font-black text-xl text-[#111]">{convertPrice(pkg.price)}</span>
