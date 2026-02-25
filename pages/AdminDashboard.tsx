@@ -435,6 +435,20 @@ export const AdminDashboard: React.FC<any> = () => {
       await deleteItem('cms_categories', cat.id);
   };
 
+  const swapCategoryOrder = async (idx1: number, idx2: number) => {
+      if (!db) return;
+      const sorted = [...categories].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+      if (idx2 < 0 || idx2 >= sorted.length) return;
+      const item1 = sorted[idx1];
+      const item2 = sorted[idx2];
+      const order1 = item1.order ?? idx1;
+      const order2 = item2.order ?? idx2;
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'cms_categories', item1.id), { order: order2 });
+      batch.update(doc(db, 'cms_categories', item2.id), { order: order1 });
+      await batch.commit();
+  };
+
   // Persona 2: Reservation Operations
   const updateReservationStatus = async (id: string, status: string) => {
       if (!db) return;
@@ -1045,46 +1059,56 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <Plus size={16}/> 카테고리 추가
                                 </button>
                             </div>
-                            <div className="grid grid-cols-4 gap-6">
-                                {categories.map((cat) => {
-                                    const linkedCount = allProducts.filter(p => p.category === cat.label).length;
-                                    return (
-                                        <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group relative">
-                                            <div className="h-40 bg-gray-100 relative">
-                                                {cat.image ? (
-                                                    <img src={cat.image} className="w-full h-full object-cover"/>
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
-                                                )}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                    <button onClick={() => { setEditingItem({ ...cat, keywords: Array.isArray(cat.keywords) ? cat.keywords.join(', ') : '' }); setModalType('category'); }} className="bg-white text-black p-2 rounded-full hover:bg-gray-200"><Edit2 size={16}/></button>
-                                                    <button onClick={() => handleDeleteCategory(cat)} className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"><Trash2 size={16}/></button>
+                            <p className="text-xs text-gray-400">↑↓ 버튼으로 "전체보기" 페이지의 카테고리 탭 표시 순서를 변경할 수 있습니다. (전체상품 탭은 항상 첫 번째 고정)</p>
+                            {categories.length === 0 ? (
+                                <div className="text-center py-20 bg-white border border-dashed border-gray-300 rounded-xl text-gray-400 flex flex-col items-center gap-2">
+                                    <p>등록된 카테고리가 없습니다.</p>
+                                    <p className="text-xs">우측 상단 [카테고리 추가] 버튼을 눌러 카테고리를 생성해주세요.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {(() => {
+                                        const sortedCats = [...categories].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+                                        return sortedCats.map((cat, idx) => {
+                                            const linkedCount = allProducts.filter(p => p.category === cat.label).length;
+                                            return (
+                                                <div key={cat.id} className="bg-white border rounded-xl overflow-hidden shadow-sm flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
+                                                    <div className="flex flex-col gap-1">
+                                                        <button onClick={() => swapCategoryOrder(idx, idx - 1)} disabled={idx <= 0} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors" title="위로"><ArrowUp size={14}/></button>
+                                                        <button onClick={() => swapCategoryOrder(idx, idx + 1)} disabled={idx >= sortedCats.length - 1} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors" title="아래로"><ArrowDown size={14}/></button>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-gray-300 w-6 text-center">{idx + 1}</span>
+                                                    <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                                        {cat.image ? (
+                                                            <img src={cat.image} className="w-full h-full object-cover"/>
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">No Image</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <h3 className="font-bold text-sm">{cat.label}</h3>
+                                                            <span className="text-xs text-gray-400">{cat.labelEn}</span>
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${linkedCount > 0 ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                                                                {linkedCount}개 상품
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {(cat.keywords || []).map((k: string, i: number) => (
+                                                                <span key={i} className="bg-gray-100 px-2 py-0.5 rounded text-[10px] text-gray-600">{k}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-1.5 flex-shrink-0">
+                                                        <button onClick={() => { setEditingItem({ ...cat, keywords: Array.isArray(cat.keywords) ? cat.keywords.join(', ') : '' }); setModalType('category'); }} className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-blue-50 text-blue-500 flex items-center justify-center transition-colors" title="수정"><Edit2 size={14}/></button>
+                                                        <button onClick={() => handleDeleteCategory(cat)} className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-red-50 text-red-500 flex items-center justify-center transition-colors" title="삭제"><Trash2 size={14}/></button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="p-4">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <h3 className="font-bold text-lg">{cat.label}</h3>
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${linkedCount > 0 ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-                                                        {linkedCount}개 상품
-                                                    </span>
-                                                </div>
-                                                <p className="text-sm text-gray-500 mb-2">{cat.labelEn}</p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {(cat.keywords || []).map((k: string, i: number) => (
-                                                        <span key={i} className="bg-gray-100 px-2 py-0.5 rounded text-[10px] text-gray-600">{k}</span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {categories.length === 0 && (
-                                    <div className="col-span-4 text-center py-20 bg-white border border-dashed border-gray-300 rounded-xl text-gray-400 flex flex-col items-center gap-2">
-                                        <p>등록된 카테고리가 없습니다.</p>
-                                        <p className="text-xs">우측 상단 [카테고리 추가] 버튼을 눌러 카테고리를 생성해주세요.</p>
-                                    </div>
-                                )}
-                            </div>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                            )}
                         </div>
                     )}
 

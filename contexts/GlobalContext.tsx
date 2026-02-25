@@ -552,7 +552,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!isFirebaseConfigured) return;
     const q = query(collection(db!, "cms_categories"), orderBy("createdAt", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+        const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+        cats.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+        setCategories(cats);
     }, (error) => {
         console.warn("Categories listener error:", error.message);
     });
