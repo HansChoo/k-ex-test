@@ -1646,7 +1646,8 @@ export const AdminDashboard: React.FC<any> = () => {
                                         <div className="space-y-2 text-sm">
                                             <p><span className="font-bold mr-2">Email:</span> {editingItem.options?.guestEmail || '-'}</p>
                                             <p><span className="font-bold mr-2">메신저:</span> {editingItem.options?.guests?.[0]?.messengerApp} / {editingItem.options?.guests?.[0]?.messengerId}</p>
-                                            <p><span className="font-bold mr-2">국적:</span> {editingItem.options?.guests?.[0]?.nationality}</p>
+                                            <p><span className="font-bold mr-2">국적:</span> {editingItem.options?.guests?.[0]?.nationality === 'US' ? 'United States' : editingItem.options?.guests?.[0]?.nationality === 'CN' ? 'China' : editingItem.options?.guests?.[0]?.nationality === 'JP' ? 'Japan' : editingItem.options?.guests?.[0]?.nationality || '-'}</p>
+                                            <p><span className="font-bold mr-2">전화:</span> {editingItem.options?.guests?.[0]?.countryCode} {editingItem.options?.guests?.[0]?.phone || '-'}</p>
                                         </div>
                                     </div>
                                     <div>

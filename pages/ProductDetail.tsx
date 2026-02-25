@@ -24,8 +24,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'full' | 'deposit'>('full');
   
+  const NATIONALITIES = [
+    { value: 'US', label: 'United States', code: '+1' },
+    { value: 'CN', label: 'China', code: '+86' },
+    { value: 'JP', label: 'Japan', code: '+81' },
+  ];
+
   const [guestList, setGuestList] = useState([
-      { id: Date.now(), name: '', dob: '', nationality: '', gender: 'Female', messengerApp: 'WhatsApp', messengerId: '' }
+      { id: Date.now(), name: '', dob: '', nationality: '', gender: 'Female', messengerApp: 'WhatsApp', messengerId: '', phone: '', countryCode: '+1' }
   ]);
 
   const [couponCode, setCouponCode] = useState('');
@@ -124,7 +130,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   };
 
   const addGuest = () => {
-      setGuestList([...guestList, { id: Date.now(), name: '', dob: '', nationality: '', gender: 'Female', messengerApp: 'WhatsApp', messengerId: '' }]);
+      setGuestList([...guestList, { id: Date.now(), name: '', dob: '', nationality: '', gender: 'Female', messengerApp: 'WhatsApp', messengerId: '', phone: '', countryCode: '+1' }]);
   };
 
   const removeGuest = (index: number) => {
@@ -138,6 +144,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const updateGuest = (index: number, field: string, val: string) => {
       const newList = [...guestList];
       newList[index] = { ...newList[index], [field]: val };
+      if (field === 'nationality') {
+          const nat = NATIONALITIES.find(n => n.value === val);
+          if (nat) newList[index].countryCode = nat.code;
+      }
       setGuestList(newList);
   };
 
@@ -368,15 +378,42 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                             {idx > 0 && <button onClick={() => removeGuest(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>}
                                         </div>
                                         <div className="space-y-2">
-                                            <input type="text" placeholder="Passport Name" value={guest.name} onChange={e => updateGuest(idx, 'name', e.target.value)} className="w-full border p-2 rounded text-xs bg-white uppercase"/>
-                                            <div className="flex gap-2">
-                                                <input type="date" value={guest.dob} onChange={e => updateGuest(idx, 'dob', e.target.value)} className="w-full border p-2 rounded text-xs text-gray-500 bg-white"/>
-                                                <input type="text" placeholder="Nationality" value={guest.nationality} onChange={e => updateGuest(idx, 'nationality', e.target.value)} className="w-full border p-2 rounded text-xs bg-white"/>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '여권 영문 이름' : 'Passport Name'}</label>
+                                                <input type="text" placeholder="e.g. HONG GILDONG" value={guest.name} onChange={e => updateGuest(idx, 'name', e.target.value)} className="w-full border p-2 rounded text-xs bg-white uppercase"/>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '생년월일' : 'Date of Birth'}</label>
+                                                    <input type="date" value={guest.dob} onChange={e => updateGuest(idx, 'dob', e.target.value)} className="w-full border p-2 rounded text-xs text-gray-500 bg-white"/>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '국적' : 'Nationality'}</label>
+                                                    <select value={guest.nationality} onChange={e => updateGuest(idx, 'nationality', e.target.value)} className="w-full border p-2 rounded text-xs bg-white">
+                                                        <option value="">{isKo ? '국적 선택' : 'Select Nationality'}</option>
+                                                        {NATIONALITIES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '휴대폰 번호' : 'Phone Number'}</label>
+                                                <div className="flex gap-1">
+                                                    <span className="border p-2 rounded text-xs bg-gray-100 text-gray-600 font-bold min-w-[50px] text-center">{guest.countryCode}</span>
+                                                    <input type="tel" placeholder="000-0000-0000" value={guest.phone} onChange={e => updateGuest(idx, 'phone', e.target.value)} className="flex-1 border p-2 rounded text-xs bg-white"/>
+                                                </div>
                                             </div>
                                             {idx === 0 && (
                                                 <div className="pt-2 border-t border-gray-200 mt-2">
-                                                    <label className="text-[10px] font-bold text-blue-600 block mb-1">Representative Contact</label>
-                                                    <input type="text" placeholder="Messenger ID (WhatsApp/Line)" value={guest.messengerId} onChange={e => updateGuest(idx, 'messengerId', e.target.value)} className="w-full border p-2 rounded text-xs bg-white"/>
+                                                    <label className="text-[10px] font-bold text-blue-600 block mb-1 flex items-center gap-1"><MessageCircle size={10}/> {isKo ? '대표 연락처' : 'Representative Contact'}</label>
+                                                    <div className="flex gap-2">
+                                                        <select value={guest.messengerApp} onChange={e => updateGuest(idx, 'messengerApp', e.target.value)} className="border p-1.5 rounded text-xs bg-white font-bold w-1/3">
+                                                            <option value="WhatsApp">WhatsApp</option>
+                                                            <option value="KakaoTalk">KakaoTalk</option>
+                                                            <option value="Line">LINE</option>
+                                                            <option value="WeChat">WeChat</option>
+                                                        </select>
+                                                        <input type="text" placeholder={isKo ? '메신저 ID 또는 전화번호' : 'Messenger ID or Phone'} value={guest.messengerId} onChange={e => updateGuest(idx, 'messengerId', e.target.value)} className="w-2/3 border p-2 rounded text-xs bg-white"/>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
