@@ -242,7 +242,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{description}</p>
                 <div className="flex items-center justify-between"><div className="flex items-baseline gap-2"><span className="text-[32px] font-black text-[#111]">{convertPrice(getPrice() / (selectedPayment === 'deposit' ? 0.2 : 1))}</span></div><div className="flex gap-4"><button onClick={handleWishlistToggle} className="flex items-center gap-1.5 hover:text-red-500 transition-colors text-sm font-bold text-gray-500 group"><Heart size={20} className={`transition-all duration-300 ${wishlist.some(w => String(w) === String(product.id || 999)) ? "fill-red-500 text-red-500" : "group-hover:text-red-400"}`} /><span>Wishlist</span></button><button className="flex items-center gap-1.5 hover:text-blue-600 transition-colors text-sm font-bold text-gray-500 active:scale-95"><Share2 size={20} /><span>{t('share')}</span></button></div></div>
             </div>
-            <div className="mb-12 overflow-x-auto no-scrollbar flex gap-4 px-4 lg:px-0 snap-x"><div className="relative w-[80vw] lg:w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg shrink-0 snap-center"><img src={product.image} className="w-full h-full object-cover" alt={title} /></div></div>
+            <div className="mb-12 overflow-x-auto no-scrollbar flex gap-4 px-4 lg:px-0 snap-x"><div className="relative w-[80vw] lg:w-full bg-gray-50 rounded-2xl overflow-hidden aspect-[1.5/1] shadow-lg shrink-0 snap-center"><img src={getLocalizedValue(product, 'image') || product.image} className="w-full h-full object-cover" alt={title} /></div></div>
             
             <div className="sticky top-[50px] lg:top-[90px] bg-white z-30 border-b border-gray-200 mb-8"><div className="flex text-center">{['detail', 'reviews', 'faq', 'map'].map((tab) => (<button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 font-bold relative transition-colors ${activeTab === tab ? 'text-[#111]' : 'text-[#888] hover:text-[#555]'}`}>{tab === 'reviews' ? `REVIEWS (${reviews.length})` : tab.toUpperCase()}{activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#111]"></div>}</button>))}</div></div>
             
@@ -379,24 +379,24 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                         </div>
                                         <div className="space-y-2">
                                             <div>
-                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '여권 영문 이름' : 'Passport Name'}</label>
+                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('passport_name')}</label>
                                                 <input type="text" placeholder="e.g. HONG GILDONG" value={guest.name} onChange={e => updateGuest(idx, 'name', e.target.value)} className="w-full border p-2 rounded text-xs bg-white uppercase"/>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '생년월일' : 'Date of Birth'}</label>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('date_of_birth')}</label>
                                                     <input type="date" value={guest.dob} onChange={e => updateGuest(idx, 'dob', e.target.value)} className="w-full border p-2 rounded text-xs text-gray-500 bg-white"/>
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '국적' : 'Nationality'}</label>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('nationality')}</label>
                                                     <select value={guest.nationality} onChange={e => updateGuest(idx, 'nationality', e.target.value)} className="w-full border p-2 rounded text-xs bg-white">
-                                                        <option value="">{isKo ? '국적 선택' : 'Select Nationality'}</option>
+                                                        <option value="">{t('select_nationality')}</option>
                                                         {NATIONALITIES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                                                     </select>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isKo ? '휴대폰 번호' : 'Phone Number'}</label>
+                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('phone_number')}</label>
                                                 <div className="flex gap-1">
                                                     <span className="border p-2 rounded text-xs bg-gray-100 text-gray-600 font-bold min-w-[50px] text-center">{guest.countryCode}</span>
                                                     <input type="tel" placeholder="000-0000-0000" value={guest.phone} onChange={e => updateGuest(idx, 'phone', e.target.value)} className="flex-1 border p-2 rounded text-xs bg-white"/>
@@ -404,7 +404,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                             </div>
                                             {idx === 0 && (
                                                 <div className="pt-2 border-t border-gray-200 mt-2">
-                                                    <label className="text-[10px] font-bold text-blue-600 block mb-1 flex items-center gap-1"><MessageCircle size={10}/> {isKo ? '대표 연락처' : 'Representative Contact'}</label>
+                                                    <label className="text-[10px] font-bold text-blue-600 block mb-1 flex items-center gap-1"><MessageCircle size={10}/> {t('representative_contact')}</label>
                                                     <div className="flex gap-2">
                                                         <select value={guest.messengerApp} onChange={e => updateGuest(idx, 'messengerApp', e.target.value)} className="border p-1.5 rounded text-xs bg-white font-bold w-1/3">
                                                             <option value="WhatsApp">WhatsApp</option>
@@ -412,7 +412,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                                             <option value="Line">LINE</option>
                                                             <option value="WeChat">WeChat</option>
                                                         </select>
-                                                        <input type="text" placeholder={isKo ? '메신저 ID 또는 전화번호' : 'Messenger ID or Phone'} value={guest.messengerId} onChange={e => updateGuest(idx, 'messengerId', e.target.value)} className="w-2/3 border p-2 rounded text-xs bg-white"/>
+                                                        <input type="text" placeholder={t('messenger_id_placeholder')} value={guest.messengerId} onChange={e => updateGuest(idx, 'messengerId', e.target.value)} className="w-2/3 border p-2 rounded text-xs bg-white"/>
                                                     </div>
                                                 </div>
                                             )}

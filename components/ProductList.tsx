@@ -70,7 +70,7 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
                         <ScrollReveal key={idx} delay={idx * 30}>
                             <div className="bg-white rounded-[12px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col h-full cursor-pointer group relative" onClick={() => handleProductClick(product)}>
                                 <div className="relative aspect-[3/2] bg-gray-50 overflow-hidden">
-                                    <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
+                                    <img src={getLocalizedValue(product, 'image') || product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } toggleWishlist(product.id); }}
                                         className="absolute top-2 right-2 w-7 h-7 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"

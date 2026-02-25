@@ -1,7 +1,7 @@
 # K-Experience Clone
 
 ## Overview
-A Korean experience platform (K-Experience) built with React, TypeScript, and Vite. It showcases various K-culture experiences including health checkups, beauty treatments, beauty consulting, and K-POP.
+A Korean experience platform (K-Experience) built with React, TypeScript, and Vite. It showcases various K-culture experiences including health checkups, beauty treatments, beauty consulting, and K-POP. Supports 4 languages (Korean, English, Japanese, Chinese) with full multilingual content management.
 
 ## Tech Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS (via CDN)
@@ -23,6 +23,15 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 - `constants.ts` - Shared constants
 - `env.d.ts` - TypeScript declarations for Vite environment variables
 - `vite.config.ts` - Vite configuration
+
+## Multilingual System (4 Languages)
+- **Languages**: Korean (ko), English (en), Japanese (ja), Chinese (zh)
+- **Currencies**: KRW, USD, JPY, CNY with real-time exchange rate conversion
+- **UI Translation**: `t()` function with 97+ keys per language in `TRANSLATIONS` object (GlobalContext.tsx)
+- **Content Localization**: `getLocalizedValue(data, field)` reads `field_en`, `field_ja`, `field_zh` with Korean fallback
+- **Admin Language Tabs**: Product, Magazine, Package editors have 🇰🇷/🇺🇸/🇨🇳/🇯🇵 tabs for per-language content (title, description, content, image)
+- **Category Labels**: `label` (ko), `labelEn` (en), `label_ja` (ja), `label_zh` (zh) fields
+- **Firestore Field Pattern**: Korean = base fields (title, description, content, image), Other languages = suffixed fields (title_en, description_en, content_en, image_en, etc.)
 
 ## Firebase Configuration
 All Firebase credentials are managed via environment variables (no hardcoded values):
@@ -48,14 +57,16 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - All listeners are guarded by `isFirebaseConfigured` flag
 
 ## Product Detail Tabs
-- **Detail**: Rich text content (from admin editor)
+- **Detail**: Rich text content (from admin editor), localized via `getLocalizedValue`
 - **Reviews**: Firebase `reviews` collection, filtered by productId, real-time sync
 - **FAQ**: Firebase `faqs` collection, filtered by productId, accordion UI, real-time sync
 - **MAP**: Google Maps embed from `mapLocations` array on product document
 
 ## Admin Product Sub-tabs
-- Categories, Items, Packages
+- Categories (with 4-language label fields), Items, Packages
+- Product edit modal includes language tabs (🇰🇷/🇺🇸/🇨🇳/🇯🇵) for multilingual content entry
 - Product edit modal includes inline management for: MAP locations, Reviews, FAQ (all per-product, Firebase CRUD)
+- Magazine and Package editors also have language tabs
 
 ## Wishlist & Cart
 - **Wishlist**: Stored in Firestore `user_data/{uid}` document, synced across devices via `onSnapshot` listener
@@ -73,9 +84,13 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - **Backend**: Express server on port 3001, handles order creation and capture
 - **Frontend**: PayPal JS SDK loaded dynamically, Smart Payment Buttons
 - **Flow**: User fills booking form → clicks "Book Now" → PayPal buttons appear → payment → reservation created in Firestore
-- **Currency**: KRW prices converted to USD (÷1400) for PayPal processing
+- **Currency**: Real-time exchange rate via Frankfurter API (`/api/exchange-rate` endpoint), 1-hour server cache, backup API fallback
 - **Pages**: ProductDetail, ReservationBasic, ReservationPremium all use PayPal
 - **Vite Proxy**: `/api` routes proxied to backend server (port 3001)
+
+## Guest Reservation Form
+- All fields with labels: Passport Name, Date of Birth, Gender, Nationality (dropdown: US/CN/JP), Phone Number (auto country code +1/+86/+81), Messenger App (WhatsApp/KakaoTalk/LINE/WeChat), Messenger ID
+- All labels use `t()` function for multilingual display
 
 ## Running the App
 - **Dev**: `npm run dev` (starts Express backend + Vite frontend)

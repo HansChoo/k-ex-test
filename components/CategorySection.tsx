@@ -20,7 +20,7 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ onCategoryClic
         
         {categories.length === 0 ? (
             <div className="w-full py-16 bg-gray-50 rounded-[16px] flex items-center justify-center text-gray-400 text-sm">
-                카테고리가 준비 중입니다.
+                {t('no_categories')}
             </div>
         ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -38,7 +38,7 @@ export const CategorySection: React.FC<CategorySectionProps> = ({ onCategoryClic
                 {/* Text Content */}
                 <div className="absolute bottom-4 left-4 right-4 text-left">
                     <h3 className="text-white font-bold text-[14px] md:text-[16px] leading-tight mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                        {language === 'ko' ? cat.label : cat.labelEn}
+                        {language === 'ko' ? cat.label : (cat[`label_${language}`] || cat.labelEn || cat.label)}
                     </h3>
                 </div>
                 </div>

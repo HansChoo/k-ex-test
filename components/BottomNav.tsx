@@ -13,9 +13,9 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onNavClick, currentView, t
   const { wishlist, t } = useGlobal();
 
   const navItems = [
-    { id: 'home', icon: Home, label: t('tab_all') === 'All' ? 'Home' : '홈' },
-    { id: 'group_buying', icon: Users, label: t('promo_badge') === 'Group Buy Promotion' ? 'Group Buy' : '공동구매' },
-    { id: 'product_list', icon: Grid, label: t('prod_title') === 'All K-Experience Products' ? 'All Exp.' : '전체체험' },
+    { id: 'home', icon: Home, label: t('home') },
+    { id: 'group_buying', icon: Users, label: t('group_buy') },
+    { id: 'product_list', icon: Grid, label: t('all_exp') },
     { id: 'wishlist', icon: Heart, label: t('wishlist'), count: wishlist.length },
     { id: 'mypage', icon: User, label: t('mypage') },
   ];

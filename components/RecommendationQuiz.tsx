@@ -20,7 +20,7 @@ export const RecommendationQuiz: React.FC<QuizProps> = ({ isOpen, onClose }) => 
   const questions = [
     {
       id: 'interest',
-      question: "What are you most interested in?",
+      question: t('quiz_q1'),
       options: [
         { label: "K-POP & Idol Culture", value: "idol", icon: "🎤" },
         { label: "Skin Care & Beauty", value: "beauty", icon: "✨" },
@@ -29,10 +29,10 @@ export const RecommendationQuiz: React.FC<QuizProps> = ({ isOpen, onClose }) => 
     },
     {
       id: 'budget',
-      question: "What is your preferred range?",
+      question: t('quiz_q2'),
       options: [
-        { label: "Essential Experience (Basic)", value: "basic", icon: "💰" },
-        { label: "Premium VIP Service", value: "premium", icon: "💎" }
+        { label: t('quiz_basic'), value: "basic", icon: "💰" },
+        { label: t('quiz_premium'), value: "premium", icon: "💎" }
       ]
     }
   ];
@@ -83,38 +83,36 @@ export const RecommendationQuiz: React.FC<QuizProps> = ({ isOpen, onClose }) => 
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 animate-fade-in backdrop-blur-sm">
       <div className="bg-white rounded-3xl w-full max-w-[420px] overflow-hidden shadow-2xl relative min-h-[500px] flex flex-col">
         
-        {/* Header */}
         <div className="p-6 flex justify-between items-center border-b border-gray-100">
           <div className="flex items-center gap-2 text-[#0070F0]">
             <Wand2 size={20} />
-            <span className="font-bold text-sm tracking-wider uppercase">AI Concierge</span>
+            <span className="font-bold text-sm tracking-wider uppercase">{t('ai_concierge')}</span>
           </div>
           <button onClick={onClose}><X size={24} className="text-gray-400 hover:text-black" /></button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 p-8 flex flex-col justify-center items-center text-center">
             {isAnalyzing ? (
                 <div className="animate-pulse flex flex-col items-center">
                     <Sparkles size={48} className="text-[#0070F0] mb-6 animate-spin-slow" />
-                    <h3 className="text-xl font-bold mb-2">Analyzing your taste...</h3>
-                    <p className="text-gray-500 text-sm">Finding the perfect K-Experience for you</p>
+                    <h3 className="text-xl font-bold mb-2">{t('analyzing')}</h3>
+                    <p className="text-gray-500 text-sm">{t('finding')}</p>
                 </div>
             ) : result ? (
                 <div className="animate-fade-in-up w-full">
                     <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">🎉</div>
-                    <h3 className="text-gray-500 font-medium mb-2 text-sm">We recommend</h3>
+                    <h3 className="text-gray-500 font-medium mb-2 text-sm">{t('we_recommend')}</h3>
                     <h2 className="text-2xl font-black text-[#111] mb-8 leading-tight">{result.title}</h2>
                     
                     <button onClick={() => window.location.href = result.link} className="w-full py-4 bg-[#0070F0] text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-200 hover:bg-blue-600 transition-all flex items-center justify-center gap-2 mb-4">
-                        Book Now <ChevronRight size={20} />
+                        {t('book_now')} <ChevronRight size={20} />
                     </button>
-                    <button onClick={resetQuiz} className="text-sm text-gray-400 hover:text-gray-600 font-medium">Start Over</button>
+                    <button onClick={resetQuiz} className="text-sm text-gray-400 hover:text-gray-600 font-medium">{t('start_over')}</button>
                 </div>
             ) : (
                 <div className="w-full animate-fade-in">
                     <div className="mb-8">
-                        <span className="text-xs font-bold text-gray-300 mb-2 block">QUESTION {step + 1}/{questions.length}</span>
+                        <span className="text-xs font-bold text-gray-300 mb-2 block">{t('question')} {step + 1}/{questions.length}</span>
                         <h2 className="text-2xl font-bold text-[#111]">{questions[step].question}</h2>
                     </div>
                     <div className="space-y-3">

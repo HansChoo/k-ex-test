@@ -11,7 +11,7 @@ interface PackageSectionProps {
 }
 
 export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, language, onViewAll }) => {
-  const { convertPrice, t, packages } = useGlobal();
+  const { convertPrice, t, packages, getLocalizedValue } = useGlobal();
   const isEn = language !== 'ko';
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -92,14 +92,14 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
                                     <span className="absolute top-4 left-4 bg-white/30 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded">{theme.badge}</span>
                                     <div className="text-4xl mb-2 drop-shadow-sm">{theme.icon}</div>
                                     <h3 className="text-white font-black text-[20px] leading-none drop-shadow-md px-2 break-keep">
-                                        {isEn ? (pkg.title_en || pkg.title) : pkg.title}
+                                        {getLocalizedValue(pkg, 'title')}
                                     </h3>
                                 </div>
 
                                 {/* Body */}
                                 <div className="p-5 flex-1 flex flex-col">
                                     <p className="text-[13px] text-gray-500 font-medium mb-4 text-center min-h-[40px] flex items-center justify-center break-keep">
-                                        {pkg.description}
+                                        {getLocalizedValue(pkg, 'description')}
                                     </p>
                                     
                                     <ul className="space-y-2 mb-6 flex-1">

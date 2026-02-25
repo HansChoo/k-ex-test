@@ -188,11 +188,11 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
                                         <div className="space-y-2">
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isEn ? 'Passport Name' : '여권 영문 이름'}</label>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('passport_name')}</label>
                                                     <input type="text" placeholder="e.g. HONG GILDONG" value={guest.name} onChange={e => updateGuest(idx, 'name', e.target.value)} className="w-full border p-2 rounded text-xs bg-white uppercase"/>
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isEn ? 'Gender' : '성별'}</label>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('gender')}</label>
                                                     <select value={guest.gender} onChange={e => updateGuest(idx, 'gender', e.target.value)} className="w-full border p-2 rounded text-xs bg-white font-bold">
                                                         <option value="Male">Male</option>
                                                         <option value="Female">Female (+₩270,000)</option>
@@ -201,19 +201,19 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isEn ? 'Date of Birth' : '생년월일'}</label>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('date_of_birth')}</label>
                                                     <input type="date" value={guest.dob} onChange={e => updateGuest(idx, 'dob', e.target.value)} className="w-full border p-2 rounded text-xs bg-white text-gray-500"/>
                                                 </div>
                                                 <div>
-                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isEn ? 'Nationality' : '국적'}</label>
+                                                    <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('nationality')}</label>
                                                     <select value={guest.nationality} onChange={e => updateGuest(idx, 'nationality', e.target.value)} className="w-full border p-2 rounded text-xs bg-white">
-                                                        <option value="">{isEn ? 'Select Nationality' : '국적 선택'}</option>
+                                                        <option value="">{t('select_nationality')}</option>
                                                         {NATIONALITIES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                                                     </select>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{isEn ? 'Phone Number' : '휴대폰 번호'}</label>
+                                                <label className="text-[10px] font-bold text-gray-400 block mb-0.5">{t('phone_number')}</label>
                                                 <div className="flex gap-1">
                                                     <span className="border p-2 rounded text-xs bg-gray-100 text-gray-600 font-bold min-w-[50px] text-center">{guest.countryCode}</span>
                                                     <input type="tel" placeholder="000-0000-0000" value={guest.phone} onChange={e => updateGuest(idx, 'phone', e.target.value)} className="flex-1 border p-2 rounded text-xs bg-white"/>
@@ -221,7 +221,7 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
                                             </div>
                                             {idx === 0 && (
                                                 <div className="pt-2 border-t border-[#FFE58F] mt-2">
-                                                    <label className="text-[10px] font-bold text-[#C8A32B] block mb-1 flex items-center gap-1"><MessageCircle size={10}/> {isEn ? 'Representative Contact' : '대표 연락처'}</label>
+                                                    <label className="text-[10px] font-bold text-[#C8A32B] block mb-1 flex items-center gap-1"><MessageCircle size={10}/> {t('representative_contact')}</label>
                                                     <div className="flex gap-2">
                                                         <select value={guest.messengerApp} onChange={e => updateGuest(idx, 'messengerApp', e.target.value)} className="border p-1.5 rounded text-xs bg-white font-bold w-1/3">
                                                             <option value="WhatsApp">WhatsApp</option>
@@ -229,7 +229,7 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
                                                             <option value="Line">LINE</option>
                                                             <option value="WeChat">WeChat</option>
                                                         </select>
-                                                        <input type="text" placeholder={isEn ? 'Messenger ID or Phone' : '메신저 ID 또는 전화번호'} value={guest.messengerId} onChange={e => updateGuest(idx, 'messengerId', e.target.value)} className="w-2/3 border p-2 rounded text-xs bg-white"/>
+                                                        <input type="text" placeholder={t('messenger_id_placeholder')} value={guest.messengerId} onChange={e => updateGuest(idx, 'messengerId', e.target.value)} className="w-2/3 border p-2 rounded text-xs bg-white"/>
                                                     </div>
                                                 </div>
                                             )}

@@ -131,12 +131,12 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                                     <span className="absolute top-4 left-4 bg-white/30 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded">{theme.badge}</span>
                                     <div className="text-4xl mb-2 drop-shadow-sm">{theme.icon}</div>
                                     <h3 className="text-white font-black text-[20px] leading-none drop-shadow-md px-2 break-keep">
-                                        {isEn ? (pkg.title_en || pkg.title) : pkg.title}
+                                        {getLocalizedValue(pkg, 'title')}
                                     </h3>
                                 </div>
                                 <div className="p-5 flex-1 flex flex-col">
                                     <p className="text-[13px] text-gray-500 font-medium mb-4 text-center min-h-[40px] flex items-center justify-center break-keep">
-                                        {pkg.description}
+                                        {getLocalizedValue(pkg, 'description')}
                                     </p>
                                     <ul className="space-y-2 mb-6 flex-1">
                                         {pkg.items?.map((item: string, i: number) => (
@@ -176,7 +176,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                     return (
                         <div key={idx} className="bg-white rounded-[16px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col h-full cursor-pointer group relative" onClick={() => handleProductClick(product)}>
                             <div className="relative aspect-square bg-gray-50 overflow-hidden">
-                                <img src={product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
+                                <img src={getLocalizedValue(product, 'image') || product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } toggleWishlist(product.id); }}
                                     className="absolute top-2 right-2 w-8 h-8 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"

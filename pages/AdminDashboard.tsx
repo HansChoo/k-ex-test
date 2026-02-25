@@ -107,6 +107,18 @@ export const AdminDashboard: React.FC<any> = () => {
   // Inline Review/FAQ editing inside product modal
   const [inlineReviewEdit, setInlineReviewEdit] = useState<any>(null);
   const [inlineFaqEdit, setInlineFaqEdit] = useState<any>(null);
+  const [editLang, setEditLang] = useState<'ko'|'en'|'ja'|'zh'>('ko');
+
+  const LANG_TABS: {key: 'ko'|'en'|'ja'|'zh', flag: string, label: string}[] = [
+    {key:'ko', flag:'🇰🇷', label:'한국어'},
+    {key:'en', flag:'🇺🇸', label:'English'},
+    {key:'zh', flag:'🇨🇳', label:'中文'},
+    {key:'ja', flag:'🇯🇵', label:'日本語'}
+  ];
+
+  const langField = (base: string) => editLang === 'ko' ? base : `${base}_${editLang}`;
+  const getLangVal = (base: string) => editingItem?.[langField(base)] || '';
+  const setLangVal = (base: string, val: any) => setEditingItem({...editingItem, [langField(base)]: val});
 
   // --- Effects ---
   useEffect(() => {
@@ -1015,7 +1027,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <h2 className="text-xl font-black">카테고리 구성</h2>
                                     <p className="text-xs text-gray-500 mt-1">이곳에서 카테고리를 먼저 설정해야 상품 등록 시 선택할 수 있습니다. <br/>순서: 카테고리 생성 &rarr; 상품 등록</p>
                                 </div>
-                                <button onClick={() => { setEditingItem({ label: '', labelEn: '', keywords: '' }); setModalType('category'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
+                                <button onClick={() => { setEditingItem({ label: '', labelEn: '', label_zh: '', label_ja: '', keywords: '' }); setModalType('category'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
                                     <Plus size={16}/> 카테고리 추가
                                 </button>
                             </div>
@@ -1067,7 +1079,7 @@ export const AdminDashboard: React.FC<any> = () => {
                         <div className="space-y-4 animate-fade-in">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-xl font-black">상품 목록</h2>
-                                <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setInlineReviewEdit(null); setInlineFaqEdit(null); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
+                                <button onClick={()=>{setEditingItem({category:'건강검진', price:0}); setGalleryImages([]); setInlineReviewEdit(null); setInlineFaqEdit(null); setEditLang('ko'); setModalType('product');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2"><Plus size={16}/> 상품 등록</button>
                             </div>
                             <div className="flex gap-2 mb-4 bg-gray-100 p-2 rounded-lg inline-flex">
                                 <button onClick={()=>setProductCategoryFilter('all')} className={`px-3 py-1 rounded text-xs font-bold transition-all ${productCategoryFilter==='all'?'bg-white shadow-sm text-black':'text-gray-500 hover:text-black'}`}>전체 보기</button>
@@ -1098,7 +1110,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <button onClick={()=>duplicateProduct(p)} className="text-gray-400 hover:text-green-500" title="복제"><Copy size={16}/></button>
-                                                    <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setInlineReviewEdit(null); setInlineFaqEdit(null); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
+                                                    <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setInlineReviewEdit(null); setInlineFaqEdit(null); setEditLang('ko'); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
                                                     <button onClick={()=>deleteItem(p._coll, p.id)} className="text-red-500"><Trash2 size={16}/></button>
                                                 </div>
                                             </div>
@@ -1122,7 +1134,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <h2 className="text-xl font-black">올인원 패키지 구성 (Smart Builder)</h2>
                                     <p className="text-xs text-gray-500 mt-1">개별 상품들을 조합하여 패키지를 만들고 할인 가격을 설정하세요.</p>
                                 </div>
-                                <button onClick={() => { setEditingItem({ title: '', items: [], theme: 'mint', price: 0, selectedProductIds: [] }); setModalType('package'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
+                                <button onClick={() => { setEditingItem({ title: '', items: [], theme: 'mint', price: 0, selectedProductIds: [] }); setEditLang('ko'); setModalType('package'); }} className="bg-black text-white px-4 py-2 rounded font-bold text-sm flex items-center gap-2">
                                     <Plus size={16}/> 패키지 만들기
                                 </button>
                             </div>
@@ -1136,7 +1148,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                             <div className={`h-24 ${bgClass} flex items-center justify-center relative`}>
                                                 <h3 className="text-white font-black text-xl drop-shadow-md">{pkg.title}</h3>
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                    <button onClick={() => { setEditingItem(pkg); setModalType('package'); }} className="bg-white text-black p-2 rounded-full hover:bg-gray-200"><Edit2 size={16}/></button>
+                                                    <button onClick={() => { setEditingItem(pkg); setEditLang('ko'); setModalType('package'); }} className="bg-white text-black p-2 rounded-full hover:bg-gray-200"><Edit2 size={16}/></button>
                                                     <button onClick={() => deleteItem('cms_packages', pkg.id)} className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"><Trash2 size={16}/></button>
                                                 </div>
                                             </div>
@@ -1333,7 +1345,7 @@ export const AdminDashboard: React.FC<any> = () => {
                 <div className="space-y-4">
                     <div className="flex justify-between">
                         <h2 className="text-2xl font-black">매거진 관리</h2>
-                        <button onClick={()=>{setEditingItem({title:'', subtitle:'', content:'', status:'draft'}); setGalleryImages([]); setModalType('magazine');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 포스트 작성</button>
+                        <button onClick={()=>{setEditingItem({title:'', subtitle:'', content:'', status:'draft'}); setGalleryImages([]); setEditLang('ko'); setModalType('magazine');}} className="bg-black text-white px-4 py-2 rounded font-bold text-sm">+ 포스트 작성</button>
                     </div>
                     <div className="bg-white rounded-xl border shadow-sm">
                         <table className="w-full text-sm text-left">
@@ -1359,7 +1371,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                         <td className="p-4 text-gray-500">{post.createdAt ? new Date(post.createdAt?.seconds * 1000).toLocaleDateString('ko-KR') : '-'}</td>
                                         <td className="p-4 flex gap-2">
                                             <button onClick={()=> setMagazinePreviewId(magazinePreviewId === post.id ? null : post.id)} className="text-gray-400 hover:text-purple-500" title="미리보기"><Globe size={16}/></button>
-                                            <button onClick={()=>{setEditingItem(post); setGalleryImages(post.images||[]); setModalType('magazine');}} className="text-blue-500"><Edit2 size={16}/></button>
+                                            <button onClick={()=>{setEditingItem(post); setGalleryImages(post.images||[]); setEditLang('ko'); setModalType('magazine');}} className="text-blue-500"><Edit2 size={16}/></button>
                                             <button onClick={()=>deleteItem('cms_magazine', post.id)} className="text-red-500"><Trash2 size={16}/></button>
                                         </td>
                                     </tr>
@@ -1690,12 +1702,20 @@ export const AdminDashboard: React.FC<any> = () => {
                                     <div className="flex-1 space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-bold mb-1">카테고리명 (한글)</label>
+                                                <label className="block text-xs font-bold mb-1">🇰🇷 카테고리명 (한글)</label>
                                                 <input className="w-full border p-2 rounded" value={editingItem.label} onChange={e=>setEditingItem({...editingItem, label:e.target.value})} placeholder="예: 뷰티 시술"/>
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-bold mb-1">Category Name (English)</label>
+                                                <label className="block text-xs font-bold mb-1">🇺🇸 Category Name (English)</label>
                                                 <input className="w-full border p-2 rounded" value={editingItem.labelEn} onChange={e=>setEditingItem({...editingItem, labelEn:e.target.value})} placeholder="e.g. Beauty Procedure"/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">🇨🇳 分类名称 (中文)</label>
+                                                <input className="w-full border p-2 rounded" value={editingItem.label_zh || ''} onChange={e=>setEditingItem({...editingItem, label_zh:e.target.value})} placeholder="例: 美容手术"/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">🇯🇵 カテゴリ名 (日本語)</label>
+                                                <input className="w-full border p-2 rounded" value={editingItem.label_ja || ''} onChange={e=>setEditingItem({...editingItem, label_ja:e.target.value})} placeholder="例: ビューティー施術"/>
                                             </div>
                                         </div>
                                         <div>
@@ -1745,6 +1765,15 @@ export const AdminDashboard: React.FC<any> = () => {
                         )}
                          {modalType === 'product' && (
                              <div className="space-y-6">
+                                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-2">
+                                    {LANG_TABS.map(tab => (
+                                        <button key={tab.key} onClick={() => setEditLang(tab.key)} className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${editLang === tab.key ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}>
+                                            <span>{tab.flag}</span> {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {editLang !== 'ko' && <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">카테고리·가격·포함내역·MAP·리뷰·FAQ는 한국어 탭에서만 관리됩니다. 이 탭에서는 상품명·설명·이미지·상세본문의 {LANG_TABS.find(t=>t.key===editLang)?.label} 버전을 입력하세요.</div>}
+                                {editLang === 'ko' && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-bold mb-1">카테고리</label>
@@ -1754,13 +1783,36 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </select>
                                         <p className="text-[10px] text-gray-400 mt-1">* 카테고리 관리에서 생성한 항목만 선택 가능합니다. <br/>순서: 카테고리 생성 &rarr; 상품 등록</p>
                                     </div>
-                                    <div><label className="block text-xs font-bold mb-1">상품명</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} /></div>
                                     <div><label className="block text-xs font-bold mb-1">가격 (KRW)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} /></div>
-                                    <div><label className="block text-xs font-bold mb-1">짧은 설명 (카드 표시용)</label><input className="w-full border p-2 rounded" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} /></div>
                                 </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="block text-xs font-bold mb-1">{editLang === 'ko' ? '상품명' : `상품명 (${LANG_TABS.find(t=>t.key===editLang)?.label})`}</label><input className="w-full border p-2 rounded" value={getLangVal('title')} onChange={e => setLangVal('title', e.target.value)} placeholder={editLang !== 'ko' ? editingItem.title || '' : ''} /></div>
+                                    <div><label className="block text-xs font-bold mb-1">{editLang === 'ko' ? '짧은 설명 (카드 표시용)' : `짧은 설명 (${LANG_TABS.find(t=>t.key===editLang)?.label})`}</label><input className="w-full border p-2 rounded" value={getLangVal('description')} onChange={e => setLangVal('description', e.target.value)} placeholder={editLang !== 'ko' ? editingItem.description || '' : ''} /></div>
+                                </div>
+                                {editLang === 'ko' ? (
+                                <>
                                 <div className="grid grid-cols-2 gap-6"><div className="border p-4 rounded-xl bg-gray-50"><label className="block text-xs font-bold mb-2">대표 이미지</label><div className="flex items-center gap-4">{editingItem.image ? (<img src={editingItem.image} className="w-20 h-20 object-cover rounded-lg border" />) : (<div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">No Image</div>)}<label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-50">변경<input type="file" className="hidden" onChange={handleMainImageUpload} /></label></div></div><div className="border p-4 rounded-xl bg-gray-50 relative">{uploadingImg && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-xl"><RefreshCw className="animate-spin text-blue-500"/></div>}<label className="block text-xs font-bold mb-2">추가 이미지 (갤러리)</label><div className="flex flex-wrap gap-2 mb-2">{galleryImages.map((img, idx) => (<div key={idx} className="relative w-16 h-16 group"><img src={img} className="w-full h-full object-cover rounded-lg border" /><button onClick={() => setGalleryImages(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button></div>))}<label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"><Plus size={20} className="text-gray-400"/><input type="file" className="hidden" multiple onChange={handleGalleryUpload} /></label></div></div></div>
                                 <div><label className="block text-xs font-bold mb-2">포함 내역 (옵션)</label><div className="flex flex-wrap gap-2 mb-2">{(editingItem.items || []).map((item: string, idx: number) => (<span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">{item}<button onClick={() => {const newItems = [...(editingItem.items || [])]; newItems.splice(idx, 1); setEditingItem({...editingItem, items: newItems});}}><X size={12}/></button></span>))}</div><div className="flex gap-2"><input id="newItemInput" className="border p-2 rounded text-sm flex-1" placeholder="예: 픽업 서비스, 통역 포함" onKeyDown={(e) => {if (e.key === 'Enter') {e.preventDefault(); const val = e.currentTarget.value.trim(); if (val) {setEditingItem({...editingItem, items: [...(editingItem.items||[]), val]}); e.currentTarget.value = '';}}}} /><button type="button" onClick={() => {const input = document.getElementById('newItemInput') as HTMLInputElement; if(input.value.trim()) {setEditingItem({...editingItem, items: [...(editingItem.items||[]), input.value.trim()]}); input.value = '';}}} className="bg-gray-200 px-4 py-2 rounded font-bold text-xs">추가</button></div></div>
                                 <div><label className="block text-xs font-bold mb-2">상세 본문 (이미지/텍스트)</label><RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} /></div>
+                                </>
+                                ) : (
+                                <>
+                                <div className="border p-4 rounded-xl bg-gray-50">
+                                    <label className="block text-xs font-bold mb-2">대표 이미지 ({LANG_TABS.find(t=>t.key===editLang)?.label})</label>
+                                    <p className="text-[10px] text-gray-400 mb-2">비워두면 한국어 이미지가 사용됩니다.</p>
+                                    <div className="flex items-center gap-4">
+                                        {getLangVal('image') ? (<img src={getLangVal('image')} className="w-20 h-20 object-cover rounded-lg border" />) : editingItem.image ? (<div className="relative"><img src={editingItem.image} className="w-20 h-20 object-cover rounded-lg border opacity-50" /><span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-gray-500">KO</span></div>) : (<div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">No Image</div>)}
+                                        <div className="flex flex-col gap-1">
+                                            <label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-50">변경<input type="file" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; setUploadingImg(true); try { const url = await uploadImage(file, 'main_images'); setLangVal('image', url); } catch(err: any) { showToast('업로드 실패: ' + err.message, 'error'); } setUploadingImg(false); e.target.value = ''; }} /></label>
+                                            {getLangVal('image') && <button onClick={() => setLangVal('image', '')} className="text-[10px] text-red-500 font-bold">삭제</button>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div><label className="block text-xs font-bold mb-2">상세 본문 ({LANG_TABS.find(t=>t.key===editLang)?.label})</label><p className="text-[10px] text-gray-400 mb-2">비워두면 한국어 본문이 표시됩니다.</p><RichTextEditor value={getLangVal('content')} onChange={(val) => setLangVal('content', val)} /></div>
+                                </>
+                                )}
+                                {editLang === 'ko' && (
                                 <div className="border p-4 rounded-xl bg-gray-50">
                                     <label className="block text-xs font-bold mb-2 flex items-center gap-2"><MapPin size={14} className="text-red-500"/> 방문지 (MAP)</label>
                                     <p className="text-[10px] text-gray-400 mb-3">상세페이지 MAP 탭에 표시됩니다. 여러 방문지를 등록할 수 있습니다.</p>
@@ -1781,8 +1833,9 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </button>
                                     </div>
                                 </div>
+                                )}
 
-                                {editingItem.id && (
+                                {editLang === 'ko' && editingItem.id && (
                                 <div className="border p-4 rounded-xl bg-gray-50">
                                     <label className="block text-xs font-bold mb-2 flex items-center gap-2"><Star size={14} className="text-yellow-500"/> 리뷰 관리</label>
                                     <p className="text-[10px] text-gray-400 mb-3">상세페이지 Reviews 탭에 표시됩니다.</p>
@@ -1854,7 +1907,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                 </div>
                                 )}
 
-                                {editingItem.id && (
+                                {editLang === 'ko' && editingItem.id && (
                                 <div className="border p-4 rounded-xl bg-gray-50">
                                     <label className="block text-xs font-bold mb-2 flex items-center gap-2"><MessageCircle size={14} className="text-blue-500"/> FAQ 관리</label>
                                     <p className="text-[10px] text-gray-400 mb-3">상세페이지 FAQ 탭에 표시됩니다.</p>
@@ -1916,17 +1969,27 @@ export const AdminDashboard: React.FC<any> = () => {
 
                          {/* PACKAGE EDITOR */}
                          {modalType === 'package' && (
+                             <div className="space-y-4">
+                                 <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                                     {LANG_TABS.map(tab => (
+                                         <button key={tab.key} onClick={() => setEditLang(tab.key)} className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${editLang === tab.key ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}>
+                                             <span>{tab.flag}</span> {tab.label}
+                                         </button>
+                                     ))}
+                                 </div>
+                                 {editLang !== 'ko' && <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">디자인 테마·가격·상품 선택은 한국어 탭에서만 관리됩니다. 이 탭에서는 패키지명·설명의 {LANG_TABS.find(t=>t.key===editLang)?.label} 버전을 입력하세요.</div>}
                              <div className="flex gap-6 h-[500px]">
-                                 {/* Left: Settings */}
                                  <div className="w-1/2 space-y-4">
                                      <div>
-                                         <label className="block text-xs font-bold mb-1">패키지 이름 (한글/영문)</label>
-                                         <input className="w-full border p-2 rounded" value={editingItem.title} onChange={e => setEditingItem({...editingItem, title: e.target.value})} placeholder="예: K-VIP All-in-One"/>
+                                         <label className="block text-xs font-bold mb-1">{editLang === 'ko' ? '패키지 이름' : `패키지 이름 (${LANG_TABS.find(t=>t.key===editLang)?.label})`}</label>
+                                         <input className="w-full border p-2 rounded" value={getLangVal('title')} onChange={e => setLangVal('title', e.target.value)} placeholder={editLang !== 'ko' ? editingItem.title || '예: K-VIP All-in-One' : '예: K-VIP All-in-One'}/>
                                      </div>
                                      <div>
-                                         <label className="block text-xs font-bold mb-1">간단 설명</label>
-                                         <input className="w-full border p-2 rounded" value={editingItem.description} onChange={e => setEditingItem({...editingItem, description: e.target.value})} placeholder="예: 건강검진 + 뷰티 풀코스"/>
+                                         <label className="block text-xs font-bold mb-1">{editLang === 'ko' ? '간단 설명' : `간단 설명 (${LANG_TABS.find(t=>t.key===editLang)?.label})`}</label>
+                                         <input className="w-full border p-2 rounded" value={getLangVal('description')} onChange={e => setLangVal('description', e.target.value)} placeholder={editLang !== 'ko' ? editingItem.description || '예: 건강검진 + 뷰티 풀코스' : '예: 건강검진 + 뷰티 풀코스'}/>
                                      </div>
+                                     {editLang === 'ko' && (
+                                     <>
                                      <div>
                                          <label className="block text-xs font-bold mb-1">디자인 테마</label>
                                          <div className="flex gap-2">
@@ -1949,9 +2012,11 @@ export const AdminDashboard: React.FC<any> = () => {
                                              {getPackageTotal() > 0 ? Math.round(((getPackageTotal() - editingItem.price) / getPackageTotal()) * 100) : 0}% 할인 적용됨
                                          </div>
                                      </div>
+                                     </>
+                                     )}
                                  </div>
 
-                                 {/* Right: Product Selector */}
+                                 {editLang === 'ko' && (
                                  <div className="w-1/2 border border-gray-200 rounded-xl flex flex-col overflow-hidden">
                                      <div className="bg-gray-50 p-3 text-xs font-bold border-b border-gray-200">패키지 구성 상품 선택 ({editingItem.items?.length || 0}개)</div>
                                      <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -1971,6 +2036,8 @@ export const AdminDashboard: React.FC<any> = () => {
                                          })}
                                      </div>
                                  </div>
+                                 )}
+                             </div>
                              </div>
                          )}
 
@@ -1987,10 +2054,19 @@ export const AdminDashboard: React.FC<any> = () => {
                         {/* MAGAZINE EDITOR */}
                         {modalType === 'magazine' && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="block text-xs font-bold mb-1">제목</label><input className="w-full border p-2 rounded" value={editingItem.title} onChange={e=>setEditingItem({...editingItem, title:e.target.value})}/></div>
-                                    <div><label className="block text-xs font-bold mb-1">부제</label><input className="w-full border p-2 rounded" value={editingItem.subtitle || ''} onChange={e=>setEditingItem({...editingItem, subtitle:e.target.value})}/></div>
+                                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg mb-2">
+                                    {LANG_TABS.map(tab => (
+                                        <button key={tab.key} onClick={() => setEditLang(tab.key)} className={`flex-1 py-2 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${editLang === tab.key ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'}`}>
+                                            <span>{tab.flag}</span> {tab.label}
+                                        </button>
+                                    ))}
                                 </div>
+                                {editLang !== 'ko' && <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">발행 상태·이미지는 한국어 탭에서만 관리됩니다. 이 탭에서는 제목·부제·본문의 {LANG_TABS.find(t=>t.key===editLang)?.label} 버전을 입력하세요.</div>}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="block text-xs font-bold mb-1">{editLang === 'ko' ? '제목' : `제목 (${LANG_TABS.find(t=>t.key===editLang)?.label})`}</label><input className="w-full border p-2 rounded" value={getLangVal('title')} onChange={e=>setLangVal('title', e.target.value)} placeholder={editLang !== 'ko' ? editingItem.title || '' : ''}/></div>
+                                    <div><label className="block text-xs font-bold mb-1">{editLang === 'ko' ? '부제' : `부제 (${LANG_TABS.find(t=>t.key===editLang)?.label})`}</label><input className="w-full border p-2 rounded" value={getLangVal('subtitle')} onChange={e=>setLangVal('subtitle', e.target.value)} placeholder={editLang !== 'ko' ? editingItem.subtitle || '' : ''}/></div>
+                                </div>
+                                {editLang === 'ko' && (
                                 <div className="flex gap-4 items-center">
                                     <label className="text-xs font-bold">발행 상태:</label>
                                     <div className="flex gap-2">
@@ -1998,10 +2074,13 @@ export const AdminDashboard: React.FC<any> = () => {
                                         <button type="button" onClick={() => setEditingItem({...editingItem, status: 'published'})} className={`px-3 py-1 rounded text-xs font-bold ${editingItem.status === 'published' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-gray-100 text-gray-500'}`}>발행</button>
                                     </div>
                                 </div>
+                                )}
                                 <div>
-                                    <label className="block text-xs font-bold mb-2">본문 내용</label>
-                                    <RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} />
+                                    <label className="block text-xs font-bold mb-2">{editLang === 'ko' ? '본문 내용' : `본문 내용 (${LANG_TABS.find(t=>t.key===editLang)?.label})`}</label>
+                                    {editLang !== 'ko' && <p className="text-[10px] text-gray-400 mb-2">비워두면 한국어 본문이 표시됩니다.</p>}
+                                    <RichTextEditor value={getLangVal('content')} onChange={(val) => setLangVal('content', val)} />
                                 </div>
+                                {editLang === 'ko' && (
                                 <div className="border p-4 rounded-xl bg-gray-50 relative">
                                     {uploadingImg && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-xl"><RefreshCw className="animate-spin text-blue-500"/></div>}
                                     <label className="block text-xs font-bold mb-2">이미지 (갤러리)</label>
@@ -2018,6 +2097,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </label>
                                     </div>
                                 </div>
+                                )}
                             </div>
                         )}
 
