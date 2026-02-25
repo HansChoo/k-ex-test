@@ -145,7 +145,10 @@ const TRANSLATIONS: any = {
     magazine_desc: '한국의 뷰티, 건강, 문화, 엔터테인먼트 최신 트렌드를 만나보세요.',
     search_articles: '매거진 검색...', no_results: '검색 결과가 없습니다.',
     coming_soon: '게시글이 없습니다.',
-    tab_all_magazine: '전체'
+    tab_all_magazine: '전체',
+    rec_health_premium: '프리미엄 종합 건강검진', rec_health_basic: '베이직 건강검진',
+    rec_idol_premium: 'K-IDOL 프리미엄 메이크오버', rec_idol_basic: 'K-IDOL 베이직 포토',
+    rec_beauty_premium: '리쥬란힐러 VIP 패키지', rec_beauty_basic: '글래스 스킨 베이직 패키지'
   },
   en: {
     login: 'Login', signup: 'Sign Up', mypage: 'My Page', logout: 'Logout',
@@ -240,7 +243,10 @@ const TRANSLATIONS: any = {
     magazine_desc: 'Discover the latest trends and tips about Korean beauty, health, culture, and entertainment.',
     search_articles: 'Search articles...', no_results: 'No results found.',
     coming_soon: 'Coming Soon!',
-    tab_all_magazine: 'All'
+    tab_all_magazine: 'All',
+    rec_health_premium: 'Premium Health Checkup', rec_health_basic: 'Basic Health Checkup',
+    rec_idol_premium: 'K-IDOL Premium Makeover', rec_idol_basic: 'K-IDOL Basic Photoshoot',
+    rec_beauty_premium: 'Rejuran Healer VIP Package', rec_beauty_basic: 'Glass Skin Basic Package'
   },
   ja: {
     login: 'ログイン', signup: '会員登録', mypage: 'マイページ', logout: 'ログアウト',
@@ -335,7 +341,10 @@ const TRANSLATIONS: any = {
     magazine_desc: '韓国のビューティー、健康、文化、エンタメの最新トレンドをお届けします。',
     search_articles: 'マガジン検索...', no_results: '検索結果がありません。',
     coming_soon: '記事がありません。',
-    tab_all_magazine: 'すべて'
+    tab_all_magazine: 'すべて',
+    rec_health_premium: 'プレミアム総合健康診断', rec_health_basic: 'ベーシック健康診断',
+    rec_idol_premium: 'K-IDOLプレミアムメイクオーバー', rec_idol_basic: 'K-IDOLベーシックフォト',
+    rec_beauty_premium: 'リジュランヒーラーVIPパッケージ', rec_beauty_basic: 'グラススキンベーシックパッケージ'
   },
   zh: {
     login: '登录', signup: '注册', mypage: '我的页面', logout: '退出',
@@ -430,7 +439,10 @@ const TRANSLATIONS: any = {
     magazine_desc: '发现韩国美容、健康、文化、娱乐的最新趋势。',
     search_articles: '搜索杂志...', no_results: '未找到结果。',
     coming_soon: '暂无文章。',
-    tab_all_magazine: '全部'
+    tab_all_magazine: '全部',
+    rec_health_premium: '尊享综合健康检查', rec_health_basic: '基础健康检查',
+    rec_idol_premium: 'K-IDOL尊享美妆改造', rec_idol_basic: 'K-IDOL基础写真',
+    rec_beauty_premium: '丽珠兰VIP套餐', rec_beauty_basic: '水光肌基础套餐'
   }
 };
 
@@ -517,6 +529,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const q = query(collection(db!, "products"), orderBy("createdAt", "desc")); 
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        products.sort((a: any, b: any) => (a.order ?? 9999) - (b.order ?? 9999));
         setRealtimeProducts(products);
     }, (error) => {
         console.warn("Products listener error:", error.message);

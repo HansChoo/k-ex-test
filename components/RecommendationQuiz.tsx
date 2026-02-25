@@ -55,16 +55,16 @@ export const RecommendationQuiz: React.FC<QuizProps> = ({ isOpen, onClose }) => 
       
       if (finalAnswers.interest === 'health') {
           recommendedProduct = finalAnswers.budget === 'premium' 
-            ? { title: "Premium Health Checkup", link: "/reservation-premium" }
-            : { title: "Basic Health Checkup", link: "/reservation-basic" };
+            ? { title: t('rec_health_premium'), link: "/reservation-premium" }
+            : { title: t('rec_health_basic'), link: "/reservation-basic" };
       } else if (finalAnswers.interest === 'idol') {
           recommendedProduct = finalAnswers.budget === 'premium'
-            ? { title: "K-IDOL Premium Makeover", link: "/reservation-premium" }
-            : { title: "K-IDOL Basic Photoshoot", link: "/reservation-basic" };
+            ? { title: t('rec_idol_premium'), link: "/reservation-premium" }
+            : { title: t('rec_idol_basic'), link: "/reservation-basic" };
       } else {
           recommendedProduct = finalAnswers.budget === 'premium'
-            ? { title: "Rejuran Healer VIP Pkg", link: "/reservation-premium" }
-            : { title: "Glass Skin Basic Pkg", link: "/reservation-basic" };
+            ? { title: t('rec_beauty_premium'), link: "/reservation-premium" }
+            : { title: t('rec_beauty_basic'), link: "/reservation-basic" };
       }
 
       setResult(recommendedProduct);

@@ -5,7 +5,7 @@ import {
     Ticket, BookOpen, Link as LinkIcon, Settings as SettingsIcon, MessageCircle, Image as ImageIcon, 
     LogOut, Globe, CheckCircle, AlertCircle, RefreshCw, DollarSign, Search, Copy, Crown, ListPlus,
     Timer, Lock, CheckCircle2, Phone, Archive, Grid, Layers, FolderTree, Box, Calendar as CalendarIcon, 
-    List, ChevronLeft, ChevronRight, MoreHorizontal, Mail, Star, MapPin
+    List, ChevronLeft, ChevronRight, MoreHorizontal, Mail, Star, MapPin, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db, auth, isFirebaseConfigured } from '../services/firebaseConfig';
@@ -211,7 +211,7 @@ export const AdminDashboard: React.FC<any> = () => {
               return cat.includes(target);
           });
       }
-      return data;
+      return data.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   }, [allProducts, productCategoryFilter]);
 
   const stats = useMemo(() => {
@@ -366,6 +366,20 @@ export const AdminDashboard: React.FC<any> = () => {
       if(!window.confirm("정말 삭제하시겠습니까?")) return;
       await deleteDoc(doc(db, col, id));
       showToast("삭제되었습니다.");
+  };
+
+  const swapProductOrder = async (idx1: number, idx2: number) => {
+      if (!db) return;
+      const sorted = [...products].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+      if (idx2 < 0 || idx2 >= sorted.length) return;
+      const item1 = sorted[idx1];
+      const item2 = sorted[idx2];
+      const order1 = item1.order ?? idx1;
+      const order2 = item2.order ?? idx2;
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'products', item1.id), { order: order2 });
+      batch.update(doc(db, 'products', item2.id), { order: order1 });
+      await batch.commit();
   };
 
   const saveInlineReview = async (productId: string, productName: string) => {
@@ -1089,40 +1103,52 @@ export const AdminDashboard: React.FC<any> = () => {
                                     </button>
                                 ))}
                             </div>
-                            <div className="grid grid-cols-4 gap-4">
-                                {filteredProducts.filter(p => p.type !== 'package').map(p => (
-                                    <div key={p.id} className="bg-white border rounded-xl overflow-hidden shadow-sm group">
-                                        <div className="h-40 bg-gray-100 relative">
-                                            <img src={p.image} className="w-full h-full object-cover"/>
-                                            <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-1 rounded font-bold">{p.category}</span>
-                                        </div>
-                                        <div className="p-4">
-                                            <h4 className="font-bold truncate mb-1">{p.title}</h4>
-                                            <p className="text-gray-500 text-xs mb-3 truncate">{p.description}</p>
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <span className="font-bold">₩ {p.price.toLocaleString()}</span>
-                                                    {analytics.productStats[p.id] && (
-                                                        <span className="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">
-                                                            예약 {analytics.productStats[p.id].count}건
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={()=>duplicateProduct(p)} className="text-gray-400 hover:text-green-500" title="복제"><Copy size={16}/></button>
-                                                    <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setInlineReviewEdit(null); setInlineFaqEdit(null); setEditLang('ko'); setModalType('product');}} className="text-blue-500"><Edit2 size={16}/></button>
-                                                    <button onClick={()=>deleteItem(p._coll, p.id)} className="text-red-500"><Trash2 size={16}/></button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {filteredProducts.filter(p => p.type !== 'package').length === 0 && (
-                                    <div className="col-span-4 text-center py-20 bg-white border border-dashed rounded-xl text-gray-400">
+                            <p className="text-xs text-gray-400">↑↓ 버튼으로 메인 페이지 "인기 체험" 섹션의 상품 표시 순서를 변경할 수 있습니다.</p>
+                            {(() => {
+                                const itemsList = filteredProducts.filter(p => p.type !== 'package');
+                                const sortedAll = [...products].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+                                return itemsList.length === 0 ? (
+                                    <div className="text-center py-20 bg-white border border-dashed rounded-xl text-gray-400">
                                         등록된 일반 상품이 없습니다.
                                     </div>
-                                )}
-                            </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {itemsList.map((p) => {
+                                            const globalIdx = sortedAll.findIndex(s => s.id === p.id);
+                                            return (
+                                                <div key={p.id} className="bg-white border rounded-xl overflow-hidden shadow-sm flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
+                                                    <div className="flex flex-col gap-1">
+                                                        <button onClick={()=>swapProductOrder(globalIdx, globalIdx - 1)} disabled={globalIdx <= 0} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors" title="위로"><ArrowUp size={14}/></button>
+                                                        <button onClick={()=>swapProductOrder(globalIdx, globalIdx + 1)} disabled={globalIdx >= sortedAll.length - 1} className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors" title="아래로"><ArrowDown size={14}/></button>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-gray-300 w-6 text-center">{globalIdx + 1}</span>
+                                                    <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                                        <img src={p.image} className="w-full h-full object-cover"/>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <span className="bg-black/70 text-white text-[10px] px-2 py-0.5 rounded font-bold">{p.category}</span>
+                                                            {analytics.productStats[p.id] && (
+                                                                <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-bold">
+                                                                    예약 {analytics.productStats[p.id].count}건
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <h4 className="font-bold text-sm truncate">{p.title}</h4>
+                                                        <p className="text-gray-400 text-xs truncate">{p.description}</p>
+                                                    </div>
+                                                    <span className="font-bold text-sm whitespace-nowrap">₩ {p.price.toLocaleString()}</span>
+                                                    <div className="flex gap-1.5 flex-shrink-0">
+                                                        <button onClick={()=>duplicateProduct(p)} className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-green-50 text-gray-400 hover:text-green-500 flex items-center justify-center transition-colors" title="복제"><Copy size={14}/></button>
+                                                        <button onClick={()=>{setEditingItem(p); setGalleryImages(p.images||[]); setInlineReviewEdit(null); setInlineFaqEdit(null); setEditLang('ko'); setModalType('product');}} className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-blue-50 text-blue-500 flex items-center justify-center transition-colors" title="수정"><Edit2 size={14}/></button>
+                                                        <button onClick={()=>deleteItem(p._coll, p.id)} className="w-8 h-8 rounded-lg bg-gray-50 hover:bg-red-50 text-red-500 flex items-center justify-center transition-colors" title="삭제"><Trash2 size={14}/></button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
 

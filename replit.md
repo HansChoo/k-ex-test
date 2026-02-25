@@ -27,7 +27,7 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 ## Multilingual System (4 Languages)
 - **Languages**: Korean (ko), English (en), Japanese (ja), Chinese (zh)
 - **Currencies**: KRW, USD, JPY, CNY with real-time exchange rate conversion
-- **UI Translation**: `t()` function with 110+ keys per language in `TRANSLATIONS` object (GlobalContext.tsx). All 4 languages fully translated.
+- **UI Translation**: `t()` function with 200+ keys per language in `TRANSLATIONS` object (GlobalContext.tsx). All 4 languages fully translated.
 - **Content Localization**: `getLocalizedValue(data, field)` reads `field_en`, `field_ja`, `field_zh` with Korean fallback
 - **Admin Language Tabs**: Product, Magazine, Package editors have 🇰🇷/🇺🇸/🇨🇳/🇯🇵 tabs for per-language content (title, description, content, image)
 - **Category Labels**: `label` (ko), `labelEn` (en), `label_ja` (ja), `label_zh` (zh) fields
@@ -69,6 +69,7 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - Product edit modal includes language tabs (🇰🇷/🇺🇸/🇨🇳/🇯🇵) for multilingual content entry
 - Product edit modal includes inline management for: MAP locations, Reviews, FAQ (all per-product, Firebase CRUD)
 - Magazine and Package editors also have language tabs
+- **Product Ordering**: Admin items list has ↑↓ buttons to reorder products; `order` field saved to Firestore via batch write, GlobalContext sorts products by `order` asc (fallback 9999)
 
 ## Wishlist & Cart
 - **Wishlist**: Stored in Firestore `user_data/{uid}` document, synced across devices via `onSnapshot` listener
