@@ -102,7 +102,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                             : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
                         }`}
                     >
-                        {isEn ? cat.labelEn : cat.label}
+                        {language === 'ko' ? cat.label : ((cat as any)[`label_${language}`] || cat.labelEn || cat.label)}
                     </button>
                 ))}
             </div>
