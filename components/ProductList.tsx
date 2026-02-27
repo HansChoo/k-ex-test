@@ -89,7 +89,7 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
                                 <div className="p-3 flex flex-col flex-1">
                                     <h3 className="text-[13px] font-bold text-[#111] leading-tight mb-2 line-clamp-2">{title}</h3>
                                     <div className="mt-auto flex items-center justify-between">
-                                        <span className="font-black text-[14px] text-[#111]">{convertPrice(numericPrice)}</span>
+                                        <span className="font-black text-[14px] text-[#111]">{(product.options?.length > 0) && <span className="text-[10px] font-bold text-gray-400 mr-0.5">~</span>}{convertPrice(numericPrice)}</span>
                                         <button onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } addToCart(product); }} className="bg-[#0070F0] text-white rounded-md p-1 hover:bg-blue-600 transition-colors">
                                             <Plus size={14}/>
                                         </button>

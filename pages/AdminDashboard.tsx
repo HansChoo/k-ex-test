@@ -476,7 +476,12 @@ export const AdminDashboard: React.FC<any> = () => {
       if (modalType === 'product') {
           if (!editingItem.title?.trim()) { showToast('상품명을 입력해주세요.', 'error'); return; }
           if (!editingItem.category || editingItem.category === '미지정') { showToast('카테고리를 선택해주세요.', 'error'); return; }
-          if (!parsePrice(editingItem.price)) { showToast('가격을 입력해주세요.', 'error'); return; }
+          const hasOptions = (editingItem.options || []).some((o: any) => o.name?.trim() && o.price > 0);
+          if (!hasOptions && !parsePrice(editingItem.price)) { showToast('가격을 입력하거나 옵션 상품을 추가해주세요.', 'error'); return; }
+          if (hasOptions) {
+              const validOptions = (editingItem.options || []).filter((o: any) => o.name?.trim() && o.price > 0);
+              if (validOptions.length === 0) { showToast('옵션명과 가격을 모두 입력해주세요.', 'error'); return; }
+          }
       }
       if (modalType === 'magazine') {
           if (!editingItem.title?.trim()) { showToast('제목을 입력해주세요.', 'error'); return; }
@@ -488,7 +493,13 @@ export const AdminDashboard: React.FC<any> = () => {
       const payload = { ...editingItem };
       if (modalType === 'product') {
           payload.images = galleryImages;
-          payload.price = parsePrice(editingItem.price);
+          const validOptions = (payload.options || []).filter((o: any) => o.name?.trim() && o.price > 0);
+          payload.options = validOptions;
+          if (validOptions.length > 0) {
+              payload.price = Math.min(...validOptions.map((o: any) => o.price));
+          } else {
+              payload.price = parsePrice(editingItem.price);
+          }
       }
       if (modalType === 'magazine') {
           payload.images = galleryImages;
@@ -1833,7 +1844,7 @@ export const AdminDashboard: React.FC<any> = () => {
                                         </select>
                                         <p className="text-[10px] text-gray-400 mt-1">* 카테고리 관리에서 생성한 항목만 선택 가능합니다. <br/>순서: 카테고리 생성 &rarr; 상품 등록</p>
                                     </div>
-                                    <div><label className="block text-xs font-bold mb-1">가격 (KRW)</label><input type="number" className="w-full border p-2 rounded" value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} /></div>
+                                    <div><label className="block text-xs font-bold mb-1">가격 (KRW)</label><input type="number" className={`w-full border p-2 rounded ${(editingItem.options || []).length > 0 ? 'bg-gray-100 text-gray-400' : ''}`} value={editingItem.price} onChange={e => setEditingItem({...editingItem, price: Number(e.target.value)})} readOnly={(editingItem.options || []).length > 0} />{(editingItem.options || []).length > 0 && <p className="text-[10px] text-blue-500 mt-1">옵션 최저가 자동 적용 중</p>}</div>
                                 </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-4">
@@ -1843,6 +1854,31 @@ export const AdminDashboard: React.FC<any> = () => {
                                 {editLang === 'ko' ? (
                                 <>
                                 <div className="grid grid-cols-2 gap-6"><div className="border p-4 rounded-xl bg-gray-50"><label className="block text-xs font-bold mb-2">대표 이미지</label><div className="flex items-center gap-4">{editingItem.image ? (<img src={editingItem.image} className="w-20 h-20 object-cover rounded-lg border" />) : (<div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-xs">No Image</div>)}<label className="cursor-pointer bg-white border border-gray-300 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-50">변경<input type="file" className="hidden" onChange={handleMainImageUpload} /></label></div></div><div className="border p-4 rounded-xl bg-gray-50 relative">{uploadingImg && <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center rounded-xl"><RefreshCw className="animate-spin text-blue-500"/></div>}<label className="block text-xs font-bold mb-2">추가 이미지 (갤러리)</label><div className="flex flex-wrap gap-2 mb-2">{galleryImages.map((img, idx) => (<div key={idx} className="relative w-16 h-16 group"><img src={img} className="w-full h-full object-cover rounded-lg border" /><button onClick={() => setGalleryImages(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button></div>))}<label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"><Plus size={20} className="text-gray-400"/><input type="file" className="hidden" multiple onChange={handleGalleryUpload} /></label></div></div></div>
+                                <div className="border p-4 rounded-xl bg-gray-50">
+                                    <label className="block text-xs font-bold mb-2">옵션 상품</label>
+                                    <p className="text-[10px] text-gray-400 mb-3">옵션별 가격을 설정하면 가장 저렴한 옵션의 가격이 상품 기본가로 자동 설정됩니다.</p>
+                                    <div className="space-y-2 mb-3">
+                                        {(editingItem.options || []).map((opt: any, idx: number) => (
+                                            <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center gap-3">
+                                                <span className="text-xs font-bold text-gray-400 w-5">{idx + 1}</span>
+                                                <input className="flex-1 border p-2 rounded text-xs" placeholder="옵션명 (예: 베이직 검진)" value={opt.name || ''} onChange={e => { const opts = [...(editingItem.options || [])]; opts[idx] = {...opts[idx], name: e.target.value}; setEditingItem({...editingItem, options: opts}); }}/>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-xs text-gray-400">₩</span>
+                                                    <input type="number" className="w-28 border p-2 rounded text-xs text-right" placeholder="가격" value={opt.price ?? ''} onChange={e => { const opts = [...(editingItem.options || [])]; opts[idx] = {...opts[idx], price: Number(e.target.value)}; const prices = opts.filter((o: any) => o.price > 0).map((o: any) => o.price); const minPrice = prices.length > 0 ? Math.min(...prices) : editingItem.price; setEditingItem({...editingItem, options: opts, price: minPrice}); }}/>
+                                                </div>
+                                                <button onClick={() => { const opts = [...(editingItem.options || [])]; opts.splice(idx, 1); const prices = opts.filter((o: any) => o.price > 0).map((o: any) => o.price); const minPrice = prices.length > 0 ? Math.min(...prices) : editingItem.price; setEditingItem({...editingItem, options: opts, price: minPrice}); }} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => setEditingItem({...editingItem, options: [...(editingItem.options || []), { name: '', price: 0 }]})} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-bold text-xs flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-500">
+                                        <Plus size={14}/> 옵션 추가
+                                    </button>
+                                    {(editingItem.options || []).length > 0 && (
+                                        <div className="mt-2 text-[10px] text-blue-600 font-bold">
+                                            기본 표시가: ₩{(editingItem.price || 0).toLocaleString()} (최저 옵션가 자동 적용)
+                                        </div>
+                                    )}
+                                </div>
                                 <div><label className="block text-xs font-bold mb-2">포함 내역 (옵션)</label><div className="flex flex-wrap gap-2 mb-2">{(editingItem.items || []).map((item: string, idx: number) => (<span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1">{item}<button onClick={() => {const newItems = [...(editingItem.items || [])]; newItems.splice(idx, 1); setEditingItem({...editingItem, items: newItems});}}><X size={12}/></button></span>))}</div><div className="flex gap-2"><input id="newItemInput" className="border p-2 rounded text-sm flex-1" placeholder="예: 픽업 서비스, 통역 포함" onKeyDown={(e) => {if (e.key === 'Enter') {e.preventDefault(); const val = e.currentTarget.value.trim(); if (val) {setEditingItem({...editingItem, items: [...(editingItem.items||[]), val]}); e.currentTarget.value = '';}}}} /><button type="button" onClick={() => {const input = document.getElementById('newItemInput') as HTMLInputElement; if(input.value.trim()) {setEditingItem({...editingItem, items: [...(editingItem.items||[]), input.value.trim()]}); input.value = '';}}} className="bg-gray-200 px-4 py-2 rounded font-bold text-xs">추가</button></div></div>
                                 <div><label className="block text-xs font-bold mb-2">상세 본문 (이미지/텍스트)</label><RichTextEditor value={editingItem.content || ''} onChange={(val) => setEditingItem({...editingItem, content: val})} /></div>
                                 </>

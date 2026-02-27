@@ -20,9 +20,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const isKo = language === 'ko';
   
   const [activeTab, setActiveTab] = useState<'detail' | 'faq' | 'reviews' | 'map'>('detail');
-  const [openSection, setOpenSection] = useState<'date' | 'options' | null>('date');
+  const [openSection, setOpenSection] = useState<'date' | 'options' | 'select-option' | null>('date');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'full' | 'deposit'>('full');
+  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const productOptions: {name: string; price: number}[] = product.options || [];
   
   const NATIONALITIES = [
     { value: 'US', label: 'United States', code: '+1' },
@@ -152,10 +154,15 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   };
 
   const getPrice = () => {
-      const numericPrice = typeof product.price === 'string' 
-        ? Number(product.price.replace(/[^0-9]/g, '')) 
-        : product.price;
-      const basePrice = isNaN(numericPrice) ? 100000 : numericPrice;
+      let basePrice: number;
+      if (productOptions.length > 0 && selectedOption !== null && productOptions[selectedOption]) {
+          basePrice = productOptions[selectedOption].price;
+      } else {
+          const numericPrice = typeof product.price === 'string' 
+            ? Number(product.price.replace(/[^0-9]/g, '')) 
+            : product.price;
+          basePrice = isNaN(numericPrice) ? 100000 : numericPrice;
+      }
       
       let total = 0;
       guestList.forEach(guest => {
@@ -205,6 +212,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                 paypalOrderId: details.id,
                 paypalStatus: details.status,
                 payerEmail: details.payer?.email_address,
+                ...(selectedOption !== null && productOptions[selectedOption] ? { selectedOption: productOptions[selectedOption].name, selectedOptionPrice: productOptions[selectedOption].price } : {}),
             }
         });
         setPaymentSuccess(true);
@@ -220,7 +228,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const handleDateSelect = (day: number) => {
     const m = String(calendarMonth + 1).padStart(2, '0');
     setSelectedDate(`${calendarYear}-${m}-${day.toString().padStart(2, '0')}`);
-    setOpenSection('options');
+    setOpenSection(productOptions.length > 0 ? 'select-option' : 'options');
   };
 
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -370,12 +378,36 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                         {openSection === 'date' && (<div className="px-5 pb-6 bg-white"><div className="grid grid-cols-7 gap-1">{CALENDAR_DAYS.map(day => (<button key={day} onClick={() => handleDateSelect(day)} className={`h-9 text-sm rounded hover:bg-gray-100 transition-colors ${selectedDate?.endsWith(day.toString().padStart(2,'0')) ? 'bg-black text-white hover:bg-black font-bold' : ''}`}>{day}</button>))}</div></div>)}
                     </div>
 
+                    {productOptions.length > 0 && (
+                    <div className={`border-b border-[#eee] ${openSection === 'select-option' ? 'bg-white' : 'bg-[#f9f9f9]'}`}>
+                        <button onClick={() => setOpenSection(openSection === 'select-option' ? null : 'select-option')} disabled={!selectedDate} className={`w-full flex items-center justify-between p-5 text-left ${!selectedDate ? 'opacity-50' : ''}`}>
+                            <div><span className="block text-xs text-[#888] font-bold mb-1">{t('step2')}</span><span className={`text-[15px] font-bold ${selectedOption !== null ? 'text-[#0070F0]' : 'text-[#111]'}`}>{selectedOption !== null ? productOptions[selectedOption].name : t('select_option')}</span></div>
+                            <ChevronDown size={20} className="text-[#888]" />
+                        </button>
+                        {openSection === 'select-option' && selectedDate && (
+                            <div className="px-5 pb-5 bg-white space-y-2 animate-fade-in">
+                                {productOptions.map((opt, idx) => (
+                                    <button key={idx} onClick={() => { setSelectedOption(idx); setOpenSection('options'); }} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${selectedOption === idx ? 'border-[#0070F0] bg-blue-50' : 'border-gray-200 hover:border-gray-400'}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedOption === idx ? 'border-[#0070F0] bg-[#0070F0]' : 'border-gray-300'}`}>
+                                                {selectedOption === idx && <Check size={12} className="text-white"/>}
+                                            </div>
+                                            <span className={`text-sm font-bold ${selectedOption === idx ? 'text-[#0070F0]' : 'text-[#333]'}`}>{opt.name}</span>
+                                        </div>
+                                        <span className="font-black text-sm">{convertPrice(opt.price)}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    )}
+
                     <div className={`border-b border-[#eee] ${openSection === 'options' ? 'bg-white' : 'bg-[#f9f9f9]'}`}>
-                        <button onClick={() => setOpenSection(openSection === 'options' ? null : 'options')} disabled={!selectedDate} className={`w-full flex items-center justify-between p-5 text-left ${!selectedDate ? 'opacity-50' : ''}`}>
-                            <div><span className="block text-xs text-[#888] font-bold mb-1">{t('step2')}</span><span className={`text-[15px] font-bold`}>{t('step2_label')} ({guestList.length} Guests)</span></div>
+                        <button onClick={() => setOpenSection(openSection === 'options' ? null : 'options')} disabled={!selectedDate || (productOptions.length > 0 && selectedOption === null)} className={`w-full flex items-center justify-between p-5 text-left ${(!selectedDate || (productOptions.length > 0 && selectedOption === null)) ? 'opacity-50' : ''}`}>
+                            <div><span className="block text-xs text-[#888] font-bold mb-1">{productOptions.length > 0 ? t('step3') : t('step2')}</span><span className={`text-[15px] font-bold`}>{t('step2_label')} ({guestList.length} Guests)</span></div>
                             <ChevronDown size={20} />
                         </button>
-                        {openSection === 'options' && selectedDate && (
+                        {openSection === 'options' && selectedDate && (productOptions.length === 0 || selectedOption !== null) && (
                             <div className="px-5 pb-6 bg-white space-y-5 animate-fade-in">
                                 {guestList.map((guest, idx) => (
                                     <div key={guest.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 relative">

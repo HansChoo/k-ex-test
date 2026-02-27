@@ -70,6 +70,8 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - Product edit modal includes inline management for: MAP locations, Reviews, FAQ (all per-product, Firebase CRUD)
 - Magazine and Package editors also have language tabs
 - **Product Ordering**: Admin items list has ↑↓ buttons to reorder products; `order` field saved to Firestore via batch write, GlobalContext sorts products by `order` asc (fallback 9999)
+- **Category Ordering**: Admin category list has ↑↓ buttons to reorder categories; `order` field saved via batch write, GlobalContext sorts categories by `order` asc
+- **Product Options**: Admin can add multiple options (name + price) per product. Lowest option price auto-sets as product base price. Options saved as `options` array in Firestore. ProductDetail shows option selection step (STEP 2) before guest info. ProductList/AllProductsPage show "~" prefix for products with options.
 
 ## Wishlist & Cart
 - **Wishlist**: Stored in Firestore `user_data/{uid}` document, synced across devices via `onSnapshot` listener

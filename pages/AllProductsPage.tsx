@@ -199,7 +199,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                                 </div>
                                 <h3 className="text-[14px] font-bold text-[#111] leading-tight mb-4 line-clamp-2">{title}</h3>
                                 <div className="mt-auto flex items-center justify-between">
-                                    <span className="font-black text-[16px] text-[#111]">{convertPrice(numericPrice)}</span>
+                                    <span className="font-black text-[16px] text-[#111]">{(product.options?.length > 0) && <span className="text-[10px] font-bold text-gray-400 mr-0.5">~</span>}{convertPrice(numericPrice)}</span>
                                     <button onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } addToCart(product); }} className="bg-[#0070F0] text-white rounded-lg p-1.5 hover:bg-blue-600 transition-colors">
                                         <Plus size={16}/>
                                     </button>
