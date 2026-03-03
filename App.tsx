@@ -244,7 +244,7 @@ const AppContent: React.FC = () => {
       </main>
 
       {currentView !== 'admin' && currentView !== 'survey' && <Footer language={language} />}
-      {currentView !== 'admin' && currentView !== 'survey' && currentView !== 'product_detail' && <BottomNav onNavClick={handleProtectedNav} currentView={currentView} toggleMenu={toggleMenu} />}
+      {currentView !== 'admin' && currentView !== 'survey' && <BottomNav onNavClick={handleProtectedNav} currentView={currentView} toggleMenu={toggleMenu} />}
       
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} language={language} />
     </div>
