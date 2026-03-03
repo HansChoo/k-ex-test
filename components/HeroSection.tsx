@@ -46,26 +46,26 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
   const badgeText = t('hero_badge').replace('{count}', visitorCount.toLocaleString());
 
   return (
-    <section className="w-full bg-gradient-to-b from-[#dce8f5] to-[#f0f5fb] pt-[40px] pb-[60px] text-center font-sans tracking-tight relative overflow-hidden">
+    <section className="w-full bg-gradient-to-b from-[#b8d4f0] to-[#e8eff7] pt-[40px] pb-[60px] text-center font-sans tracking-tight relative overflow-hidden">
 
       <div className="max-w-[1280px] mx-auto px-6 relative z-10 flex flex-col items-center">
         
         <ScrollReveal delay={0}>
-            <div className="inline-flex items-center gap-1.5 bg-[#c8ddf3] px-4 py-1.5 rounded-full mb-6">
-                <span className="text-[#2563eb] font-bold text-[13px] tracking-tight flex items-center gap-1">
+            <div className="inline-flex items-center gap-1.5 bg-[#d6e6f9] px-4 py-1.5 rounded-full mb-6">
+                <span className="text-[#3b82f6] font-bold text-[13px] tracking-tight flex items-center gap-1">
                     <Flame size={12} className="fill-[#f97316] text-[#f97316]"/> {badgeText}
                 </span>
             </div>
         </ScrollReveal>
         
         <ScrollReveal delay={100}>
-            <h1 className="text-[32px] md:text-[56px] font-[900] text-[#111] mb-2 tracking-[-0.04em] leading-tight">
+            <h1 className="text-[32px] md:text-[56px] font-[900] text-black mb-2 tracking-[-0.04em] leading-tight">
                 {t('hero_title')}
             </h1>
         </ScrollReveal>
         
         <ScrollReveal delay={200}>
-            <h2 className="text-[26px] md:text-[48px] font-[900] text-[#2563eb] mb-6 tracking-[-0.04em] leading-tight">
+            <h2 className="text-[26px] md:text-[48px] font-[900] text-[#3b82f6] mb-6 tracking-[-0.04em] leading-tight">
                 {t('hero_subtitle')}
             </h2>
         </ScrollReveal>
