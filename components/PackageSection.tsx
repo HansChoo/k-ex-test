@@ -84,36 +84,25 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
                         return (
                             <div 
                                 key={product.id || idx}
-                                className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-lg snap-center flex flex-col"
+                                className="flex-shrink-0 w-[160px] md:w-[280px] bg-white rounded-[16px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all snap-center flex flex-col cursor-pointer group"
+                                onClick={() => onBookClick(product.id)}
                             >
-                                <div className="relative w-full aspect-[1.5/1] bg-gray-100 overflow-hidden">
+                                <div className="relative w-full aspect-square bg-gray-50 overflow-hidden">
                                     {image ? (
-                                        <img src={image} alt={title} className="w-full h-full object-cover" />
+                                        <img src={image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">🎁</div>
                                     )}
                                 </div>
 
-                                <div className="p-5 flex-1 flex flex-col">
-                                    <h3 className="font-black text-[18px] text-[#111] mb-2 leading-tight break-keep">{title}</h3>
-                                    {desc && (
-                                        <p className="text-[13px] text-gray-500 font-medium mb-4 min-h-[36px] break-keep line-clamp-2">{desc}</p>
-                                    )}
-
-                                    <div className="border-t border-gray-100 pt-4 mb-4 mt-auto">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-[11px] font-bold text-gray-400">
-                                                {t('per_person')}
-                                            </span>
-                                            <div className="text-right">
-                                                <span className="font-black text-xl text-[#111]">{hasOptions ? '~' : ''}{convertPrice(price)}</span>
-                                            </div>
-                                        </div>
+                                <div className="p-4 flex flex-col flex-1">
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mb-1">
+                                        🎁 <span>{product.category}</span>
                                     </div>
-
-                                    <button onClick={() => onBookClick(product.id)} className="w-full py-3 bg-[#111] text-white font-bold rounded-lg hover:bg-gray-800 transition-all text-sm shadow-md flex items-center justify-center gap-1">
-                                        {t('detail')} <ChevronRight size={14} />
-                                    </button>
+                                    <h3 className="text-[14px] font-bold text-[#111] leading-tight mb-4 line-clamp-2">{title}</h3>
+                                    <div className="mt-auto flex items-center justify-between">
+                                        <span className="font-black text-[16px] text-[#111]">{hasOptions ? <span className="text-[10px] font-bold text-gray-400 mr-0.5">~</span> : ''}{convertPrice(price)}</span>
+                                    </div>
                                 </div>
                             </div>
                         );
