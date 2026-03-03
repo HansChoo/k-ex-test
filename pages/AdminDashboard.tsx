@@ -372,15 +372,13 @@ export const AdminDashboard: React.FC<any> = () => {
       if (!db) return;
       const sorted = [...products].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
       if (idx2 < 0 || idx2 >= sorted.length) return;
-      const needsInit = sorted.some(p => p.order === undefined || p.order === null);
+      const reordered = [...sorted];
+      const [moved] = reordered.splice(idx1, 1);
+      reordered.splice(idx2, 0, moved);
       const batch = writeBatch(db);
-      if (needsInit) {
-          sorted.forEach((p, i) => {
-              batch.update(doc(db, 'products', p.id), { order: i });
-          });
-      }
-      batch.update(doc(db, 'products', sorted[idx1].id), { order: needsInit ? idx2 : (sorted[idx2].order ?? idx2) });
-      batch.update(doc(db, 'products', sorted[idx2].id), { order: needsInit ? idx1 : (sorted[idx1].order ?? idx1) });
+      reordered.forEach((p, i) => {
+          batch.update(doc(db, 'products', p.id), { order: i });
+      });
       await batch.commit();
   };
 
@@ -441,15 +439,13 @@ export const AdminDashboard: React.FC<any> = () => {
       if (!db) return;
       const sorted = [...categories].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
       if (idx2 < 0 || idx2 >= sorted.length) return;
-      const needsInit = sorted.some(c => c.order === undefined || c.order === null);
+      const reordered = [...sorted];
+      const [moved] = reordered.splice(idx1, 1);
+      reordered.splice(idx2, 0, moved);
       const batch = writeBatch(db);
-      if (needsInit) {
-          sorted.forEach((c, i) => {
-              batch.update(doc(db, 'cms_categories', c.id), { order: i });
-          });
-      }
-      batch.update(doc(db, 'cms_categories', sorted[idx1].id), { order: needsInit ? idx2 : (sorted[idx2].order ?? idx2) });
-      batch.update(doc(db, 'cms_categories', sorted[idx2].id), { order: needsInit ? idx1 : (sorted[idx1].order ?? idx1) });
+      reordered.forEach((c, i) => {
+          batch.update(doc(db, 'cms_categories', c.id), { order: i });
+      });
       await batch.commit();
   };
 
