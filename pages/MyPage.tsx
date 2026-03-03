@@ -8,7 +8,7 @@ import { useGlobal } from '../contexts/GlobalContext';
 import { printReceipt } from '../services/receiptService';
 
 export const MyPage: React.FC<any> = () => {
-  const { t, language, convertPrice, wishlist, toggleWishlist, products, packages, getLocalizedValue, cart, addToCart, removeFromCart, updateCartQuantity } = useGlobal();
+  const { t, language, convertPrice, wishlist, toggleWishlist, products, getLocalizedValue, cart, addToCart, removeFromCart, updateCartQuantity } = useGlobal();
   const isEn = language !== 'ko';
   const isKo = language === 'ko';
   const [reservations, setReservations] = useState<any[]>([]);
@@ -403,7 +403,7 @@ export const MyPage: React.FC<any> = () => {
                         </button>
                         {selectedWishlistItems.length > 0 && (
                             <button onClick={() => {
-                                const allItems = [...products, ...packages];
+                                const allItems = products;
                                 selectedWishlistItems.forEach(wId => {
                                     const product = allItems.find(p => String(p.id) === String(wId));
                                     if (product) { addToCart(product); toggleWishlist(wId); }
@@ -422,7 +422,7 @@ export const MyPage: React.FC<any> = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {wishlist.map((wId) => {
-                        const allItems = [...products, ...packages];
+                        const allItems = products;
                         const product = allItems.find(p => String(p.id) === String(wId));
                         if (!product) return null;
                         const title = getLocalizedValue(product, 'title');
@@ -503,7 +503,7 @@ export const MyPage: React.FC<any> = () => {
                                     <button onClick={() => {
                                         const item = cart.find(i => i.productId === selectedCartItems[0]);
                                         if (item) {
-                                            const allItems = [...products, ...packages];
+                                            const allItems = products;
                                             const product = allItems.find(p => String(p.id) === item.productId);
                                             if (product) window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product }));
                                         }
@@ -515,7 +515,7 @@ export const MyPage: React.FC<any> = () => {
                                         <p className="text-xs text-gray-500 text-center mb-3">{isKo ? '각 상품의 상세 페이지에서 개별 결제가 진행됩니다.' : 'Each item will be processed individually from its detail page.'}</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             {cart.filter(i => selectedCartItems.includes(i.productId)).map(item => {
-                                                const allItems = [...products, ...packages];
+                                                const allItems = products;
                                                 const product = allItems.find(p => String(p.id) === item.productId);
                                                 return (
                                                     <button key={item.productId} onClick={() => {
