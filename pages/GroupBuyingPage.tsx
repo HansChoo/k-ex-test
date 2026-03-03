@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, TrendingDown, Info, Crown, CheckCircle2, ChevronRight, Timer, Search, Plus, X, Calendar, CreditCard, UserPlus, Mail, Globe, Phone, Archive } from 'lucide-react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion, addDoc, serverTimestamp, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, increment, arrayUnion, addDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { useGlobal } from '../contexts/GlobalContext';
 import { requestPayment } from '../services/paymentService';
 import { COUNTRY_CODES } from '../constants';
@@ -43,7 +43,6 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [groupList, setGroupList] = useState<GroupBuyItem[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // --- Create Modal State ---
@@ -65,13 +64,6 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
         setGroupList(list);
         setLoading(false);
     });
-
-    const fetchPkgs = async () => {
-        if (!db) return;
-        const snap = await getDocs(collection(db, "cms_packages"));
-        setPackages(snap.docs.map(d => ({ id: d.id, ...d.data(), type: 'package' })));
-    };
-    fetchPkgs();
 
     return () => unsubGroup();
   }, []);
@@ -203,8 +195,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
       }
 
       // Find selected product info
-      const allItems = [...packages, ...products];
-      const selectedItem = allItems.find(i => i.id === newGroupData.productId);
+      const selectedItem = products.find(i => i.id === newGroupData.productId);
       if (!selectedItem) return;
 
       const basePrice = selectedItem.price || selectedItem.priceVal || 0;
@@ -504,12 +495,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                                     onChange={(e) => setNewGroupData({...newGroupData, productId: e.target.value})}
                                   >
                                       <option value="">상품을 선택하세요</option>
-                                      <optgroup label="📦 올인원 패키지">
-                                          {packages.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                                      </optgroup>
-                                      <optgroup label="🛍️ 일반 상품">
-                                          {products.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                                      </optgroup>
+                                      {products.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
                                   </select>
                               </div>
                               <div>

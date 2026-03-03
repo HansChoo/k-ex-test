@@ -44,11 +44,7 @@ export const ReservationBasic: React.FC<ReservationBasicProps> = () => {
   useEffect(() => {
     setReviews([]);
     if (!db) { setLoading(false); return; }
-    const unsub = onSnapshot(doc(db, "cms_packages", "package_basic"), (doc) => {
-        if (doc.exists()) setCmsData(doc.data());
-        setLoading(false);
-    });
-    return () => unsub();
+    setLoading(false);
   }, []);
 
   const handleApplyCoupon = async () => {

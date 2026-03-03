@@ -10,7 +10,7 @@ interface AllProductsPageProps {
 }
 
 export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategoryLabel }) => {
-  const { t, products, packages, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, categories, language, currency, ratesLoaded } = useGlobal();
+  const { t, products, wishlist, toggleWishlist, addToCart, getLocalizedValue, convertPrice, categories, language, currency, ratesLoaded } = useGlobal();
   const isEn = language !== 'ko';
 
   const [activeFilter, setActiveFilter] = useState('all');
@@ -28,18 +28,8 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
       setTimeout(() => setLoading(false), 400); 
   }, [activeFilter, products]);
 
-  const isPackageCategory = (() => {
-      if (activeFilter === 'all') return false;
-      const activeCat = categories.find(c => c.id === activeFilter);
-      if (!activeCat) return false;
-      const label = (activeCat.label || '').toLowerCase();
-      return label.includes('올인원') || label.includes('패키지');
-  })();
-
   const filteredProducts = activeFilter === 'all' 
     ? products
-    : isPackageCategory
-    ? []
     : products.filter(p => {
         const activeCat = categories.find(c => c.id === activeFilter);
         if (!activeCat) return false;
@@ -71,7 +61,7 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                 <div className="flex items-center gap-1">
                     <Star className="fill-yellow-400 text-yellow-400 w-5 h-5"/>
                     <h2 className="text-[22px] font-bold text-[#111]">{t('prod_title')}</h2>
-                    <span className="text-sm text-gray-400 ml-2">{isPackageCategory ? packages.length : filteredProducts.length}</span>
+                    <span className="text-sm text-gray-400 ml-2">{filteredProducts.length}</span>
                 </div>
                 {currency !== 'KRW' && ratesLoaded && (
                     <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
@@ -119,58 +109,6 @@ export const AllProductsPage: React.FC<AllProductsPageProps> = ({ initialCategor
                      </div>
                  ))}
              </div>
-        ) : isPackageCategory ? (
-            packages.length === 0 ? (
-                <div className="py-20 text-center text-gray-500 bg-gray-50 rounded-xl mx-2">
-                    {t('no_packages')}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-2">
-                    {packages.map((pkg: any, idx: number) => {
-                        const themeColors: any = {
-                            mint: { bg: 'bg-[#00BFAE]', badge: 'BASIC', icon: '💪' },
-                            yellow: { bg: 'bg-[#FFC200]', badge: 'PREMIUM', icon: '🎤' },
-                            orange: { bg: 'bg-[#FF8C00]', badge: 'PREMIUM', icon: '✨' }
-                        };
-                        const theme = themeColors[pkg.theme] || themeColors.mint;
-                        return (
-                            <div key={pkg.id || idx} className="bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-lg flex flex-col cursor-pointer hover:shadow-xl transition-all" onClick={() => handleProductClick(pkg)}>
-                                <div className={`h-[140px] ${theme.bg} relative flex flex-col items-center justify-center text-center p-4`}>
-                                    <span className="absolute top-4 left-4 bg-white/30 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded">{theme.badge}</span>
-                                    <div className="text-4xl mb-2 drop-shadow-sm">{theme.icon}</div>
-                                    <h3 className="text-white font-black text-[20px] leading-none drop-shadow-md px-2 break-keep">
-                                        {getLocalizedValue(pkg, 'title')}
-                                    </h3>
-                                </div>
-                                <div className="p-5 flex-1 flex flex-col">
-                                    <p className="text-[13px] text-gray-500 font-medium mb-4 text-center min-h-[40px] flex items-center justify-center break-keep">
-                                        {getLocalizedValue(pkg, 'description')}
-                                    </p>
-                                    <ul className="space-y-2 mb-6 flex-1">
-                                        {pkg.items?.map((item: string, i: number) => (
-                                            <li key={i} className="flex items-start gap-2 text-[13px] text-[#333] font-medium">
-                                                <div className="w-4 h-4 rounded-full bg-[#00C7AE] flex items-center justify-center text-white shrink-0 mt-0.5">
-                                                    <Check size={10} strokeWidth={4} />
-                                                </div>
-                                                <span className="leading-tight">{item}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <div className="border-t border-gray-100 pt-4 mb-4">
-                                        <div className="flex justify-between items-end">
-                                            <span className="text-[11px] font-bold text-gray-400">{t('per_person')}</span>
-                                            <span className="font-black text-xl text-[#111]">{convertPrice(pkg.price)}</span>
-                                        </div>
-                                    </div>
-                                    <button className="w-full py-3 bg-[#111] text-white font-bold rounded-lg hover:bg-gray-800 transition-all text-sm shadow-md flex items-center justify-center gap-1">
-                                        {t('detail')} <ChevronRight size={14} />
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )
         ) : filteredProducts.length === 0 ? (
              <div className="py-20 text-center text-gray-500 bg-gray-50 rounded-xl mx-2">
                  {t('no_products')}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus, Box, ChevronUp, CreditCard, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Check, Heart, Calendar as CalendarIcon, MapPin, ChevronRight, Share2, Star, Copy, Camera, UserPlus, Info, MessageCircle, Trash2, Plus, ChevronUp, CreditCard, CheckCircle } from 'lucide-react';
 import { auth, db, isFirebaseConfigured } from '../services/firebaseConfig';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { createReservation, checkAvailability, validateCoupon } from '../services/reservationService';
@@ -50,35 +50,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const description = getLocalizedValue(product, 'description');
   const introContent = getLocalizedValue(product, 'content');
 
-  const isPackage = product.type === 'package' || (product.selectedProductIds && product.selectedProductIds.length > 0);
-  
   const renderCombinedContent = () => {
       let html = introContent ? `<div class="mb-10 text-lg leading-relaxed">${introContent}</div>` : '';
       
-      if (isPackage && product.selectedProductIds) {
-          html += `<div class="package-break mb-8 text-center"><span class="bg-gray-100 px-4 py-1 rounded-full text-xs font-bold text-gray-500 uppercase tracking-widest">Included Items</span></div>`;
-          
-          product.selectedProductIds.forEach((pid: string) => {
-              const childProd = products.find(p => p.id === pid);
-              if (childProd) {
-                  const childTitle = getLocalizedValue(childProd, 'title');
-                  const childContent = getLocalizedValue(childProd, 'content');
-                  const childImg = childProd.image;
-                  
-                  html += `
-                    <div class="mb-12 border border-gray-100 rounded-xl overflow-hidden shadow-sm">
-                        <div class="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-2">
-                            <span class="text-xl">📦</span>
-                            <h3 class="font-bold text-lg">${childTitle}</h3>
-                        </div>
-                        <div class="p-6 bg-white">
-                            ${childContent ? childContent : `<img src="${childImg}" class="w-full rounded-lg" />`}
-                        </div>
-                    </div>
-                  `;
-              }
-          });
-      } else if (!introContent) {
+      if (!introContent) {
           return <img src={product.detailTopImage || product.image} className="w-full max-w-full h-auto rounded-xl" />;
       }
 
@@ -249,8 +224,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             <div className="px-4 lg:px-0 mb-8">
                 <button onClick={() => window.location.href='/'} className="text-gray-400 mb-2 flex items-center gap-1 text-sm hover:text-black transition-colors"><ChevronLeft size={14}/> Back to list</button>
                 <div className="text-sm font-bold text-blue-600 mb-1 flex items-center gap-1">
-                    {isPackage ? <Box size={14}/> : null}
-                    {isPackage ? 'All-in-One Package' : product.category}
+                    {product.category}
                 </div>
                 <h1 className="text-[24px] lg:text-[32px] font-[900] text-[#111] mb-2 leading-snug">{title}</h1>
                 <p className="text-[15px] text-[#888] mb-6 font-medium border-b border-gray-100 pb-5">{description}</p>

@@ -2,18 +2,22 @@
 import React, { useRef } from 'react';
 import { useGlobal } from '../contexts/GlobalContext';
 import { ScrollReveal } from './ScrollReveal';
-import { Check, ChevronRight, ChevronLeft, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface PackageSectionProps {
   language: 'ko' | 'en' | 'ja' | 'zh';
-  onBookClick: (pkgId: string) => void;
+  onBookClick: (productId: string) => void;
   onViewAll?: () => void;
 }
 
 export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, language, onViewAll }) => {
-  const { convertPrice, t, packages, getLocalizedValue } = useGlobal();
-  const isEn = language !== 'ko';
+  const { convertPrice, t, products, getLocalizedValue, categories, currency, ratesLoaded } = useGlobal();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const packageProducts = products.filter(p => {
+    const cat = (p.category || '').toLowerCase();
+    return cat.includes('올인원') || cat.includes('패키지');
+  });
   
   const scroll = (direction: 'left' | 'right') => {
       if (scrollContainerRef.current) {
@@ -23,13 +27,6 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
               behavior: 'smooth'
           });
       }
-  };
-
-  // Theme configuration: Determine background color and icon based on the selected theme in Admin
-  const themeColors: any = {
-    mint: { bg: 'bg-[#00BFAE]', badge: 'BASIC', icon: '💪' },
-    yellow: { bg: 'bg-[#FFC200]', badge: 'PREMIUM', icon: '🎤' },
-    orange: { bg: 'bg-[#FF8C00]', badge: 'PREMIUM', icon: '✨' }
   };
 
   return (
@@ -50,14 +47,13 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
             </div>
         </ScrollReveal>
 
-        {packages.length === 0 ? (
+        {packageProducts.length === 0 ? (
             <div className="w-full py-16 bg-gray-50 rounded-[16px] flex items-center justify-center text-gray-400 text-sm">
                 {t('no_packages')}
             </div>
         ) : (
             <>
-                {/* Scroll Buttons */}
-                {packages.length > 2 && (
+                {packageProducts.length > 2 && (
                     <>
                         <button 
                             onClick={() => scroll('left')} 
@@ -74,57 +70,48 @@ export const PackageSection: React.FC<PackageSectionProps> = ({ onBookClick, lan
                     </>
                 )}
 
-                {/* Horizontal Scroll Container */}
                 <div 
                     ref={scrollContainerRef}
                     className="flex overflow-x-auto gap-4 pb-8 -mx-6 px-6 no-scrollbar snap-x snap-mandatory relative scroll-smooth"
                 >
-                    {packages.map((pkg, idx) => {
-                        const theme = themeColors[pkg.theme] || themeColors.mint;
+                    {packageProducts.map((product, idx) => {
+                        const title = getLocalizedValue(product, 'title');
+                        const desc = getLocalizedValue(product, 'description');
+                        const image = getLocalizedValue(product, 'image') || product.image;
+                        const price = product.price || product.priceVal || 0;
+                        const hasOptions = (product.options || []).some((o: any) => o.name?.trim() && o.price > 0);
                         
                         return (
                             <div 
-                                key={pkg.id || idx}
+                                key={product.id || idx}
                                 className="flex-shrink-0 w-[280px] md:w-[320px] bg-white rounded-[20px] overflow-hidden border border-gray-100 shadow-lg snap-center flex flex-col"
                             >
-                                {/* Header */}
-                                <div className={`h-[140px] ${theme.bg} relative flex flex-col items-center justify-center text-center p-4`}>
-                                    <span className="absolute top-4 left-4 bg-white/30 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded">{theme.badge}</span>
-                                    <div className="text-4xl mb-2 drop-shadow-sm">{theme.icon}</div>
-                                    <h3 className="text-white font-black text-[20px] leading-none drop-shadow-md px-2 break-keep">
-                                        {getLocalizedValue(pkg, 'title')}
-                                    </h3>
+                                <div className="relative w-full aspect-[1.5/1] bg-gray-100 overflow-hidden">
+                                    {image ? (
+                                        <img src={image} alt={title} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">🎁</div>
+                                    )}
                                 </div>
 
-                                {/* Body */}
                                 <div className="p-5 flex-1 flex flex-col">
-                                    <p className="text-[13px] text-gray-500 font-medium mb-4 text-center min-h-[40px] flex items-center justify-center break-keep">
-                                        {getLocalizedValue(pkg, 'description')}
-                                    </p>
-                                    
-                                    <ul className="space-y-2 mb-6 flex-1">
-                                        {pkg.items?.map((item: string, i: number) => (
-                                            <li key={i} className="flex items-start gap-2 text-[13px] text-[#333] font-medium">
-                                                <div className="w-4 h-4 rounded-full bg-[#00C7AE] flex items-center justify-center text-white shrink-0 mt-0.5">
-                                                    <Check size={10} strokeWidth={4} />
-                                                </div>
-                                                <span className="leading-tight">{item}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <h3 className="font-black text-[18px] text-[#111] mb-2 leading-tight break-keep">{title}</h3>
+                                    {desc && (
+                                        <p className="text-[13px] text-gray-500 font-medium mb-4 min-h-[36px] break-keep line-clamp-2">{desc}</p>
+                                    )}
 
-                                    <div className="border-t border-gray-100 pt-4 mb-4">
+                                    <div className="border-t border-gray-100 pt-4 mb-4 mt-auto">
                                         <div className="flex justify-between items-end">
                                             <span className="text-[11px] font-bold text-gray-400">
                                                 {t('per_person')}
                                             </span>
                                             <div className="text-right">
-                                                <span className="font-black text-xl text-[#111]">{convertPrice(pkg.price)}</span>
+                                                <span className="font-black text-xl text-[#111]">{hasOptions ? '~' : ''}{convertPrice(price)}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <button onClick={() => onBookClick(pkg.id)} className="w-full py-3 bg-[#111] text-white font-bold rounded-lg hover:bg-gray-800 transition-all text-sm shadow-md flex items-center justify-center gap-1">
+                                    <button onClick={() => onBookClick(product.id)} className="w-full py-3 bg-[#111] text-white font-bold rounded-lg hover:bg-gray-800 transition-all text-sm shadow-md flex items-center justify-center gap-1">
                                         {t('detail')} <ChevronRight size={14} />
                                     </button>
                                 </div>

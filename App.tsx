@@ -38,7 +38,7 @@ interface ToastMsg {
 }
 
 const AppContent: React.FC = () => {
-  const { language, t, packages, products } = useGlobal();
+  const { language, t, products } = useGlobal();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState<PageView>('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -170,13 +170,11 @@ const AppContent: React.FC = () => {
   }, []);
 
 
-  const handlePackageBookClick = (pkgId: string) => {
-      const pkg = packages.find(p => p.id === pkgId);
-      if (pkg) {
-          setSelectedProduct(pkg);
+  const handlePackageBookClick = (productId: string) => {
+      const product = products.find(p => p.id === productId);
+      if (product) {
+          setSelectedProduct(product);
           navigateTo('product_detail');
-      } else {
-          navigateTo('reservation_basic');
       }
   };
 

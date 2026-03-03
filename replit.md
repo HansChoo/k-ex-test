@@ -29,7 +29,8 @@ A Korean experience platform (K-Experience) built with React, TypeScript, and Vi
 - **Currencies**: KRW, USD, JPY, CNY with real-time exchange rate conversion
 - **UI Translation**: `t()` function with 200+ keys per language in `TRANSLATIONS` object (GlobalContext.tsx). All 4 languages fully translated.
 - **Content Localization**: `getLocalizedValue(data, field)` reads `field_en`, `field_ja`, `field_zh` with Korean fallback
-- **Admin Language Tabs**: Product, Magazine, Package editors have 🇰🇷/🇺🇸/🇨🇳/🇯🇵 tabs for per-language content (title, description, content, image)
+- **Admin Language Tabs**: Product, Magazine editors have 🇰🇷/🇺🇸/🇨🇳/🇯🇵 tabs for per-language content (title, description, content, image)
+- **All-in-One Packages**: Managed as regular products with "올인원 패키지" category (no separate cms_packages collection). PackageSection filters products by category name.
 - **Category Labels**: `label` (ko), `labelEn` (en), `label_ja` (ja), `label_zh` (zh) fields
 - **Firestore Field Pattern**: Korean = base fields (title, description, content, image), Other languages = suffixed fields (title_en, description_en, content_en, image_en, etc.)
 - **Magazine/MagazinePreview**: Uses `getLocalizedValue()` for title, subtitle, content - admin can manage per-language magazine content
@@ -53,7 +54,7 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - Empty states shown instead of crashes for categories, products, etc.
 
 ## Real-Time Sync
-- Uses Firestore `onSnapshot` listeners in `GlobalContext.tsx` for: products, packages, categories, reservations
+- Uses Firestore `onSnapshot` listeners in `GlobalContext.tsx` for: products, categories, reservations
 - Admin dashboard uses separate real-time listeners for admin-specific data (reviews, faqs, etc.)
 - ProductDetail uses per-product onSnapshot listeners for reviews and FAQs
 - All listeners are guarded by `isFirebaseConfigured` flag
@@ -65,10 +66,10 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - **MAP**: Google Maps embed from `mapLocations` array on product document
 
 ## Admin Product Sub-tabs
-- Categories (with 4-language label fields), Items, Packages
+- Categories (with 4-language label fields), Items
 - Product edit modal includes language tabs (🇰🇷/🇺🇸/🇨🇳/🇯🇵) for multilingual content entry
 - Product edit modal includes inline management for: MAP locations, Reviews, FAQ (all per-product, Firebase CRUD)
-- Magazine and Package editors also have language tabs
+- Magazine editor also has language tabs
 - **Product Ordering**: Admin items list has ↑↓ buttons to reorder products; `order` field saved to Firestore via batch write, GlobalContext sorts products by `order` asc (fallback 9999)
 - **Category Ordering**: Admin category list has ↑↓ buttons to reorder categories; `order` field saved via batch write, GlobalContext sorts categories by `order` asc
 - **Product Options**: Admin can add multiple options (name + price) per product. Lowest option price auto-sets as product base price. Options saved as `options` array in Firestore. ProductDetail shows option selection step (STEP 2) before guest info. ProductList/AllProductsPage show "~" prefix for products with options.

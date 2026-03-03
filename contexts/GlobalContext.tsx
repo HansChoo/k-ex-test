@@ -41,7 +41,6 @@ interface GlobalContextType {
   clearCart: () => void;
   t: (key: string) => string;
   products: any[];
-  packages: any[];
   categories: Category[];
   getLocalizedValue: (data: any, field: string) => string;
 }
@@ -456,7 +455,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [wishlist, setWishlist] = useState<(number | string)[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [realtimeProducts, setRealtimeProducts] = useState<any[]>([]);
-  const [packages, setPackages] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
   const [liveRates, setLiveRates] = useState<{ KRW: number; USD: number; JPY: number; CNY: number }>(RATES);
@@ -541,16 +539,6 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!isFirebaseConfigured) return;
-    const q = query(collection(db!, "cms_packages"), orderBy("createdAt", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        setPackages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'package' })));
-    }, (error) => {
-        console.warn("Packages listener error:", error.message);
-    });
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (!isFirebaseConfigured) return;
@@ -658,7 +646,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const displayProducts = realtimeProducts; 
 
   return (
-    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, liveRates, ratesLoaded, wishlist, toggleWishlist, cart, addToCart, removeFromCart, updateCartQuantity, clearCart, t, products: displayProducts, packages, categories, getLocalizedValue }}>
+    <GlobalContext.Provider value={{ language, currency, setGlobalMode, convertPrice, liveRates, ratesLoaded, wishlist, toggleWishlist, cart, addToCart, removeFromCart, updateCartQuantity, clearCart, t, products: displayProducts, categories, getLocalizedValue }}>
       {children}
     </GlobalContext.Provider>
   );

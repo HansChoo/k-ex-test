@@ -30,7 +30,7 @@ export const COUNTRY_CODES = [
     { code: 'CN', name: 'China', dial: '+86', flag: '🇨🇳', lang: 'zh', curr: 'CNY' },
 ];
 
-// NOTE: All-in-One Packages are now fully dynamic from Firestore (cms_packages).
+// NOTE: All-in-One Packages are managed as regular products in the 'products' Firestore collection.
 // Hardcoded data removed to prevent sync issues.
 
 const BASE_PRODUCTS = [

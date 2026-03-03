@@ -36,11 +36,7 @@ export const ReservationPremium: React.FC<ReservationPremiumProps> = () => {
   useEffect(() => { 
       setReviews([]);
       if (!db) { setLoading(false); return; }
-      const unsub = onSnapshot(doc(db, "cms_packages", "package_premium"), (doc) => {
-          if (doc.exists()) setCmsData(doc.data());
-          setLoading(false);
-      });
-      return () => unsub();
+      setLoading(false);
   }, []);
 
   const addGuest = () => {
