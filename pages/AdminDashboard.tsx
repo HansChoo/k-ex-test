@@ -372,13 +372,15 @@ export const AdminDashboard: React.FC<any> = () => {
       if (!db) return;
       const sorted = [...products].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
       if (idx2 < 0 || idx2 >= sorted.length) return;
-      const item1 = sorted[idx1];
-      const item2 = sorted[idx2];
-      const order1 = item1.order ?? idx1;
-      const order2 = item2.order ?? idx2;
+      const needsInit = sorted.some(p => p.order === undefined || p.order === null);
       const batch = writeBatch(db);
-      batch.update(doc(db, 'products', item1.id), { order: order2 });
-      batch.update(doc(db, 'products', item2.id), { order: order1 });
+      if (needsInit) {
+          sorted.forEach((p, i) => {
+              batch.update(doc(db, 'products', p.id), { order: i });
+          });
+      }
+      batch.update(doc(db, 'products', sorted[idx1].id), { order: needsInit ? idx2 : (sorted[idx2].order ?? idx2) });
+      batch.update(doc(db, 'products', sorted[idx2].id), { order: needsInit ? idx1 : (sorted[idx1].order ?? idx1) });
       await batch.commit();
   };
 
@@ -439,13 +441,15 @@ export const AdminDashboard: React.FC<any> = () => {
       if (!db) return;
       const sorted = [...categories].sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
       if (idx2 < 0 || idx2 >= sorted.length) return;
-      const item1 = sorted[idx1];
-      const item2 = sorted[idx2];
-      const order1 = item1.order ?? idx1;
-      const order2 = item2.order ?? idx2;
+      const needsInit = sorted.some(c => c.order === undefined || c.order === null);
       const batch = writeBatch(db);
-      batch.update(doc(db, 'cms_categories', item1.id), { order: order2 });
-      batch.update(doc(db, 'cms_categories', item2.id), { order: order1 });
+      if (needsInit) {
+          sorted.forEach((c, i) => {
+              batch.update(doc(db, 'cms_categories', c.id), { order: i });
+          });
+      }
+      batch.update(doc(db, 'cms_categories', sorted[idx1].id), { order: needsInit ? idx2 : (sorted[idx2].order ?? idx2) });
+      batch.update(doc(db, 'cms_categories', sorted[idx2].id), { order: needsInit ? idx1 : (sorted[idx1].order ?? idx1) });
       await batch.commit();
   };
 
