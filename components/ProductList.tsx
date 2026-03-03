@@ -70,7 +70,7 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
              </div>
         ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-2">
-                {products.map((product: any, idx: number) => {
+                {products.slice(0, 4).map((product: any, idx: number) => {
                     const title = getLocalizedValue(product, 'title');
                     const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price);
 
