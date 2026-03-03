@@ -148,7 +148,11 @@ const TRANSLATIONS: any = {
     tab_all_magazine: '전체',
     rec_health_premium: '프리미엄 종합 건강검진', rec_health_basic: '베이직 건강검진',
     rec_idol_premium: 'K-IDOL 프리미엄 메이크오버', rec_idol_basic: 'K-IDOL 베이직 포토',
-    rec_beauty_premium: '리쥬란힐러 VIP 패키지', rec_beauty_basic: '글래스 스킨 베이직 패키지'
+    rec_beauty_premium: '리쥬란힐러 VIP 패키지', rec_beauty_basic: '글래스 스킨 베이직 패키지',
+    next: '다음', prev: '이전', back: '뒤로', add_guest: '게스트 추가',
+    payment_info: '결제 정보', date_label: '날짜', option_label: '옵션', guests_label: '인원',
+    guests_unit: '명', choose_other_payment: '다른 결제 방법 선택',
+    select_payment: '결제 방법 선택'
   },
   en: {
     login: 'Login', signup: 'Sign Up', mypage: 'My Page', logout: 'Logout',
@@ -247,7 +251,11 @@ const TRANSLATIONS: any = {
     tab_all_magazine: 'All',
     rec_health_premium: 'Premium Health Checkup', rec_health_basic: 'Basic Health Checkup',
     rec_idol_premium: 'K-IDOL Premium Makeover', rec_idol_basic: 'K-IDOL Basic Photoshoot',
-    rec_beauty_premium: 'Rejuran Healer VIP Package', rec_beauty_basic: 'Glass Skin Basic Package'
+    rec_beauty_premium: 'Rejuran Healer VIP Package', rec_beauty_basic: 'Glass Skin Basic Package',
+    next: 'Next', prev: 'Back', back: 'Back', add_guest: 'Add Guest',
+    payment_info: 'Payment', date_label: 'Date', option_label: 'Option', guests_label: 'Guests',
+    guests_unit: '', choose_other_payment: 'Choose another payment method',
+    select_payment: 'Select payment method'
   },
   ja: {
     login: 'ログイン', signup: '会員登録', mypage: 'マイページ', logout: 'ログアウト',
@@ -346,7 +354,11 @@ const TRANSLATIONS: any = {
     tab_all_magazine: 'すべて',
     rec_health_premium: 'プレミアム総合健康診断', rec_health_basic: 'ベーシック健康診断',
     rec_idol_premium: 'K-IDOLプレミアムメイクオーバー', rec_idol_basic: 'K-IDOLベーシックフォト',
-    rec_beauty_premium: 'リジュランヒーラーVIPパッケージ', rec_beauty_basic: 'グラススキンベーシックパッケージ'
+    rec_beauty_premium: 'リジュランヒーラーVIPパッケージ', rec_beauty_basic: 'グラススキンベーシックパッケージ',
+    next: '次へ', prev: '戻る', back: '戻る', add_guest: 'ゲスト追加',
+    payment_info: 'お支払い', date_label: '日付', option_label: 'オプション', guests_label: '人数',
+    guests_unit: '名', choose_other_payment: '他の支払い方法を選択',
+    select_payment: '支払い方法を選択'
   },
   zh: {
     login: '登录', signup: '注册', mypage: '我的页面', logout: '退出',
@@ -445,7 +457,11 @@ const TRANSLATIONS: any = {
     tab_all_magazine: '全部',
     rec_health_premium: '尊享综合健康检查', rec_health_basic: '基础健康检查',
     rec_idol_premium: 'K-IDOL尊享美妆改造', rec_idol_basic: 'K-IDOL基础写真',
-    rec_beauty_premium: '丽珠兰VIP套餐', rec_beauty_basic: '水光肌基础套餐'
+    rec_beauty_premium: '丽珠兰VIP套餐', rec_beauty_basic: '水光肌基础套餐',
+    next: '下一步', prev: '返回', back: '返回', add_guest: '添加旅客',
+    payment_info: '支付信息', date_label: '日期', option_label: '选项', guests_label: '人数',
+    guests_unit: '人', choose_other_payment: '选择其他支付方式',
+    select_payment: '选择支付方式'
   }
 };
 

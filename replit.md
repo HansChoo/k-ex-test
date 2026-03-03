@@ -65,6 +65,15 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - **FAQ**: Firebase `faqs` collection, filtered by productId, accordion UI, real-time sync
 - **MAP**: Google Maps embed from `mapLocations` array on product document
 
+## Mobile Booking Flow
+- **Desktop**: Right sidebar with sticky booking panel (date → option → guest → payment)
+- **Mobile (lg:hidden)**: Fixed bottom bar with price + "Book Now" button
+- **Mobile Modal**: Full-screen step-by-step booking flow (date → option → guest info → payment)
+- Step indicator with progress bar at top, Back/Next navigation at bottom
+- Guest validation requires name + messengerId before proceeding to payment
+- PayPal checkout fully supported in mobile modal
+- All UI text uses `t()` translation keys for 4-language support
+
 ## Admin Product Sub-tabs
 - Categories (with 4-language label fields), Items
 - Product edit modal includes language tabs (🇰🇷/🇺🇸/🇨🇳/🇯🇵) for multilingual content entry

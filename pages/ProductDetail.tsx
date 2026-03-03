@@ -24,6 +24,8 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'full' | 'deposit'>('full');
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [mobileBookingOpen, setMobileBookingOpen] = useState(false);
+  const [mobileStep, setMobileStep] = useState<'date' | 'option' | 'guest' | 'payment'>('date');
   const productOptions: {name: string; price: number}[] = product.options || [];
   
   const NATIONALITIES = [
@@ -446,9 +448,9 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                     {paymentSuccess ? (
                         <div className="text-center py-6 animate-fade-in">
                             <CheckCircle size={48} className="text-green-500 mx-auto mb-3"/>
-                            <h3 className="text-lg font-black text-[#111] mb-2">{isKo ? '결제 완료!' : 'Payment Complete!'}</h3>
-                            <p className="text-sm text-gray-500 mb-4">{isKo ? '예약이 확정되었습니다. 마이페이지에서 확인하세요.' : 'Your reservation is confirmed. Check My Page for details.'}</p>
-                            <button onClick={() => window.location.href = '/'} className="bg-[#0070F0] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-600">{isKo ? '홈으로' : 'Go Home'}</button>
+                            <h3 className="text-lg font-black text-[#111] mb-2">{t('payment_complete')}</h3>
+                            <p className="text-sm text-gray-500 mb-4">{t('reservation_confirmed')}</p>
+                            <button onClick={() => window.location.href = '/'} className="bg-[#0070F0] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-600">{t('go_home')}</button>
                         </div>
                     ) : (
                         <>
@@ -460,17 +462,17 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                                 </button>
                             ) : (
                                 <div className="space-y-3 animate-fade-in">
-                                    <p className="text-xs text-gray-500 text-center font-bold">{isKo ? 'PayPal로 안전하게 결제하세요' : 'Pay securely with PayPal'}</p>
+                                    <p className="text-xs text-gray-500 text-center font-bold">{t('pay_securely')}</p>
                                     <PayPalCheckout
                                         amount={krwToUsd(getPrice(), exchangeRate)}
                                         description={`${title} - ${selectedDate}`}
                                         items={[{ name: title.substring(0, 127), price: krwToUsd(getPrice() / guestList.length, exchangeRate), quantity: guestList.length }]}
                                         onSuccess={handlePayPalSuccess}
-                                        onError={(err) => { alert(isKo ? '결제 중 오류가 발생했습니다. 다시 시도해주세요.' : 'Payment error. Please try again.'); console.error(err); }}
+                                        onError={(err) => { alert(t('payment_error')); console.error(err); }}
                                         onCancel={() => { setShowPayPal(false); }}
                                         language={language}
                                     />
-                                    <button onClick={() => setShowPayPal(false)} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2">{isKo ? '다른 결제 방법 선택' : 'Choose another payment method'}</button>
+                                    <button onClick={() => setShowPayPal(false)} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2">{t('choose_other_payment')}</button>
                                 </div>
                             )}
                         </>
@@ -479,6 +481,274 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             </div>
         </div>
       </div>
+
+      {!mobileBookingOpen && !paymentSuccess && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <span className="text-[20px] font-black text-[#111]">{convertPrice(getPrice() / (selectedPayment === 'deposit' ? 0.2 : 1))}</span>
+              {currency !== 'KRW' && ratesLoaded && <span className="text-[9px] text-green-600 font-medium flex items-center gap-1 mt-0.5"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>{t('live_rate')}</span>}
+            </div>
+            <button onClick={() => { setMobileBookingOpen(true); setMobileStep('date'); }} className="bg-[#0070F0] text-white px-8 py-3.5 rounded-xl font-bold text-[15px] shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center gap-2">
+              <CalendarIcon size={18}/> {t('book_now')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mobileBookingOpen && (
+        <div className="lg:hidden fixed inset-0 bg-white z-[60] flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+            <button onClick={() => setMobileBookingOpen(false)} className="flex items-center gap-1 text-gray-500 font-bold text-sm">
+              <ChevronLeft size={20}/> {t('back')}
+            </button>
+            <h2 className="font-black text-[15px] text-[#111]">{t('book_now')}</h2>
+            <div className="w-16"></div>
+          </div>
+
+          <div className="flex items-center gap-1 px-4 py-3 bg-gray-50 border-b border-gray-100">
+            {['date', ...(productOptions.length > 0 ? ['option'] : []), 'guest', 'payment'].map((step, idx) => {
+              const steps = ['date', ...(productOptions.length > 0 ? ['option'] : []), 'guest', 'payment'];
+              const currentIdx = steps.indexOf(mobileStep);
+              const isActive = step === mobileStep;
+              const isDone = idx < currentIdx;
+              return (
+                <React.Fragment key={step}>
+                  {idx > 0 && <div className={`flex-1 h-0.5 ${isDone ? 'bg-[#0070F0]' : 'bg-gray-200'}`}></div>}
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isActive ? 'bg-[#0070F0] text-white' : isDone ? 'bg-[#0070F0] text-white' : 'bg-gray-200 text-gray-400'}`}>
+                    {isDone ? <Check size={14}/> : idx + 1}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-5">
+            {mobileStep === 'date' && (
+              <div className="animate-fade-in">
+                <h3 className="text-lg font-black text-[#111] mb-1">{t('step1')}</h3>
+                <p className="text-sm text-gray-500 mb-4">{t('step1_label')}</p>
+                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                  {DAYS.map(d => <div key={d} className="text-[10px] font-bold text-gray-400 py-1">{d}</div>)}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: new Date(calendarYear, calendarMonth, 1).getDay() }, (_, i) => <div key={`empty-${i}`}></div>)}
+                  {CALENDAR_DAYS.map(day => (
+                    <button key={day} onClick={() => { handleDateSelect(day); }} className={`h-11 text-sm rounded-lg font-medium transition-colors ${selectedDate?.endsWith(day.toString().padStart(2,'0')) ? 'bg-[#0070F0] text-white font-bold' : 'hover:bg-gray-100'}`}>{day}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mobileStep === 'option' && productOptions.length > 0 && (
+              <div className="animate-fade-in">
+                <h3 className="text-lg font-black text-[#111] mb-1">{t('step2')}</h3>
+                <p className="text-sm text-gray-500 mb-4">{t('select_option')}</p>
+                <div className="space-y-3">
+                  {productOptions.map((opt, idx) => (
+                    <button key={idx} onClick={() => setSelectedOption(idx)} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-left ${selectedOption === idx ? 'border-[#0070F0] bg-blue-50' : 'border-gray-200'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedOption === idx ? 'border-[#0070F0] bg-[#0070F0]' : 'border-gray-300'}`}>
+                          {selectedOption === idx && <Check size={14} className="text-white"/>}
+                        </div>
+                        <span className={`font-bold ${selectedOption === idx ? 'text-[#0070F0]' : 'text-[#333]'}`}>{opt.name}</span>
+                      </div>
+                      <span className="font-black">{convertPrice(opt.price)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mobileStep === 'guest' && (
+              <div className="animate-fade-in">
+                <h3 className="text-lg font-black text-[#111] mb-1">{productOptions.length > 0 ? t('step3') : t('step2')}</h3>
+                <p className="text-sm text-gray-500 mb-4">{t('step2_label')}</p>
+                <div className="space-y-4">
+                  {guestList.map((guest, idx) => (
+                    <div key={guest.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-black text-gray-500 flex items-center gap-1"><UserPlus size={12}/> {t('guests_label')} {idx + 1}</span>
+                        {idx > 0 && <button onClick={() => removeGuest(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>}
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-400 block mb-1">{t('passport_name')}</label>
+                          <input type="text" placeholder="e.g. HONG GILDONG" value={guest.name} onChange={e => updateGuest(idx, 'name', e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white uppercase"/>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] font-bold text-gray-400 block mb-1">{t('date_of_birth')}</label>
+                            <input type="date" value={guest.dob} onChange={e => updateGuest(idx, 'dob', e.target.value)} className="w-full border p-2.5 rounded-lg text-sm text-gray-500 bg-white"/>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-gray-400 block mb-1">{t('nationality')}</label>
+                            <select value={guest.nationality} onChange={e => updateGuest(idx, 'nationality', e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white">
+                              <option value="">{t('select_nationality')}</option>
+                              {NATIONALITIES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-bold text-gray-400 block mb-1">{t('phone_number')}</label>
+                          <div className="flex gap-2">
+                            <span className="border p-2.5 rounded-lg text-sm bg-gray-100 text-gray-600 font-bold min-w-[55px] text-center">{guest.countryCode}</span>
+                            <input type="tel" placeholder="000-0000-0000" value={guest.phone} onChange={e => updateGuest(idx, 'phone', e.target.value)} className="flex-1 border p-2.5 rounded-lg text-sm bg-white"/>
+                          </div>
+                        </div>
+                        {idx === 0 && (
+                          <div className="pt-3 border-t border-gray-200 mt-2">
+                            <label className="text-[11px] font-bold text-blue-600 block mb-1.5 flex items-center gap-1"><MessageCircle size={11}/> {t('representative_contact')}</label>
+                            <div className="flex gap-2">
+                              <select value={guest.messengerApp} onChange={e => updateGuest(idx, 'messengerApp', e.target.value)} className="border p-2 rounded-lg text-sm bg-white font-bold w-1/3">
+                                <option value="WhatsApp">WhatsApp</option>
+                                <option value="KakaoTalk">KakaoTalk</option>
+                                <option value="Line">LINE</option>
+                                <option value="WeChat">WeChat</option>
+                              </select>
+                              <input type="text" placeholder={t('messenger_id_placeholder')} value={guest.messengerId} onChange={e => updateGuest(idx, 'messengerId', e.target.value)} className="w-2/3 border p-2.5 rounded-lg text-sm bg-white"/>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={addGuest} className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-sm flex items-center justify-center gap-2 hover:border-blue-400 hover:text-blue-500 transition-colors">
+                    <Plus size={16}/> {t('add_guest')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {mobileStep === 'payment' && (
+              <div className="animate-fade-in">
+                {paymentSuccess ? (
+                  <div className="text-center py-10">
+                    <CheckCircle size={56} className="text-green-500 mx-auto mb-4"/>
+                    <h3 className="text-xl font-black text-[#111] mb-2">{t('payment_complete')}</h3>
+                    <p className="text-sm text-gray-500 mb-6">{t('reservation_confirmed')}</p>
+                    <button onClick={() => { setMobileBookingOpen(false); window.location.href = '/'; }} className="bg-[#0070F0] text-white px-8 py-3 rounded-xl font-bold text-sm hover:bg-blue-600">{t('go_home')}</button>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-black text-[#111] mb-4">{t('payment_info')}</h3>
+
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="text-gray-500">{t('date_label')}</span>
+                        <span className="font-bold">{selectedDate}</span>
+                      </div>
+                      {selectedOption !== null && productOptions[selectedOption] && (
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-gray-500">{t('option_label')}</span>
+                          <span className="font-bold">{productOptions[selectedOption].name}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">{t('guests_label')}</span>
+                        <span className="font-bold">{guestList.length}{t('guests_unit')}</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <p className="text-[13px] font-bold text-[#333] mb-2">{t('payment_type')}</p>
+                      <div className="flex flex-col gap-2">
+                        {['deposit', 'full'].map(p => (
+                          <button key={p} onClick={() => setSelectedPayment(p as any)} className={`w-full py-3 px-4 border rounded-xl text-[14px] text-left flex justify-between ${selectedPayment === p ? 'border-[#0070F0] bg-[#F0F8FF] text-[#0070F0] font-bold' : 'border-[#ddd]'}`}>
+                            {p === 'deposit' ? t('pay_deposit') : t('pay_full')}
+                            {selectedPayment === p && <Check size={16} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-gray-200 mb-4">
+                      <label className="block text-xs font-bold text-gray-500 mb-1">{t('coupon_code')}</label>
+                      <div className="flex gap-2">
+                        <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm uppercase bg-white" placeholder="CODE"/>
+                        <button onClick={handleApplyCoupon} className="bg-black text-white px-4 py-2 rounded-lg text-xs font-bold">{t('apply')}</button>
+                      </div>
+                      {couponMessage && <p className={`text-[11px] mt-1 font-bold ${appliedCoupon ? 'text-green-600' : 'text-red-500'}`}>{couponMessage}</p>}
+                    </div>
+
+                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl mb-4">
+                      <span className="text-[15px] font-bold text-[#555]">{t('total')}</span>
+                      <span className="text-[22px] font-black text-[#111]">{convertPrice(getPrice())}</span>
+                    </div>
+
+                    {!showPayPal ? (
+                      <button onClick={handleReservation} className="w-full bg-[#0070F0] text-white py-4 rounded-xl font-bold text-[15px] shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <CreditCard size={18}/> {t('book_now')}
+                      </button>
+                    ) : (
+                      <div className="space-y-3 animate-fade-in">
+                        <p className="text-xs text-gray-500 text-center font-bold">{t('pay_securely')}</p>
+                        <PayPalCheckout
+                          amount={krwToUsd(getPrice(), exchangeRate)}
+                          description={`${title} - ${selectedDate}`}
+                          items={[{ name: title.substring(0, 127), price: krwToUsd(getPrice() / guestList.length, exchangeRate), quantity: guestList.length }]}
+                          onSuccess={handlePayPalSuccess}
+                          onError={(err) => { alert(t('payment_error')); console.error(err); }}
+                          onCancel={() => { setShowPayPal(false); }}
+                          language={language}
+                        />
+                        <button onClick={() => setShowPayPal(false)} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2">{t('choose_other_payment')}</button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {!paymentSuccess && (
+            <div className="px-4 py-3 border-t border-gray-200 bg-white">
+              {mobileStep === 'date' && (
+                <button
+                  onClick={() => setMobileStep(productOptions.length > 0 ? 'option' : 'guest')}
+                  disabled={!selectedDate}
+                  className={`w-full py-3.5 rounded-xl font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${selectedDate ? 'bg-[#0070F0] text-white active:scale-95 shadow-lg shadow-blue-200' : 'bg-gray-200 text-gray-400'}`}
+                >
+                  {t('next')} <ChevronRight size={18}/>
+                </button>
+              )}
+              {mobileStep === 'option' && (
+                <div className="flex gap-3">
+                  <button onClick={() => setMobileStep('date')} className="flex-1 py-3.5 rounded-xl font-bold text-[15px] border border-gray-300 text-gray-600">
+                    {t('prev')}
+                  </button>
+                  <button
+                    onClick={() => setMobileStep('guest')}
+                    disabled={selectedOption === null}
+                    className={`flex-[2] py-3.5 rounded-xl font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${selectedOption !== null ? 'bg-[#0070F0] text-white active:scale-95' : 'bg-gray-200 text-gray-400'}`}
+                  >
+                    {t('next')} <ChevronRight size={18}/>
+                  </button>
+                </div>
+              )}
+              {mobileStep === 'guest' && (
+                <div className="flex gap-3">
+                  <button onClick={() => setMobileStep(productOptions.length > 0 ? 'option' : 'date')} className="flex-1 py-3.5 rounded-xl font-bold text-[15px] border border-gray-300 text-gray-600">
+                    {t('prev')}
+                  </button>
+                  <button
+                    onClick={() => setMobileStep('payment')}
+                    disabled={!guestList[0].name || !guestList[0].messengerId}
+                    className={`flex-[2] py-3.5 rounded-xl font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${guestList[0].name && guestList[0].messengerId ? 'bg-[#0070F0] text-white active:scale-95' : 'bg-gray-200 text-gray-400'}`}
+                  >
+                    {t('proceed_payment')} <CreditCard size={18}/>
+                  </button>
+                </div>
+              )}
+              {mobileStep === 'payment' && !showPayPal && (
+                <button onClick={() => setMobileStep('guest')} className="w-full py-3.5 rounded-xl font-bold text-[15px] border border-gray-300 text-gray-600">
+                  {t('prev')}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
