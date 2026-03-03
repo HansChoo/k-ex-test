@@ -119,8 +119,17 @@ All Firebase credentials are managed via environment variables (no hardcoded val
 - `PRODUCTS_DATA` in constants.ts is reference data for AI chatbot only, not displayed in UI
 
 ## Guest Reservation Form
-- All fields with labels: Passport Name, Date of Birth, Gender, Nationality (dropdown: US/CN/JP), Phone Number (auto country code +1/+86/+81), Messenger App (WhatsApp/KakaoTalk/LINE/WeChat), Messenger ID
+- All fields with labels: Passport Name, Date of Birth, Gender, Nationality (dropdown: 60+ countries), Phone Number (auto country code based on nationality), Messenger App (WhatsApp/KakaoTalk/LINE/WeChat), Messenger ID
+- NATIONALITIES array in ProductDetail.tsx includes 60+ countries with ISO codes and phone country codes
 - All labels use `t()` function for multilingual display
+
+## Mobile Product Detail Layout
+- BottomNav always visible on mobile (md:hidden, fixed bottom-0, z-50, h-[80px])
+- Booking bar positioned above BottomNav on mobile (bottom-[80px] md:bottom-0)
+- Full-screen booking modal (z-[60]) overlays everything when opened
+
+## Product Card Consistency
+- ProductList (home) and AllProductsPage use identical card styles: aspect-square images, rounded-[16px], p-4, category emoji+label, text-[14px] title, text-[16px] price
 
 ## Running the App
 - **Dev**: `npm run dev` (starts Express backend + Vite frontend)

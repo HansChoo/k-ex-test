@@ -76,22 +76,26 @@ export const ProductList: React.FC<ProductListProps> = ({ initialCategory, onVie
 
                     return (
                         <ScrollReveal key={idx} delay={idx * 30}>
-                            <div className="bg-white rounded-[12px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col h-full cursor-pointer group relative" onClick={() => handleProductClick(product)}>
-                                <div className="relative aspect-[3/2] bg-gray-50 overflow-hidden">
+                            <div className="bg-white rounded-[16px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col h-full cursor-pointer group relative" onClick={() => handleProductClick(product)}>
+                                <div className="relative aspect-square bg-gray-50 overflow-hidden">
                                     <img src={getLocalizedValue(product, 'image') || product.image} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } toggleWishlist(product.id); }}
-                                        className="absolute top-2 right-2 w-7 h-7 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"
+                                        className="absolute top-2 right-2 w-8 h-8 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center z-10"
                                     >
-                                        <Heart size={12} className={`transition-colors ${wishlist.some(w => String(w) === String(product.id)) ? "fill-red-500 text-red-500" : "text-white"}`} />
+                                        <Heart size={14} className={`transition-colors ${wishlist.some(w => String(w) === String(product.id)) ? "fill-red-500 text-red-500" : "text-white"}`} />
                                     </button>
                                 </div>
-                                <div className="p-3 flex flex-col flex-1">
-                                    <h3 className="text-[13px] font-bold text-[#111] leading-tight mb-2 line-clamp-2">{title}</h3>
+                                <div className="p-4 flex flex-col flex-1">
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mb-1">
+                                        {product.category?.includes('건강') ? '🏥' : product.category?.includes('뷰티') ? '💄' : '🎤'} 
+                                        <span>{product.category}</span>
+                                    </div>
+                                    <h3 className="text-[14px] font-bold text-[#111] leading-tight mb-4 line-clamp-2">{title}</h3>
                                     <div className="mt-auto flex items-center justify-between">
-                                        <span className="font-black text-[14px] text-[#111]">{(product.options?.length > 0) && <span className="text-[10px] font-bold text-gray-400 mr-0.5">~</span>}{convertPrice(numericPrice)}</span>
-                                        <button onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } addToCart(product); }} className="bg-[#0070F0] text-white rounded-md p-1 hover:bg-blue-600 transition-colors">
-                                            <Plus size={14}/>
+                                        <span className="font-black text-[16px] text-[#111]">{(product.options?.length > 0) && <span className="text-[10px] font-bold text-gray-400 mr-0.5">~</span>}{convertPrice(numericPrice)}</span>
+                                        <button onClick={(e) => { e.stopPropagation(); if (!auth?.currentUser) { window.dispatchEvent(new Event('open-auth-modal')); return; } addToCart(product); }} className="bg-[#0070F0] text-white rounded-lg p-1.5 hover:bg-blue-600 transition-colors">
+                                            <Plus size={16}/>
                                         </button>
                                     </div>
                                 </div>
