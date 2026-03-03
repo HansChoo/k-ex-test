@@ -38,8 +38,6 @@ const CARD_THEMES = [
 
 export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
   const { t, convertPrice, language, products } = useGlobal();
-  const isEn = language !== 'ko';
-  const isKo = language === 'ko';
 
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [groupList, setGroupList] = useState<GroupBuyItem[]>([]);
@@ -97,13 +95,13 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
   const handleJoin = async (group: GroupBuyItem) => {
       if (!auth?.currentUser) {
-          alert(isEn ? "Please login first." : "로그인이 필요합니다.");
+          alert(t('login_required'));
           return;
       }
       
       const participants = group.participants || [];
       if (participants.includes(auth!.currentUser!.uid)) {
-          alert(isEn ? "You already joined." : "이미 참여중인 공동구매입니다.");
+          alert(t('already_joined'));
           return;
       }
 
@@ -116,9 +114,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
       const currentPrice = originalPrice * (1 - discountRate);
       const deposit = Math.round(currentPrice * 0.2);
 
-      const confirmMsg = isEn 
-        ? `Join this group?\nDeposit: ${convertPrice(deposit)}` 
-        : `공동구매에 참여하시겠습니까?\n예약금 결제: ${convertPrice(deposit)}`;
+      const confirmMsg = `${t('join_confirm')} ${convertPrice(deposit)}`;
         
       if (!confirm(confirmMsg)) return;
 
@@ -137,13 +133,13 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
               currentCount: increment(1),
               participants: arrayUnion(auth!.currentUser!.uid)
           });
-          alert(isEn ? "Joined successfully!" : "참여가 완료되었습니다!");
+          alert(t('joined_success'));
       }
   };
 
   const handleOpenCreateModal = () => {
       if (!auth?.currentUser) {
-          alert(isEn ? "Please login to create a group." : "공동구매를 생성하려면 로그인이 필요합니다.");
+          alert(t('login_to_create'));
           return;
       }
       setNewGroupType('public');
@@ -185,12 +181,12 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
 
   const handleCreateGroupSubmit = async () => {
       // Validate
-      if (!newGroupData.productId || !newGroupData.visitDate) return alert("상품과 날짜를 선택해주세요.");
+      if (!newGroupData.productId || !newGroupData.visitDate) return alert(t('select_product_date'));
       
       for (let i = 0; i < newGroupData.participants.length; i++) {
           const p = newGroupData.participants[i];
           if (!p.name || !p.email || !p.phone || !p.dob) {
-              return alert(isEn ? `Please fill in all details for Participant ${i+1}` : `참여자 ${i+1}의 정보를 모두 입력해주세요.`);
+              return alert(t('fill_participant').replace('{n}', String(i+1)));
           }
       }
 
@@ -238,7 +234,7 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                 status: 'active',
                 createdAt: serverTimestamp()
             });
-            alert(isEn ? "Group Created!" : "공동구매가 생성되었습니다!");
+            alert(t('group_created'));
             setIsCreateModalOpen(false);
           } catch (e) {
               console.error(e);
@@ -304,11 +300,11 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                       <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                           <div className="bg-white/15 backdrop-blur border border-white/20 px-4 py-2.5 rounded-xl flex items-center gap-2">
                               <TrendingDown size={16} className="text-yellow-400" />
-                              <span className="text-white font-bold text-[13px]">{isKo ? '최대 30% 할인' : 'Up to 30% off'}</span>
+                              <span className="text-white font-bold text-[13px]">{t('gb_max_discount')}</span>
                           </div>
                           <div className="bg-white/15 backdrop-blur border border-white/20 px-4 py-2.5 rounded-xl flex items-center gap-2">
                               <Users size={16} className="text-yellow-400" />
-                              <span className="text-white font-bold text-[13px]">{isKo ? '10명 모집 시 성공!' : '10 people = Success!'}</span>
+                              <span className="text-white font-bold text-[13px]">{t('gb_success_count')}</span>
                           </div>
                       </div>
                   </div>
@@ -316,16 +312,16 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                   <div className="hidden md:flex flex-col items-center gap-3">
                       <div className="bg-white/15 backdrop-blur-lg border border-white/20 rounded-3xl p-8 text-center min-w-[200px]">
                           <div className="text-[48px] font-black text-yellow-400 leading-none mb-1">30%</div>
-                          <div className="text-white/70 text-sm font-bold">{isKo ? '최대 할인율' : 'Max Discount'}</div>
+                          <div className="text-white/70 text-sm font-bold">{t('max_discount_label')}</div>
                       </div>
                       <div className="flex gap-3 w-full">
                           <div className="flex-1 bg-white/15 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
                               <div className="text-xl font-black text-white">{activeGroupCount}</div>
-                              <div className="text-white/60 text-[11px] font-bold">{isKo ? '진행중' : 'Active'}</div>
+                              <div className="text-white/60 text-[11px] font-bold">{t('status_active')}</div>
                           </div>
                           <div className="flex-1 bg-white/15 backdrop-blur border border-white/20 rounded-2xl p-4 text-center">
                               <div className="text-xl font-black text-white">20%</div>
-                              <div className="text-white/60 text-[11px] font-bold">{isKo ? '예약금' : 'Deposit'}</div>
+                              <div className="text-white/60 text-[11px] font-bold">{t('deposit_label')}</div>
                           </div>
                       </div>
                   </div>
@@ -337,10 +333,10 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
       <div className="sticky top-[60px] z-30 bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-[800px] mx-auto flex">
               <button onClick={() => setActiveTab('active')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'active' ? 'text-[#0070F0] border-b-2 border-[#0070F0]' : 'text-gray-400 hover:text-gray-600'}`}>
-                  <Users size={16}/> {isEn ? 'Active Groups' : '진행중인 공동구매'}
+                  <Users size={16}/> {t('active_groups')}
               </button>
               <button onClick={() => setActiveTab('completed')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === 'completed' ? 'text-gray-700 border-b-2 border-gray-700' : 'text-gray-400 hover:text-gray-600'}`}>
-                  <Archive size={16}/> {isEn ? 'Finished' : '마감된 공동구매'}
+                  <Archive size={16}/> {t('finished_groups')}
               </button>
           </div>
       </div>
@@ -459,17 +455,11 @@ export const GroupBuyingPage: React.FC<GroupBuyingPageProps> = () => {
                 </div>
 
                 <h3 className="text-2xl font-black text-[#111] mb-3 leading-snug text-center">
-                    {activeTab === 'completed' 
-                        ? (isEn ? "No Finished Groups" : "마감된 내역이 없습니다")
-                        : (isEn ? "No Active Groups" : "진행 중인 공동구매가 없습니다")
-                    }
+                    {activeTab === 'completed' ? t('no_finished') : t('no_active_groups')}
                 </h3>
                 
                 <p className="text-gray-500 text-sm md:text-base max-w-sm text-center mb-10 leading-relaxed font-medium">
-                    {activeTab === 'active' 
-                        ? (isEn ? "New group buys will be posted here soon. Stay tuned for great deals!" : "곧 새로운 공동구매가 열릴 예정입니다. 함께하면 최대 30% 할인!")
-                        : (isEn ? "Check back later for finished events." : "완료된 공동구매 내역이 이곳에 표시됩니다.")
-                    }
+                    {activeTab === 'active' ? t('active_coming_soon') : t('finished_check_later')}
                 </p>
             </div>
         )}

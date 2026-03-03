@@ -16,8 +16,7 @@ interface ProductDetailProps {
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const { language, t, convertPrice, wishlist, toggleWishlist, getLocalizedValue, products, currency, ratesLoaded } = useGlobal();
-  const isEn = language !== 'ko';
-  const isKo = language === 'ko';
+
   
   const [activeTab, setActiveTab] = useState<'detail' | 'faq' | 'reviews' | 'map'>('detail');
   const [openSection, setOpenSection] = useState<'date' | 'options' | 'select-option' | null>('date');
@@ -160,7 +159,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
 
   const handleReservation = async () => {
     if (!selectedDate) return alert(t('select_date'));
-    if (!guestList[0].name || !guestList[0].messengerId) return alert(isKo ? "이름과 메신저 ID를 입력해주세요." : "Please enter name and messenger ID.");
+    if (!guestList[0].name || !guestList[0].messengerId) return alert(t('enter_name_messenger'));
 
     const { available } = await checkAvailability(selectedDate);
     if (available < guestList.length) return alert("Sold Out");
@@ -244,7 +243,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                     {reviews.length === 0 ? (
                       <div className="text-center py-20 text-gray-400">
                         <Star size={40} className="mx-auto mb-3 text-gray-200"/>
-                        <p className="font-bold">{isKo ? '아직 등록된 리뷰가 없습니다.' : 'No reviews yet.'}</p>
+                        <p className="font-bold">{t('no_reviews')}</p>
                       </div>
                     ) : (
                       <div className="space-y-6">
@@ -252,7 +251,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                           <div className="text-center">
                             <p className="text-3xl font-black text-[#111]">{(reviews.reduce((a, r) => a + (r.rating || 5), 0) / reviews.length).toFixed(1)}</p>
                             <div className="flex gap-0.5 justify-center mt-1">{renderStars(Math.round(reviews.reduce((a, r) => a + (r.rating || 5), 0) / reviews.length))}</div>
-                            <p className="text-xs text-gray-400 mt-1">{reviews.length}{isKo ? '개 리뷰' : ' reviews'}</p>
+                            <p className="text-xs text-gray-400 mt-1">{reviews.length + t('review_count')}</p>
                           </div>
                         </div>
                         {reviews.map((rev) => (
@@ -280,7 +279,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                     {faqs.length === 0 ? (
                       <div className="text-center py-20 text-gray-400">
                         <MessageCircle size={40} className="mx-auto mb-3 text-gray-200"/>
-                        <p className="font-bold">{isKo ? '등록된 FAQ가 없습니다.' : 'No FAQs available.'}</p>
+                        <p className="font-bold">{t('no_faqs')}</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -314,7 +313,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                     {mapLocations.length === 0 ? (
                       <div className="text-center py-20 text-gray-400">
                         <MapPin size={40} className="mx-auto mb-3 text-gray-200"/>
-                        <p className="font-bold">{isKo ? '등록된 방문지 정보가 없습니다.' : 'No location information available.'}</p>
+                        <p className="font-bold">{t('no_locations')}</p>
                       </div>
                     ) : (
                       <div className="space-y-6">

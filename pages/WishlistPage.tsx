@@ -9,7 +9,6 @@ interface WishlistPageProps {
 
 export const WishlistPage: React.FC<WishlistPageProps> = () => {
     const { wishlist, toggleWishlist, language, convertPrice, t, products, getLocalizedValue } = useGlobal();
-    const isKo = language === 'ko';
 
     const wishlistedItems = products.filter(p => 
         wishlist.some(wId => String(wId) === String(p.id))
@@ -30,13 +29,13 @@ export const WishlistPage: React.FC<WishlistPageProps> = () => {
                 <div className="text-center py-32 bg-gray-50 rounded-2xl border border-gray-100">
                     <ShoppingBag size={48} className="mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-500 font-medium">
-                        {isKo ? '위시리스트가 비어 있습니다.' : 'Your wishlist is empty.'}
+                        {t('wishlist_empty')}
                     </p>
                     <button 
                         onClick={() => { window.location.hash = ''; window.location.reload(); }}
                         className="mt-4 text-blue-600 font-bold hover:underline"
                     >
-                        {isKo ? '쇼핑하러 가기' : 'Go Shopping'}
+                        {t('go_shopping')}
                     </button>
                 </div>
             ) : (
@@ -69,7 +68,7 @@ export const WishlistPage: React.FC<WishlistPageProps> = () => {
                                 <button 
                                     onClick={() => toggleWishlist(product.id)}
                                     className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
-                                    title={isKo ? '삭제' : 'Remove'}
+                                    title={t('remove')}
                                 >
                                     <X size={20} />
                                 </button>
