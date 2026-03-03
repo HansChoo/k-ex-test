@@ -403,9 +403,8 @@ export const MyPage: React.FC<any> = () => {
                         </button>
                         {selectedWishlistItems.length > 0 && (
                             <button onClick={() => {
-                                const allItems = products;
                                 selectedWishlistItems.forEach(wId => {
-                                    const product = allItems.find(p => String(p.id) === String(wId));
+                                    const product = products.find(p => String(p.id) === String(wId));
                                     if (product) { addToCart(product); toggleWishlist(wId); }
                                 });
                                 setSelectedWishlistItems([]);
@@ -422,8 +421,7 @@ export const MyPage: React.FC<any> = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {wishlist.map((wId) => {
-                        const allItems = products;
-                        const product = allItems.find(p => String(p.id) === String(wId));
+                        const product = products.find(p => String(p.id) === String(wId));
                         if (!product) return null;
                         const title = getLocalizedValue(product, 'title');
                         const numericPrice = product.priceVal || (typeof product.price === 'string' ? parseInt(product.price.replace(/[^0-9]/g,'')) : product.price);
@@ -468,14 +466,17 @@ export const MyPage: React.FC<any> = () => {
                     <div className="space-y-4 mb-6">
                         {cart.map((item) => {
                             const isSelected = selectedCartItems.includes(item.productId);
+                            const cartProduct = products.find(p => String(p.id) === item.productId);
+                            const cartTitle = cartProduct ? getLocalizedValue(cartProduct, 'title') : item.title;
+                            const cartImage = cartProduct ? (getLocalizedValue(cartProduct, 'image') || cartProduct.image || item.image) : item.image;
                             return (
                                 <div key={item.productId} className={`bg-white border rounded-xl p-4 flex gap-4 items-center shadow-sm transition-all ${isSelected ? 'border-[#0070F0] ring-2 ring-blue-100' : ''}`}>
                                     <button onClick={() => setSelectedCartItems(prev => isSelected ? prev.filter(id => id !== item.productId) : [...prev, item.productId])} className="flex-shrink-0">
                                         {isSelected ? <CheckSquare size={20} className="text-[#0070F0]"/> : <Square size={20} className="text-gray-300"/>}
                                     </button>
-                                    <img src={item.image} alt={item.title} className="w-20 h-20 object-cover rounded-lg flex-shrink-0"/>
+                                    <img src={cartImage} alt={cartTitle} className="w-20 h-20 object-cover rounded-lg flex-shrink-0"/>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-sm text-[#111] truncate">{item.title}</h3>
+                                        <h3 className="font-bold text-sm text-[#111] truncate">{cartTitle}</h3>
                                         <p className="font-black text-sm mt-1">{convertPrice(item.price)}</p>
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -503,8 +504,7 @@ export const MyPage: React.FC<any> = () => {
                                     <button onClick={() => {
                                         const item = cart.find(i => i.productId === selectedCartItems[0]);
                                         if (item) {
-                                            const allItems = products;
-                                            const product = allItems.find(p => String(p.id) === item.productId);
+                                            const product = products.find(p => String(p.id) === item.productId);
                                             if (product) window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product }));
                                         }
                                     }} className="w-full bg-[#0070F0] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors">
@@ -515,13 +515,13 @@ export const MyPage: React.FC<any> = () => {
                                         <p className="text-xs text-gray-500 text-center mb-3">{isKo ? '각 상품의 상세 페이지에서 개별 결제가 진행됩니다.' : 'Each item will be processed individually from its detail page.'}</p>
                                         <div className="grid grid-cols-2 gap-2">
                                             {cart.filter(i => selectedCartItems.includes(i.productId)).map(item => {
-                                                const allItems = products;
-                                                const product = allItems.find(p => String(p.id) === item.productId);
+                                                const product = products.find(p => String(p.id) === item.productId);
+                                                const btnTitle = product ? getLocalizedValue(product, 'title') : item.title;
                                                 return (
                                                     <button key={item.productId} onClick={() => {
                                                         if (product) window.dispatchEvent(new CustomEvent('navigate-product-detail', { detail: product }));
                                                     }} className="bg-[#0070F0] text-white py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-blue-600 transition-colors truncate">
-                                                        <CreditCard size={14}/> {item.title}
+                                                        <CreditCard size={14}/> {btnTitle}
                                                     </button>
                                                 );
                                             })}
