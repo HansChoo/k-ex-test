@@ -46,20 +46,20 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
   const badgeText = t('hero_badge').replace('{count}', visitorCount.toLocaleString());
 
   return (
-    <section className="w-full bg-gradient-to-b from-[#b8d4f0] to-[#e8eff7] pt-[40px] pb-[60px] text-center font-sans tracking-tight relative overflow-hidden">
+    <section className="w-full bg-gradient-to-b from-[#3b82f6] via-[#7ab4ff] to-[#e4efff] pt-[40px] pb-[60px] text-center font-sans tracking-tight relative overflow-hidden">
 
       <div className="max-w-[1280px] mx-auto px-6 relative z-10 flex flex-col items-center">
         
         <ScrollReveal delay={0}>
-            <div className="inline-flex items-center gap-1.5 bg-[#d6e6f9] px-4 py-1.5 rounded-full mb-6">
-                <span className="text-[#3b82f6] font-bold text-[13px] tracking-tight flex items-center gap-1">
+            <div className="inline-flex items-center gap-1.5 bg-white/30 backdrop-blur-sm px-4 py-1.5 rounded-full mb-6">
+                <span className="text-white font-bold text-[13px] tracking-tight flex items-center gap-1">
                     <Flame size={12} className="fill-[#f97316] text-[#f97316]"/> {badgeText}
                 </span>
             </div>
         </ScrollReveal>
         
         <ScrollReveal delay={100}>
-            <h1 className="text-[32px] md:text-[56px] font-[900] text-black mb-2 tracking-[-0.04em] leading-tight">
+            <h1 className="text-[32px] md:text-[56px] font-[900] text-white mb-2 tracking-[-0.04em] leading-tight drop-shadow-sm">
                 {t('hero_title')}
             </h1>
         </ScrollReveal>
@@ -71,7 +71,7 @@ export const HeroSection: React.FC<HeroSectionProps> = () => {
         </ScrollReveal>
         
         <ScrollReveal delay={300}>
-            <p className="text-gray-500 text-[14px] md:text-[18px] font-medium leading-[1.5] tracking-[-0.02em] whitespace-pre-wrap keep-all max-w-[600px]">
+            <p className="text-white/70 text-[14px] md:text-[18px] font-medium leading-[1.5] tracking-[-0.02em] whitespace-pre-wrap keep-all max-w-[600px]">
                 {t('hero_desc')}
             </p>
         </ScrollReveal>
